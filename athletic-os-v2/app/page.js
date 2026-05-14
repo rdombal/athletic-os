@@ -294,7 +294,7 @@ function PantryEditor({ pantry, onAdd, onRemove }) {
 
 function RecipeCard({ text }) {
   if (!text) return null
-  const lines = text.split('\n').map(l=>l.trim()).filter(Boolean)
+  const lines = text.split('\n').map(l=>l.trim().replace(/^#+\s*/,'')).filter(Boolean)
   const name = lines[0] || ''
   const ingStart = lines.findIndex(l=>l.toLowerCase().startsWith('ingredient'))
   const stepStart = lines.findIndex(l=>l.toLowerCase().match(/^steps?:?$|^directions?:?$|^how to/))
@@ -503,6 +503,9 @@ Vibe: ${vibe||'tasty and simple'}
 ${avoidNote}
 
 Give ONE recipe the person would actually make tonight. Use only ingredients from their pantry. No specialty items.
+
+IMPORTANT: No markdown. No # symbols, no ** bold. Plain text only.
+The recipe name goes on the FIRST LINE with no prefix or symbol.
 
 Format EXACTLY like this (use these exact section headers):
 
