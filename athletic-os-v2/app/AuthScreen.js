@@ -72,14 +72,14 @@ export default function AuthScreen({ onAuth }) {
       </div>
 
       {message && (
-        <div style={{ background:'var(--green-bg)', border:'0.5px solid var(--green)', borderRadius:rr('sm'),
+        <div style={{ background:'var(--green-bg)', border:`0.5px solid var(--green-dim)`, borderRadius:rr('sm'),
           padding:'10px 12px', fontSize:13, color:'var(--green)', marginBottom:16 }}>
           {message}
         </div>
       )}
 
       {error && (
-        <div style={{ background:'var(--coral-bg)', border:'0.5px solid var(--coral)', borderRadius:rr('sm'),
+        <div style={{ background:'var(--coral-bg)', border:`0.5px solid var(--coral-dim)`, borderRadius:rr('sm'),
           padding:'10px 12px', fontSize:13, color:'var(--coral)', marginBottom:16 }}>
           {error}
         </div>
