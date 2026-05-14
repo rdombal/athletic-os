@@ -384,6 +384,95 @@ function RecipeCard({ text, onAdjust, adjusting }) {
 }
 
 // ─── Screens ──────────────────────────────────────────────────────────────────
+
+
+// ─── Daily tip & fact ─────────────────────────────────────────────────────────
+const TIP_CATEGORIES  = ['sleep','nutrition','movement','recovery','mindset','performance','hydration']
+const FACT_CATEGORIES = ['exercise science','nutrition science','sleep science','the human body','sports performance','longevity','mental health and exercise']
+
+const CAT_COLORS = {
+  sleep:'var(--purple-bg)', nutrition:'var(--green-bg)', movement:'var(--amber-bg)',
+  recovery:'var(--blue-bg)', mindset:'var(--pink-bg)', performance:'var(--coral-bg)',
+  hydration:'var(--blue-bg)', 'exercise science':'var(--coral-bg)',
+  'nutrition science':'var(--green-bg)', 'sleep science':'var(--purple-bg)',
+  'the human body':'var(--amber-bg)', 'sports performance':'var(--coral-bg)',
+  'longevity':'var(--teal-bg,var(--blue-bg))', 'mental health and exercise':'var(--pink-bg)'
+}
+
+function DailyCard({ cacheKey, category, cardLabel, promptFn, fallback }) {
+  const [item, setItem] = useState(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const today = new Date().toDateString()
+    const cached = ls(cacheKey, null)
+    if (cached && cached.date === today) {
+      setItem(cached); setLoading(false); return
+    }
+    callAI(promptFn(category))
+      .then(text => {
+        const titleMatch = text.match(/TITLE:\s*(.+)/i)
+        const bodyMatch  = text.match(/(?:TIP|FACT):\s*([\s\S]+)/i)
+        const parsed = {
+          date: today, category,
+          title: titleMatch ? titleMatch[1].trim() : cardLabel,
+          text:  bodyMatch  ? bodyMatch[1].trim()  : text.trim()
+        }
+        lsSet(cacheKey, parsed)
+        setItem(parsed)
+        setLoading(false)
+      })
+      .catch(() => {
+        setItem({ title: cardLabel, category, text: fallback })
+        setLoading(false)
+      })
+  }, [])
+
+  return (
+    <div style={{ background:T.surface, border:'0.5px solid '+T.border, borderRadius:rr('md'), overflow:'hidden', marginBottom:12 }}>
+      <div style={{ padding:'9px 14px', background: item ? (CAT_COLORS[item.category]||'var(--green-bg)') : T.surface2, borderBottom:'0.5px solid '+T.border }}>
+        <div style={{ fontSize:10, fontWeight:500, letterSpacing:.6, textTransform:'uppercase', color:T.text2 }}>
+          {cardLabel}{item ? ' · '+item.category : ''}
+        </div>
+      </div>
+      <div style={{ padding:'12px 14px' }}>
+        {loading ? <LoadingDots /> : <>
+          <div style={{ fontSize:14, fontWeight:500, color:T.text, marginBottom:6 }}>{item.title}</div>
+          <div style={{ fontSize:13, color:T.text2, lineHeight:1.7 }}>{item.text}</div>
+        </>}
+      </div>
+    </div>
+  )
+}
+
+function DailyTip() {
+  const day = new Date().getDate()
+  const category = TIP_CATEGORIES[day % TIP_CATEGORIES.length]
+  return (
+    <DailyCard
+      cacheKey="daily_tip"
+      category={category}
+      cardLabel="Daily tip"
+      promptFn={cat => 'You are a knowledgeable, straight-talking health and fitness advisor. Give ONE practical tip about ' + cat + '. Rules: 2-3 sentences max. Specific and a little surprising. Sound like a smart friend, not a wellness influencer. No fluff, no cliches, no exclamation marks. Start with the most interesting part. Give a 2-4 word title. Format exactly like this with no markdown: TITLE: [short title] TIP: [the tip]'}
+      fallback="Consistency over intensity. Showing up three times a week for a year will outperform any extreme program you can only stick to for a month."
+    />
+  )
+}
+
+function DailyFact() {
+  const day = new Date().getDate()
+  const category = FACT_CATEGORIES[day % FACT_CATEGORIES.length]
+  return (
+    <DailyCard
+      cacheKey="daily_fact"
+      category={category}
+      cardLabel="Daily fact"
+      promptFn={cat => 'You are a science communicator who makes health research genuinely interesting. Give ONE surprising, specific, well-established fact about ' + cat + '. Rules: 2-3 sentences max. Make it feel like something worth telling a friend. No obvious facts. No fluff. No exclamation marks. Give a 2-4 word title. Format exactly like this with no markdown: TITLE: [short title] FACT: [the fact]'}
+      fallback="Your muscles grow during rest, not during the workout itself. The training session is just the signal — sleep and nutrition are where the actual adaptation happens."
+    />
+  )
+}
+
 function HomeScreen({ onNav, savedItems, profile }) {
   const hour = new Date().getHours()
   const greeting = hour<12?'Good morning':hour<17?'Good afternoon':'Good evening'
@@ -401,6 +490,8 @@ function HomeScreen({ onNav, savedItems, profile }) {
         <div style={{ fontSize:28, fontWeight:400, color:T.text, letterSpacing:-.5, lineHeight:1.2 }}>Good day{name}.</div>
         <div style={{ fontSize:14, color:T.text2, marginTop:8 }}>What do you need today?</div>
       </div>
+      <DailyTip />
+      <DailyFact />
       <Eyebrow>Quick access</Eyebrow>
       <div style={{ display:'grid', gridTemplateColumns:'repeat(2,minmax(0,1fr))', gap:10, marginBottom:28 }}>
         {tiles.map(t=>(
