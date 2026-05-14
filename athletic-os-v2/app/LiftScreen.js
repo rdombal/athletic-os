@@ -55,6 +55,33 @@ function Card({ children, style, onClick }) {
 
 function Divider() { return <div style={{ height:'0.5px', background:T.border, margin:'10px 0' }} /> }
 
+function Stepper({ value, onChange, min=1, max=999, label }) {
+  return (
+    <div style={{ flex:1 }}>
+      {label && <Label>{label}</Label>}
+      <div style={{ display:'flex', alignItems:'center', gap:8, background:T.surface, border:`0.5px solid ${T.border}`, borderRadius:rr('sm'), padding:'6px 8px' }}>
+        <button onClick={()=>onChange(Math.max(min, value-1))} style={{ width:28, height:28, borderRadius:'50%', border:`0.5px solid ${T.border}`, background:T.surface2, color:T.text, fontSize:16, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>−</button>
+        <div style={{ flex:1, textAlign:'center', fontSize:16, fontWeight:500, color:T.text }}>{value}</div>
+        <button onClick={()=>onChange(Math.min(max, value+1))} style={{ width:28, height:28, borderRadius:'50%', border:`0.5px solid ${T.border}`, background:T.surface2, color:T.text, fontSize:16, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>+</button>
+      </div>
+    </div>
+  )
+}
+
+function WeightStepper({ value, onChange, label, step=5 }) {
+  const numVal = parseFloat(value) || 0
+  return (
+    <div style={{ flex:1 }}>
+      {label && <Label>{label}</Label>}
+      <div style={{ display:'flex', alignItems:'center', gap:8, background:T.surface, border:`0.5px solid ${T.border}`, borderRadius:rr('sm'), padding:'6px 8px' }}>
+        <button onClick={()=>onChange(String(Math.max(0, numVal-step)))} style={{ width:32, height:32, borderRadius:'50%', border:`0.5px solid ${T.border}`, background:T.surface2, color:T.text, fontSize:16, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>−</button>
+        <div style={{ flex:1, textAlign:'center', fontSize:20, fontWeight:500, color:T.text }}>{numVal||'—'}</div>
+        <button onClick={()=>onChange(String(numVal+step))} style={{ width:32, height:32, borderRadius:'50%', border:`0.5px solid ${T.border}`, background:T.surface2, color:T.text, fontSize:16, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>+</button>
+      </div>
+    </div>
+  )
+}
+
 function BackBtn({ label, onClick }) {
   return (
     <button onClick={onClick} style={{ border:'none', background:'none', color:T.text3,
@@ -151,18 +178,8 @@ function SetLogger({ set, lastSet, onSave, onClose }) {
         <div style={{ fontSize:16, fontWeight:500, color:T.text, marginBottom:4 }}>Log set {set.num}</div>
         {lastSet && <div style={{ fontSize:12, color:T.text3, marginBottom:16 }}>Last time: {lastSet.weight} lb × {lastSet.reps} reps</div>}
         <div style={{ display:'flex', gap:12, marginBottom:16 }}>
-          <div style={{ flex:1 }}>
-            <Label>Weight (lb)</Label>
-            <input type="number" value={weight} onChange={e=>setWeight(e.target.value)}
-              placeholder="0" style={{ width:'100%', padding:'12px', borderRadius:rr('sm'), fontSize:24, fontWeight:500,
-                border:`0.5px solid ${T.border}`, background:T.surface, color:T.text, outline:'none', textAlign:'center' }} />
-          </div>
-          <div style={{ flex:1 }}>
-            <Label>Reps</Label>
-            <input type="number" value={reps} onChange={e=>setReps(e.target.value)}
-              placeholder="0" style={{ width:'100%', padding:'12px', borderRadius:rr('sm'), fontSize:24, fontWeight:500,
-                border:`0.5px solid ${T.border}`, background:T.surface, color:T.text, outline:'none', textAlign:'center' }} />
-          </div>
+          <WeightStepper label="Weight (lb)" value={weight} onChange={setWeight} step={5} />
+          <Stepper label="Reps" value={parseInt(reps)||0} onChange={v=>setReps(String(v))} min={0} max={100} />
         </div>
         <div style={{ display:'flex', gap:8 }}>
           <Btn outline onClick={onClose} style={{ flex:1 }}>Cancel</Btn>
@@ -186,18 +203,8 @@ function ExerciseEditor({ exercise, onChange, onRemove }) {
         <button onClick={onRemove} style={{ border:'none', background:'none', color:T.text3, fontSize:13, padding:0, cursor:'pointer' }}>×</button>
       </div>
       <div style={{ display:'flex', gap:8 }}>
-        <div style={{ flex:1 }}>
-          <Label>Sets</Label>
-          <input type="number" value={exercise.sets} onChange={e=>onChange({ ...exercise, sets:parseInt(e.target.value)||0 })}
-            min={1} max={10} style={{ width:'100%', padding:'7px 10px', borderRadius:rr('sm'), fontSize:14, fontWeight:500,
-              border:`0.5px solid ${T.border}`, background:T.surface, color:T.text, outline:'none', textAlign:'center' }} />
-        </div>
-        <div style={{ flex:1 }}>
-          <Label>Target reps</Label>
-          <input type="number" value={exercise.targetReps} onChange={e=>onChange({ ...exercise, targetReps:parseInt(e.target.value)||0 })}
-            min={1} max={100} style={{ width:'100%', padding:'7px 10px', borderRadius:rr('sm'), fontSize:14, fontWeight:500,
-              border:`0.5px solid ${T.border}`, background:T.surface, color:T.text, outline:'none', textAlign:'center' }} />
-        </div>
+        <Stepper label="Sets" value={exercise.sets||3} onChange={v=>onChange({ ...exercise, sets:v })} min={1} max={10} />
+        <Stepper label="Target reps" value={exercise.targetReps||8} onChange={v=>onChange({ ...exercise, targetReps:v })} min={1} max={100} />
       </div>
     </div>
   )
@@ -242,6 +249,7 @@ function WorkoutBuilder({ workout, onChange, onBack }) {
           onRemove={()=>removeExercise(i)} />
       ))}
       <Btn outline onClick={()=>setShowPicker(true)} style={{ width:'100%', marginTop:4 }}>+ Add exercise</Btn>
+      <Btn onClick={onBack} style={{ width:'100%', marginTop:10 }}>Save workout</Btn>
     </div>
   )
 }
@@ -285,9 +293,11 @@ function PhaseBuilder({ phase, onChange, onBack }) {
       <TextInput value={phase.name} onChange={v=>onChange({ ...phase, name:v })} placeholder="e.g. Phase 1 — Foundation" style={{ marginBottom:10 }} />
 
       <Label>Duration (weeks)</Label>
-      <input type="number" value={phase.weeks} onChange={e=>onChange({ ...phase, weeks:parseInt(e.target.value)||4 })}
-        min={1} max={52} style={{ width:'100%', padding:'9px 12px', borderRadius:rr('sm'), fontSize:13,
-          border:`0.5px solid ${T.border}`, background:T.surface, color:T.text, outline:'none', marginBottom:14 }} />
+      <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:14 }}>
+        <button onClick={()=>onChange({ ...phase, weeks:Math.max(1,(phase.weeks||4)-1) })} style={{ width:36, height:36, borderRadius:'50%', border:`0.5px solid ${T.border}`, background:T.surface, color:T.text, fontSize:18, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>−</button>
+        <div style={{ flex:1, textAlign:'center', fontSize:20, fontWeight:500, color:T.text }}>{phase.weeks||4} <span style={{ fontSize:13, fontWeight:400, color:T.text3 }}>weeks</span></div>
+        <button onClick={()=>onChange({ ...phase, weeks:Math.min(52,(phase.weeks||4)+1) })} style={{ width:36, height:36, borderRadius:'50%', border:`0.5px solid ${T.border}`, background:T.surface, color:T.text, fontSize:18, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>+</button>
+      </div>
 
       <Label>Workouts</Label>
       {phase.workouts.length===0 && (
