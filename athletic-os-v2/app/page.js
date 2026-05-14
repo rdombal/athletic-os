@@ -338,7 +338,7 @@ function RecipeCard({ text, onAdjust, adjusting }) {
   const macroLines  = macroStart>=0? slice(macroStart,[varStart])                    : []
   const varLines    = varStart>=0  ? slice(varStart,[])                              : []
   const macros = {}
-  macroLines.forEach(l=>{ const num=l.match(/\d+/)?.[0]||''; const low=l.toLowerCase(); if(low.includes('calorie')||low.includes('kcal'))macros.cal=num; else if(low.includes('protein'))macros.protein=num; else if(low.includes('carb'))macros.carbs=num; else if(low.includes('fat'))macros.fat=num })
+  macroLines.forEach(l=>{ const nums=l.match(/\d+/g)||[]; const num=nums.length?nums.reduce((a,b)=>a.length>=b.length?a:b):''; const low=l.toLowerCase(); if(low.includes('calorie')||low.includes('kcal'))macros.cal=num; else if(low.includes('protein'))macros.protein=num; else if(low.includes('carb'))macros.carbs=num; else if(low.includes('fat'))macros.fat=num })
   return (
     <div style={{ marginTop:14, background:T.surface, border:`0.5px solid ${T.border}`, borderRadius:rr('md'), overflow:'hidden' }}>
       <div style={{ padding:'16px 16px 12px', borderBottom:`0.5px solid ${T.border}` }}>
