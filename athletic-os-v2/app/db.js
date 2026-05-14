@@ -89,14 +89,13 @@ export async function getPrograms(userId) {
 
 export async function saveProgram(userId, program) {
   const { id, ...rest } = program
-  const existing = await supabase.from('lift_programs').select('id').eq('id', id).single()
-  if (existing.data) {
-    await supabase.from('lift_programs').update({ ...rest, updated_at: new Date().toISOString() }).eq('id', id)
-    return program
-  } else {
-    const { data } = await supabase.from('lift_programs').insert({ id, user_id: userId, ...rest }).select().single()
-    return data
-  }
+  const { data, error } = await supabase
+    .from('lift_programs')
+    .upsert({ id, user_id: userId, ...rest, updated_at: new Date().toISOString() }, { onConflict: 'id' })
+    .select()
+    .single()
+  if (error) console.error('saveProgram error:', error)
+  return data || program
 }
 
 export async function deleteProgram(programId) {
