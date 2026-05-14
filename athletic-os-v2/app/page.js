@@ -1,17 +1,16 @@
 'use client'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 
 const T = {
   bg:'var(--bg)', surface:'var(--surface)', surface2:'var(--surface2)',
-  border:'var(--border)', border2:'var(--border2)',
-  text:'var(--text)', text2:'var(--text2)', text3:'var(--text3)',
+  border:'var(--border)', text:'var(--text)', text2:'var(--text2)', text3:'var(--text3)',
 }
 
 const SECTION_COLORS = {
-  feel:   { bg:'var(--purple-bg)', accent:'var(--purple)' },
-  eat:    { bg:'var(--green-bg)',  accent:'var(--green)'  },
-  play:   { bg:'var(--coral-bg)', accent:'var(--coral)'  },
-  pillars:{ bg:'var(--blue-bg)',  accent:'var(--blue)'   },
+  feel:   { bg:'var(--purple-bg)' },
+  eat:    { bg:'var(--green-bg)'  },
+  play:   { bg:'var(--coral-bg)' },
+  pillars:{ bg:'var(--blue-bg)'  },
 }
 
 const PILLAR_COLORS = {
@@ -82,15 +81,24 @@ const EFFORT_LEVELS = [
   { key:'normal', label:'Normal',      desc:'Standard weeknight'    },
   { key:'chef',   label:'Chef up',     desc:'Worth the extra time'  },
 ]
+const GOALS = ['Build muscle','Lose fat','Maintain','Athletic performance']
+const ACTIVITY_LEVELS = ['Light (1-2x/week)','Moderate (3-4x/week)','Very active (5+/week)']
+const ADJUST_BUTTONS = [
+  { key:'calories_up',   label:'Higher calorie' },
+  { key:'calories_down', label:'Make lighter'   },
+  { key:'protein_up',    label:'More protein'   },
+  { key:'carbs_up',      label:'More carbs'     },
+  { key:'quicker',       label:'Make it quicker'},
+  { key:'simpler',       label:'Fewer ingredients'},
+]
 
-function loadMemory() {
-  try { return JSON.parse(localStorage.getItem('taste_memory') || '{}') } catch { return {} }
+// ─── Storage helpers ──────────────────────────────────────────────────────────
+function ls(key, fallback) {
+  try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback } catch { return fallback }
 }
+function lsSet(key, val) { try { localStorage.setItem(key, JSON.stringify(val)) } catch {} }
 
-function saveMemory(mem) {
-  try { localStorage.setItem('taste_memory', JSON.stringify(mem)) } catch {}
-}
-
+function loadMemory() { return ls('taste_memory', {}) }
 function updateMemory(patch) {
   const mem = loadMemory()
   const next = { ...mem }
@@ -98,32 +106,48 @@ function updateMemory(patch) {
   if (patch.vibes) next.vibes = [...(mem.vibes||[]), ...patch.vibes].slice(-20)
   if (patch.efforts) next.efforts = [...(mem.efforts||[]), ...patch.efforts].slice(-10)
   if (patch.meals) next.meals = [...(mem.meals||[]), ...patch.meals].slice(-20)
-  saveMemory(next)
+  lsSet('taste_memory', next)
 }
-
 function buildTasteContext(mem) {
   const parts = []
-  if (mem.savedIngredients && mem.savedIngredients.length > 3) {
+  if (mem.savedIngredients?.length > 3) {
     const freq = {}
     mem.savedIngredients.forEach(i => { freq[i] = (freq[i]||0)+1 })
     const top = Object.entries(freq).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([k])=>k)
-    parts.push(`Ingredients this user saves most often: ${top.join(', ')}`)
+    parts.push(`Ingredients this user saves most: ${top.join(', ')}`)
   }
-  if (mem.vibes && mem.vibes.length > 2) {
+  if (mem.vibes?.length > 2) {
     const freq = {}
     mem.vibes.forEach(v => { freq[v] = (freq[v]||0)+1 })
     const top = Object.entries(freq).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([k])=>k)
     parts.push(`Vibes they gravitate toward: ${top.join(', ')}`)
   }
-  if (mem.efforts && mem.efforts.length > 2) {
+  if (mem.efforts?.length > 2) {
     const freq = {}
     mem.efforts.forEach(e => { freq[e] = (freq[e]||0)+1 })
     const top = Object.entries(freq).sort((a,b)=>b[1]-a[1])[0]
     if (top) parts.push(`Usually cooks at: ${top[0]} effort`)
   }
-  return parts.length ? `\nUser taste profile (use quietly to improve suggestions — do not mention it):\n${parts.join('\n')}\n` : ''
+  return parts.length ? `\nUser taste profile (use quietly — do not mention it):\n${parts.join('\n')}\n` : ''
 }
 
+function loadProfile() {
+  return ls('profile', { name:'', goal:'Athletic performance', activity:'Very active (5+/week)', calories:'', protein:'', notes:'' })
+}
+function saveProfile(p) { lsSet('profile', p) }
+
+function buildProfileContext(profile) {
+  if (!profile) return ''
+  const parts = []
+  if (profile.goal) parts.push(`Goal: ${profile.goal}`)
+  if (profile.activity) parts.push(`Activity level: ${profile.activity}`)
+  if (profile.calories) parts.push(`Daily calorie target: ${profile.calories} cal`)
+  if (profile.protein) parts.push(`Daily protein target: ${profile.protein}g`)
+  if (profile.notes) parts.push(`About them: ${profile.notes}`)
+  return parts.length ? `\nUser profile (use to inform recipe portions and macros — do not mention it explicitly):\n${parts.join('\n')}\n` : ''
+}
+
+// ─── API ──────────────────────────────────────────────────────────────────────
 async function callAI(prompt) {
   const res = await fetch('/api/claude', {
     method:'POST', headers:{'Content-Type':'application/json'},
@@ -134,47 +158,40 @@ async function callAI(prompt) {
   return data.text
 }
 
-function rr(size) { return size==='sm'?'8px':size==='lg'?'16px':'12px' }
+// ─── UI primitives ────────────────────────────────────────────────────────────
+function rr(s) { return s==='sm'?'8px':s==='lg'?'16px':'12px' }
 
 function Eyebrow({ children, style }) {
   return <div style={{ fontSize:11, letterSpacing:.7, textTransform:'uppercase', color:T.text3, fontWeight:500, marginBottom:8, ...style }}>{children}</div>
 }
-
 function PrefLabel({ children }) {
   return <div style={{ fontSize:12, color:T.text3, marginBottom:6, letterSpacing:.2 }}>{children}</div>
 }
-
 function Chip({ label, selected, onClick }) {
   return (
     <button onClick={onClick} style={{
       padding:'6px 13px', borderRadius:20, fontSize:12, border:'none',
-      background: selected ? T.text : T.surface2,
-      color: selected ? T.bg : T.text2,
-      fontWeight: selected ? 500 : 400, transition:'all .15s',
+      background:selected?T.text:T.surface2, color:selected?T.bg:T.text2,
+      fontWeight:selected?500:400, transition:'all .15s',
     }}>{label}</button>
   )
 }
-
 function ChipRow({ options, selected, onSelect }) {
   return (
     <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom:12 }}>
-      {options.map(o=>(
-        <Chip key={o} label={o} selected={selected===o} onClick={()=>onSelect(o)} />
-      ))}
+      {options.map(o=><Chip key={o} label={o} selected={selected===o} onClick={()=>onSelect(o)} />)}
     </div>
   )
 }
-
 function PrimaryBtn({ children, onClick, disabled }) {
   return (
     <button onClick={onClick} disabled={disabled} style={{
       width:'100%', marginTop:10, padding:'12px 16px', borderRadius:rr('md'),
-      border:'none', background: disabled ? T.surface2 : T.text,
-      color: disabled ? T.text3 : T.bg, fontSize:14, fontWeight:500,
+      border:'none', background:disabled?T.surface2:T.text,
+      color:disabled?T.text3:T.bg, fontSize:14, fontWeight:500,
     }}>{children}</button>
   )
 }
-
 function SecondaryBtn({ children, onClick, style }) {
   return (
     <button onClick={onClick} style={{
@@ -184,7 +201,13 @@ function SecondaryBtn({ children, onClick, style }) {
     }}>{children}</button>
   )
 }
-
+function Input({ value, onChange, placeholder, type='text' }) {
+  return (
+    <input type={type} value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder}
+      style={{ width:'100%', padding:'9px 12px', borderRadius:rr('sm'), fontSize:13,
+        border:`0.5px solid ${T.border}`, background:T.surface, color:T.text, outline:'none', marginBottom:10 }} />
+  )
+}
 function LoadingDots() {
   return (
     <div style={{ display:'flex', gap:5, padding:'10px 0', alignItems:'center' }}>
@@ -196,17 +219,15 @@ function LoadingDots() {
     </div>
   )
 }
-
 function ResponseBox({ text, loading }) {
   if (!loading && !text) return null
   return (
     <div style={{ marginTop:12, background:T.surface, border:`0.5px solid ${T.border}`,
       borderRadius:rr('md'), padding:16, fontSize:14, lineHeight:1.75, color:T.text, whiteSpace:'pre-wrap' }}>
-      {loading ? <LoadingDots /> : text}
+      {loading?<LoadingDots />:text}
     </div>
   )
 }
-
 function Card({ children, style }) {
   return (
     <div style={{ background:T.surface, border:`0.5px solid ${T.border}`,
@@ -215,91 +236,61 @@ function Card({ children, style }) {
     </div>
   )
 }
+function Divider() { return <div style={{ height:'0.5px', background:T.border, margin:'12px 0' }} /> }
 
-function Divider() {
-  return <div style={{ height:'0.5px', background:T.border, margin:'12px 0' }} />
-}
-
+// ─── Pantry ───────────────────────────────────────────────────────────────────
 function usePantry() {
   const [pantry, setPantry] = useState([])
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem('pantry')
-      setPantry(stored ? JSON.parse(stored) : DEFAULT_PANTRY)
-    } catch { setPantry(DEFAULT_PANTRY) }
-  }, [])
-  const persist = (items) => {
-    setPantry(items)
-    try { localStorage.setItem('pantry', JSON.stringify(items)) } catch {}
-  }
-  const add = (item) => {
+  useEffect(() => { setPantry(ls('pantry', DEFAULT_PANTRY)) }, [])
+  const persist = items => { setPantry(items); lsSet('pantry', items) }
+  const add = item => {
     const t = item.trim()
     if (!t || pantry.map(p=>p.toLowerCase()).includes(t.toLowerCase())) return false
     persist([...pantry, t]); return true
   }
-  const remove = (item) => persist(pantry.filter(p=>p!==item))
+  const remove = item => persist(pantry.filter(p=>p!==item))
   return { pantry, add, remove }
 }
 
 function PantryEditor({ pantry, onAdd, onRemove }) {
   const [input, setInput] = useState('')
   const [error, setError] = useState('')
-
   const handleAdd = () => {
     if (!input.trim()) return
     const ok = onAdd(input)
-    if (ok) { setInput(''); setError('') }
-    else setError('Already in your pantry')
+    if (ok) { setInput(''); setError('') } else setError('Already in your pantry')
   }
-
   return (
     <div style={{ marginBottom:14 }}>
       <PrefLabel>Your pantry — tap x to remove</PrefLabel>
       <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom:10 }}>
         {pantry.map(ing=>(
-          <div key={ing} style={{
-            display:'flex', alignItems:'center', gap:5,
-            padding:'5px 10px', borderRadius:20, fontSize:12,
-            background:T.surface2, color:T.text2,
-          }}>
+          <div key={ing} style={{ display:'flex', alignItems:'center', gap:5, padding:'5px 10px', borderRadius:20, fontSize:12, background:T.surface2, color:T.text2 }}>
             <span>{ing}</span>
-            <button onClick={()=>onRemove(ing)} style={{
-              border:'none', background:'none', color:T.text3,
-              fontSize:12, padding:0, lineHeight:1, cursor:'pointer',
-            }}>x</button>
+            <button onClick={()=>onRemove(ing)} style={{ border:'none', background:'none', color:T.text3, fontSize:12, padding:0, lineHeight:1, cursor:'pointer' }}>x</button>
           </div>
         ))}
       </div>
       <div style={{ display:'flex', gap:6 }}>
-        <input
-          value={input}
-          onChange={e=>{ setInput(e.target.value); setError('') }}
-          onKeyDown={e=>e.key==='Enter'&&handleAdd()}
-          placeholder="Add an ingredient..."
-          style={{
-            flex:1, padding:'8px 12px', borderRadius:rr('sm'), fontSize:13,
-            border:`0.5px solid ${T.border}`, background:T.surface,
-            color:T.text, outline:'none',
-          }}
-        />
-        <button onClick={handleAdd} style={{
-          padding:'8px 14px', borderRadius:rr('sm'), fontSize:13,
-          border:'none', background:T.text, color:T.bg, fontWeight:500,
-        }}>Add</button>
+        <input value={input} onChange={e=>{ setInput(e.target.value); setError('') }}
+          onKeyDown={e=>e.key==='Enter'&&handleAdd()} placeholder="Add an ingredient..."
+          style={{ flex:1, padding:'8px 12px', borderRadius:rr('sm'), fontSize:13, border:`0.5px solid ${T.border}`, background:T.surface, color:T.text, outline:'none' }} />
+        <button onClick={handleAdd} style={{ padding:'8px 14px', borderRadius:rr('sm'), fontSize:13, border:'none', background:T.text, color:T.bg, fontWeight:500 }}>Add</button>
       </div>
       {error && <div style={{ fontSize:11, color:'var(--coral)', marginTop:4 }}>{error}</div>}
     </div>
   )
 }
 
-function RecipeCard({ text }) {
+// ─── Recipe card ──────────────────────────────────────────────────────────────
+function RecipeCard({ text, onAdjust, adjusting }) {
   if (!text) return null
   const lines = text.split('\n').map(l=>l.trim().replace(/^#+\s*/,'')).filter(Boolean)
   const name = lines[0] || ''
-  const ingStart = lines.findIndex(l=>l.toLowerCase().startsWith('ingredient'))
+  const ingStart  = lines.findIndex(l=>l.toLowerCase().startsWith('ingredient'))
   const stepStart = lines.findIndex(l=>l.toLowerCase().match(/^steps?:?$|^directions?:?$|^how to/))
-  const macroStart = lines.findIndex(l=>l.toLowerCase().match(/^macros?|^nutrition/))
-  const varStart = lines.findIndex(l=>l.toLowerCase().match(/^variations?:?$/))
+  const macroStart= lines.findIndex(l=>l.toLowerCase().match(/^macros?|^nutrition/))
+  const varStart  = lines.findIndex(l=>l.toLowerCase().match(/^variations?:?$/))
 
   const slice = (from, tos) => {
     const ends = tos.filter(t=>t>from)
@@ -307,10 +298,10 @@ function RecipeCard({ text }) {
     return lines.slice(from+1, end).filter(l=>l)
   }
 
-  const ingredients = ingStart>=0 ? slice(ingStart,[stepStart,macroStart,varStart]) : []
-  const steps = stepStart>=0 ? slice(stepStart,[macroStart,varStart]) : []
-  const macroLines = macroStart>=0 ? slice(macroStart,[varStart]) : []
-  const varLines = varStart>=0 ? slice(varStart,[]) : []
+  const ingredients = ingStart>=0  ? slice(ingStart, [stepStart,macroStart,varStart]) : []
+  const steps       = stepStart>=0  ? slice(stepStart,[macroStart,varStart])           : []
+  const macroLines  = macroStart>=0 ? slice(macroStart,[varStart])                     : []
+  const varLines    = varStart>=0   ? slice(varStart, [])                              : []
 
   const macros = {}
   macroLines.forEach(l=>{
@@ -322,8 +313,6 @@ function RecipeCard({ text }) {
     else if (low.includes('fat')) macros.fat=num
   })
 
-  const stepIcons = ['1','2','3','4','5','6']
-
   return (
     <div style={{ marginTop:14, background:T.surface, border:`0.5px solid ${T.border}`, borderRadius:rr('md'), overflow:'hidden' }}>
       <div style={{ padding:'16px 16px 12px', borderBottom:`0.5px solid ${T.border}` }}>
@@ -334,9 +323,7 @@ function RecipeCard({ text }) {
         <div style={{ padding:'12px 16px', borderBottom:`0.5px solid ${T.border}` }}>
           <div style={{ fontSize:11, fontWeight:500, color:T.text3, letterSpacing:.6, textTransform:'uppercase', marginBottom:8 }}>Ingredients</div>
           {ingredients.map((ing,i)=>(
-            <div key={i} style={{ fontSize:13, color:T.text2, paddingBottom:5, lineHeight:1.4 }}>
-              - {ing.replace(/^[-*]\s*/,'')}
-            </div>
+            <div key={i} style={{ fontSize:13, color:T.text2, paddingBottom:5, lineHeight:1.4 }}>- {ing.replace(/^[-*]\s*/,'')}</div>
           ))}
         </div>
       )}
@@ -346,7 +333,7 @@ function RecipeCard({ text }) {
           <div style={{ fontSize:11, fontWeight:500, color:T.text3, letterSpacing:.6, textTransform:'uppercase', marginBottom:8 }}>Steps</div>
           {steps.map((step,i)=>(
             <div key={i} style={{ display:'flex', gap:10, marginBottom:8, alignItems:'flex-start' }}>
-              <div style={{ width:20, height:20, borderRadius:'50%', background:T.surface2, display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:500, color:T.text2, flexShrink:0 }}>{stepIcons[i]||'+'}</div>
+              <div style={{ width:20, height:20, borderRadius:'50%', background:T.surface2, display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:500, color:T.text2, flexShrink:0 }}>{i+1}</div>
               <div style={{ fontSize:13, color:T.text, lineHeight:1.5 }}>{step.replace(/^\d+[\.\)]\s*/,'').replace(/^[-*]\s*/,'')}</div>
             </div>
           ))}
@@ -354,34 +341,53 @@ function RecipeCard({ text }) {
       )}
 
       {Object.keys(macros).length>0 && (
-        <div style={{ padding:'12px 16px', borderBottom:varLines.length>0?`0.5px solid ${T.border}`:'none' }}>
+        <div style={{ padding:'12px 16px', borderBottom:varLines.length>0||onAdjust?`0.5px solid ${T.border}`:'none' }}>
           <div style={{ fontSize:11, fontWeight:500, color:T.text3, letterSpacing:.6, textTransform:'uppercase', marginBottom:10 }}>Macros per serving</div>
           <div style={{ display:'flex', gap:8 }}>
-            {macros.cal&&<div style={{ flex:1, background:T.surface2, borderRadius:rr('sm'), padding:'8px 6px', textAlign:'center' }}><div style={{ fontSize:15, fontWeight:500, color:T.text }}>{macros.cal}</div><div style={{ fontSize:10, color:T.text3, marginTop:2 }}>cal</div></div>}
-            {macros.protein&&<div style={{ flex:1, background:T.surface2, borderRadius:rr('sm'), padding:'8px 6px', textAlign:'center' }}><div style={{ fontSize:15, fontWeight:500, color:T.text }}>{macros.protein}g</div><div style={{ fontSize:10, color:T.text3, marginTop:2 }}>protein</div></div>}
-            {macros.carbs&&<div style={{ flex:1, background:T.surface2, borderRadius:rr('sm'), padding:'8px 6px', textAlign:'center' }}><div style={{ fontSize:15, fontWeight:500, color:T.text }}>{macros.carbs}g</div><div style={{ fontSize:10, color:T.text3, marginTop:2 }}>carbs</div></div>}
-            {macros.fat&&<div style={{ flex:1, background:T.surface2, borderRadius:rr('sm'), padding:'8px 6px', textAlign:'center' }}><div style={{ fontSize:15, fontWeight:500, color:T.text }}>{macros.fat}g</div><div style={{ fontSize:10, color:T.text3, marginTop:2 }}>fat</div></div>}
+            {macros.cal    && <div style={{ flex:1, background:T.surface2, borderRadius:rr('sm'), padding:'8px 6px', textAlign:'center' }}><div style={{ fontSize:15, fontWeight:500, color:T.text }}>{macros.cal}</div><div style={{ fontSize:10, color:T.text3, marginTop:2 }}>cal</div></div>}
+            {macros.protein&& <div style={{ flex:1, background:T.surface2, borderRadius:rr('sm'), padding:'8px 6px', textAlign:'center' }}><div style={{ fontSize:15, fontWeight:500, color:T.text }}>{macros.protein}g</div><div style={{ fontSize:10, color:T.text3, marginTop:2 }}>protein</div></div>}
+            {macros.carbs  && <div style={{ flex:1, background:T.surface2, borderRadius:rr('sm'), padding:'8px 6px', textAlign:'center' }}><div style={{ fontSize:15, fontWeight:500, color:T.text }}>{macros.carbs}g</div><div style={{ fontSize:10, color:T.text3, marginTop:2 }}>carbs</div></div>}
+            {macros.fat    && <div style={{ flex:1, background:T.surface2, borderRadius:rr('sm'), padding:'8px 6px', textAlign:'center' }}><div style={{ fontSize:15, fontWeight:500, color:T.text }}>{macros.fat}g</div><div style={{ fontSize:10, color:T.text3, marginTop:2 }}>fat</div></div>}
           </div>
         </div>
       )}
 
       {varLines.length>0 && (
-        <div style={{ padding:'12px 16px', background:T.surface2 }}>
+        <div style={{ padding:'12px 16px', background:T.surface2, borderBottom:onAdjust?`0.5px solid ${T.border}`:'none' }}>
           <div style={{ fontSize:11, fontWeight:500, color:T.text3, letterSpacing:.6, textTransform:'uppercase', marginBottom:8 }}>Quick variations</div>
           {varLines.map((v,i)=>(
-            <div key={i} style={{ fontSize:12, color:T.text2, paddingBottom:5, lineHeight:1.5 }}>
-              {v.replace(/^[-*]\s*/,'')}
-            </div>
+            <div key={i} style={{ fontSize:12, color:T.text2, paddingBottom:5, lineHeight:1.5 }}>{v.replace(/^[-*]\s*/,'')}</div>
           ))}
+        </div>
+      )}
+
+      {onAdjust && (
+        <div style={{ padding:'12px 16px' }}>
+          <div style={{ fontSize:11, fontWeight:500, color:T.text3, letterSpacing:.6, textTransform:'uppercase', marginBottom:8 }}>Adjust this meal</div>
+          {adjusting ? (
+            <div style={{ padding:'8px 0' }}><LoadingDots /></div>
+          ) : (
+            <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
+              {ADJUST_BUTTONS.map(b=>(
+                <button key={b.key} onClick={()=>onAdjust(b.key, name, text)} style={{
+                  padding:'6px 12px', borderRadius:20, fontSize:12,
+                  border:`0.5px solid ${T.border}`, background:T.surface2,
+                  color:T.text2, cursor:'pointer',
+                }}>{b.label}</button>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
   )
 }
 
-function HomeScreen({ onNav, savedItems }) {
+// ─── Screens ──────────────────────────────────────────────────────────────────
+function HomeScreen({ onNav, savedItems, profile }) {
   const hour = new Date().getHours()
   const greeting = hour<12?'Good morning':hour<17?'Good afternoon':'Good evening'
+  const name = profile?.name ? `, ${profile.name}` : ''
   const tiles = [
     { tab:'feel',    label:'Feel better',  desc:'Sport-specific mobility',    color:SECTION_COLORS.feel    },
     { tab:'eat',     label:'Eat better',   desc:'New ideas, same ingredients', color:SECTION_COLORS.eat    },
@@ -392,16 +398,13 @@ function HomeScreen({ onNav, savedItems }) {
     <div style={{ padding:'32px 20px 20px' }}>
       <div style={{ marginBottom:28 }}>
         <div style={{ fontSize:13, color:T.text3, marginBottom:6 }}>{greeting}</div>
-        <div style={{ fontSize:28, fontWeight:400, color:T.text, letterSpacing:-.5, lineHeight:1.2 }}>Good day,<br/>Ryan.</div>
+        <div style={{ fontSize:28, fontWeight:400, color:T.text, letterSpacing:-.5, lineHeight:1.2 }}>Good day{name}.</div>
         <div style={{ fontSize:14, color:T.text2, marginTop:8 }}>What do you need today?</div>
       </div>
       <Eyebrow>Quick access</Eyebrow>
       <div style={{ display:'grid', gridTemplateColumns:'repeat(2,minmax(0,1fr))', gap:10, marginBottom:28 }}>
         {tiles.map(t=>(
-          <button key={t.tab} onClick={()=>onNav(t.tab)} style={{
-            background:T.surface, border:`0.5px solid ${T.border}`,
-            borderRadius:rr('md'), padding:14, textAlign:'left',
-          }}>
+          <button key={t.tab} onClick={()=>onNav(t.tab)} style={{ background:T.surface, border:`0.5px solid ${T.border}`, borderRadius:rr('md'), padding:14, textAlign:'left' }}>
             <div style={{ width:28, height:28, borderRadius:7, background:t.color.bg, marginBottom:10 }} />
             <div style={{ fontSize:13, fontWeight:500, color:T.text, marginBottom:2 }}>{t.label}</div>
             <div style={{ fontSize:11, color:T.text2, lineHeight:1.4 }}>{t.desc}</div>
@@ -418,6 +421,54 @@ function HomeScreen({ onNav, savedItems }) {
           </Card>
         ))}
       </>}
+    </div>
+  )
+}
+
+function ProfileScreen({ onSaved }) {
+  const [profile, setProfile] = useState(loadProfile())
+  const [saved, setSaved] = useState(false)
+
+  const update = (key, val) => setProfile(p=>({ ...p, [key]:val }))
+
+  const handleSave = () => {
+    saveProfile(profile)
+    setSaved(true)
+    setTimeout(()=>setSaved(false), 2000)
+    if (onSaved) onSaved(profile)
+  }
+
+  return (
+    <div style={{ padding:'20px 20px' }}>
+      <PrefLabel>Your name</PrefLabel>
+      <Input value={profile.name} onChange={v=>update('name',v)} placeholder="First name" />
+
+      <PrefLabel>Primary goal</PrefLabel>
+      <ChipRow options={GOALS} selected={profile.goal} onSelect={v=>update('goal',v)} />
+
+      <PrefLabel>Activity level</PrefLabel>
+      <ChipRow options={ACTIVITY_LEVELS} selected={profile.activity} onSelect={v=>update('activity',v)} />
+
+      <PrefLabel>Daily calorie target (optional)</PrefLabel>
+      <Input value={profile.calories} onChange={v=>update('calories',v)} placeholder="e.g. 2800" type="number" />
+
+      <PrefLabel>Daily protein target in grams (optional)</PrefLabel>
+      <Input value={profile.protein} onChange={v=>update('protein',v)} placeholder="e.g. 160" type="number" />
+
+      <PrefLabel>Anything else the app should know?</PrefLabel>
+      <textarea value={profile.notes} onChange={e=>update('notes',e.target.value)}
+        placeholder="e.g. I run and lift a lot, need to eat big. Avoid dairy when possible."
+        rows={3} style={{ width:'100%', background:T.surface, border:`0.5px solid ${T.border}`, borderRadius:rr('md'), padding:'10px 12px', fontSize:14, color:T.text, resize:'none', outline:'none' }} />
+
+      <PrimaryBtn onClick={handleSave}>
+        {saved ? 'Saved' : 'Save profile'}
+      </PrimaryBtn>
+
+      <div style={{ marginTop:20, padding:'14px 16px', background:T.surface2, borderRadius:rr('md') }}>
+        <div style={{ fontSize:12, color:T.text3, lineHeight:1.7 }}>
+          Your profile is stored privately on this device and used to personalize recipe portions, macro targets, and suggestions. It is never shared.
+        </div>
+      </div>
     </div>
   )
 }
@@ -452,10 +503,7 @@ Be specific to the activity — not generic stretches. End with one sentence on 
     setLoading(false)
   }
 
-  const save = () => {
-    onSave({ label:`${activity||focus||'Mobility'} routine`, text:resp, type:'routine' })
-    setSaved(true)
-  }
+  const save = () => { onSave({ label:`${activity||focus||'Mobility'} routine`, text:resp, type:'routine' }); setSaved(true) }
 
   return (
     <div style={{ padding:'20px 20px' }}>
@@ -467,7 +515,7 @@ Be specific to the activity — not generic stretches. End with one sentence on 
       <ChipRow options={['Before activity','After activity','General relief']} selected={when} onSelect={setWhen} />
       <PrefLabel>Extra detail (optional)</PrefLabel>
       <textarea value={extra} onChange={e=>setExtra(e.target.value)}
-        placeholder="e.g. hips tight from sitting all day, lower back stiff after golf yesterday..." rows={3}
+        placeholder="e.g. hips tight from sitting all day, lower back stiff after golf..." rows={3}
         style={{ width:'100%', background:T.surface, border:`0.5px solid ${T.border}`, borderRadius:rr('md'), padding:'10px 12px', fontSize:14, color:T.text, resize:'none', outline:'none' }} />
       <PrimaryBtn onClick={go} disabled={loading||(!activity&&!focus&&!extra)}>
         {loading?'Getting exercises...':'Get exercises'}
@@ -485,51 +533,68 @@ function EatScreen({ onSave }) {
   const [vibe, setVibe] = useState('')
   const [resp, setResp] = useState('')
   const [loading, setLoading] = useState(false)
+  const [adjusting, setAdjusting] = useState(false)
   const [saved, setSaved] = useState(false)
   const [attempts, setAttempts] = useState(0)
+  const profile = loadProfile()
 
-  const effortDesc = { low:'minimal prep, one pan if possible', normal:'standard weeknight cooking', chef:'more involved, worth the extra effort' }
+  const effortDesc = {
+    low:'minimal prep, one pan if possible',
+    normal:'standard weeknight cooking',
+    chef:'more involved, worth the extra effort'
+  }
+
+  const ADJUST_PROMPTS = {
+    calories_up:   (name, recipe) => `Take this recipe and modify it to be significantly higher calorie — add more of the calorie-dense ingredients, increase portions, or add a high-calorie component. Keep the same basic dish.\n\nOriginal recipe:\n${recipe}\n\nReturn the full modified recipe in the same plain text format. No markdown.`,
+    calories_down: (name, recipe) => `Take this recipe and make it lighter — reduce portions, swap high-calorie ingredients for lighter versions, or remove calorie-dense extras. Keep the same basic dish.\n\nOriginal recipe:\n${recipe}\n\nReturn the full modified recipe in the same plain text format. No markdown.`,
+    protein_up:    (name, recipe) => `Take this recipe and increase the protein — add more of the protein ingredient, add an egg, or add another protein source from the dish. Keep it realistic.\n\nOriginal recipe:\n${recipe}\n\nReturn the full modified recipe in the same plain text format. No markdown.`,
+    carbs_up:      (name, recipe) => `Take this recipe and increase the carbs — add more rice, potatoes, bread, or another carb source. Keep it realistic.\n\nOriginal recipe:\n${recipe}\n\nReturn the full modified recipe in the same plain text format. No markdown.`,
+    quicker:       (name, recipe) => `Take this recipe and make it faster — simplify steps, reduce cook times, use shortcuts. Should be doable in 10-15 minutes max.\n\nOriginal recipe:\n${recipe}\n\nReturn the full modified recipe in the same plain text format. No markdown.`,
+    simpler:       (name, recipe) => `Take this recipe and reduce the ingredient count — combine or remove ingredients while keeping the core dish intact. Aim for 5 ingredients or fewer.\n\nOriginal recipe:\n${recipe}\n\nReturn the full modified recipe in the same plain text format. No markdown.`,
+  }
 
   const buildPrompt = (attempt) => {
     const mem = loadMemory()
     const tasteCtx = buildTasteContext(mem)
-    const avoidNote = attempt > 0 ? '\nGive a DIFFERENT recipe than before — be creative, try another protein or preparation style.' : ''
-    return `You are a smart, friendly home cook helping someone eat well without overcomplicating it. Sound like a knowledgeable friend — casual, clear, zero fluff.
-${tasteCtx}
+    const profileCtx = buildProfileContext(profile)
+    const avoidNote = attempt > 0 ? '\nGive a DIFFERENT recipe than before — try a different protein or preparation style.' : ''
+    return `You are a smart, friendly home cook helping someone eat well without overcomplicating it. Casual, clear, zero fluff.
+${tasteCtx}${profileCtx}
 Pantry: ${pantry.join(', ')}
 Meal: ${meal}
 Effort: ${effortDesc[effort]}
 Vibe: ${vibe||'tasty and simple'}
 ${avoidNote}
 
-Give ONE recipe the person would actually make tonight. Use only ingredients from their pantry. No specialty items.
+Give ONE recipe the person would actually make tonight. Use only pantry ingredients. No specialty items.
 
-IMPORTANT: No markdown. No # symbols, no ** bold. Plain text only.
-The recipe name goes on the FIRST LINE with no prefix or symbol.
+IMPORTANT: No markdown. No # symbols, no ** bold. Plain text only. Recipe name goes on the FIRST LINE with no prefix.
 
-Format EXACTLY like this (use these exact section headers):
+Format exactly like this example:
 
-[Recipe name]
+Cheesy Beef Rice Bowl
 
 Ingredients:
-- [amount] [ingredient]
+- 1 lb ground beef
+- 1 cup rice
+- 2 eggs
+- 1/2 cup shredded cheese
 
 Steps:
-1. [One line. They know how to cook. No hand-holding.]
-2. [One line.]
-3. [One line.]
-4. [One line.]
+1. Cook rice. Season beef with salt and pepper, brown in a pan.
+2. Push beef to the side, crack eggs in, scramble together.
+3. Serve over rice, top with cheese.
 
 Macros per serving:
-Calories: [number]
-Protein: [number]g
-Carbs: [number]g
-Fat: [number]g
+Calories: 520
+Protein: 42g
+Carbs: 38g
+Fat: 22g
 
 Variations:
-- [One-line swap or add-on that changes the vibe]
-- [Another quick variation]
-- [One more]`
+- Add sriracha and soy sauce for an Asian spin
+- Swap rice for potatoes for a heartier version
+- Mix in spinach at the end for extra greens`
   }
 
   const go = async (isRetry) => {
@@ -545,8 +610,17 @@ Variations:
     setLoading(false)
   }
 
+  const adjust = async (type, name, currentRecipe) => {
+    setAdjusting(true)
+    try {
+      const text = await callAI(ADJUST_PROMPTS[type](name, currentRecipe))
+      setResp(text); setSaved(false)
+    } catch(e) { setResp('Something went wrong. Try again.') }
+    setAdjusting(false)
+  }
+
   const save = () => {
-    updateMemory({ savedIngredients: pantry })
+    updateMemory({ savedIngredients:pantry })
     onSave({ label:`${meal} — ${vibe||'recipe'}`, text:resp, type:'recipe' })
     setSaved(true)
   }
@@ -561,9 +635,9 @@ Variations:
         {EFFORT_LEVELS.map(e=>(
           <button key={e.key} onClick={()=>setEffort(e.key)} style={{
             flex:1, padding:'10px 6px', borderRadius:rr('sm'), fontSize:11, textAlign:'center',
-            border: effort===e.key ? 'none' : `0.5px solid ${T.border}`,
-            background: effort===e.key ? T.text : T.surface,
-            color: effort===e.key ? T.bg : T.text2,
+            border: effort===e.key?'none':`0.5px solid ${T.border}`,
+            background: effort===e.key?T.text:T.surface,
+            color: effort===e.key?T.bg:T.text2,
           }}>
             <div style={{ fontWeight:500, marginBottom:2, fontSize:12 }}>{e.label}</div>
             <div style={{ opacity:.7, lineHeight:1.3 }}>{e.desc}</div>
@@ -583,8 +657,8 @@ Variations:
           <button key={v} onClick={()=>setVibe(vibe===v?'':v)} style={{
             padding:'4px 10px', borderRadius:20, fontSize:11,
             border:`0.5px solid ${T.border}`,
-            background: vibe===v ? T.text : T.surface2,
-            color: vibe===v ? T.bg : T.text3,
+            background:vibe===v?T.text:T.surface2,
+            color:vibe===v?T.bg:T.text3,
           }}>{v}</button>
         ))}
       </div>
@@ -594,7 +668,7 @@ Variations:
       </PrimaryBtn>
 
       {loading && <div style={{ marginTop:12 }}><LoadingDots /></div>}
-      {resp&&!loading&&<RecipeCard text={resp} />}
+      {resp&&!loading&&<RecipeCard text={resp} onAdjust={adjust} adjusting={adjusting} />}
       {resp&&!loading&&(
         <div style={{ display:'flex', gap:8, marginTop:8 }}>
           <button onClick={()=>go(true)} style={{ flex:1, padding:'9px 16px', borderRadius:rr('md'), border:`0.5px solid ${T.border}`, background:'transparent', color:T.text2, fontSize:13 }}>Try another</button>
@@ -627,10 +701,7 @@ Focus on what actually matters for ${sport} — sport-specific patterns, relevan
     setLoading(false)
   }
 
-  const save = () => {
-    onSave({ label:`${sport} — ${rtype}`, text:resp, type:'routine' })
-    setSaved(true)
-  }
+  const save = () => { onSave({ label:`${sport} — ${rtype}`, text:resp, type:'routine' }); setSaved(true) }
 
   return (
     <div style={{ padding:'20px 20px' }}>
@@ -638,7 +709,7 @@ Focus on what actually matters for ${sport} — sport-specific patterns, relevan
       <div style={{ display:'grid', gridTemplateColumns:'repeat(2,minmax(0,1fr))', gap:8, marginBottom:14 }}>
         {SPORTS.map(s=>(
           <button key={s.name} onClick={()=>setSport(s.name)} style={{
-            background:T.surface, border: sport===s.name?`1.5px solid ${T.text}`:`0.5px solid ${T.border}`,
+            background:T.surface, border:sport===s.name?`1.5px solid ${T.text}`:`0.5px solid ${T.border}`,
             borderRadius:rr('md'), padding:'12px 14px', textAlign:'left',
           }}>
             <div style={{ fontSize:13, fontWeight:500, color:T.text }}>{s.name}</div>
@@ -684,11 +755,7 @@ function PillarsScreen({ onDeepDive }) {
                 <div style={{ fontSize:12, color:T.text2, lineHeight:1.55 }}>{p.skip}</div>
               </div>
             </div>
-            <button onClick={()=>onDeepDive(p.prompt)} style={{
-              width:'100%', padding:'9px 12px', borderRadius:rr('sm'),
-              border:`0.5px solid ${T.border}`, background:'transparent',
-              color:T.text2, fontSize:13, textAlign:'left',
-            }}>Go deeper</button>
+            <button onClick={()=>onDeepDive(p.prompt)} style={{ width:'100%', padding:'9px 12px', borderRadius:rr('sm'), border:`0.5px solid ${T.border}`, background:'transparent', color:T.text2, fontSize:13, textAlign:'left' }}>Go deeper</button>
           </Card>
         )
       })}
@@ -705,9 +772,7 @@ function DeepDiveScreen({ prompt, onBack }) {
   }, [prompt])
   return (
     <div style={{ padding:'20px 20px' }}>
-      <button onClick={onBack} style={{ border:'none', background:'none', color:T.text2, fontSize:13, marginBottom:16, display:'flex', alignItems:'center', gap:4, padding:0 }}>
-        Back to Pillars
-      </button>
+      <button onClick={onBack} style={{ border:'none', background:'none', color:T.text2, fontSize:13, marginBottom:16, display:'flex', alignItems:'center', gap:4, padding:0 }}>Back to Pillars</button>
       <ResponseBox text={resp} loading={loading} />
     </div>
   )
@@ -747,26 +812,31 @@ function StackScreen({ items, onDelete }) {
   )
 }
 
+// ─── Nav & root ───────────────────────────────────────────────────────────────
 const NAV = [
-  { tab:'home',    label:'Home'     },
-  { tab:'feel',    label:'Feel'     },
-  { tab:'eat',     label:'Eat'      },
-  { tab:'play',    label:'Play'     },
-  { tab:'stack',   label:'My Stack' },
+  { tab:'home',    label:'Home'    },
+  { tab:'feel',    label:'Feel'    },
+  { tab:'eat',     label:'Eat'     },
+  { tab:'play',    label:'Play'    },
+  { tab:'profile', label:'Profile' },
 ]
 
 const TOPBAR = {
-  feel:    { title:'Feel better',  sub:'Sport-specific mobility and targeted relief'   },
-  eat:     { title:'Eat better',   sub:'New ideas, your ingredients'                  },
-  play:    { title:'Play better',  sub:'Sport-specific warmups and recovery'           },
-  pillars: { title:'The Pillars',  sub:'The only things that actually move the needle' },
-  stack:   { title:'My Stack',     sub:'Your saved routines and recipes'               },
+  feel:    { title:'Feel better',  sub:'Sport-specific mobility and targeted relief'    },
+  eat:     { title:'Eat better',   sub:'New ideas, your ingredients'                   },
+  play:    { title:'Play better',  sub:'Sport-specific warmups and recovery'            },
+  pillars: { title:'The Pillars',  sub:'The only things that actually move the needle'  },
+  stack:   { title:'My Stack',     sub:'Your saved routines and recipes'                },
+  profile: { title:'Profile',      sub:'Your goals and preferences'                     },
 }
 
 export default function App() {
   const [tab, setTab] = useState('home')
   const [deepDive, setDeepDive] = useState(null)
   const [saved, setSaved] = useState([])
+  const [profile, setProfile] = useState(null)
+
+  useEffect(() => { setProfile(loadProfile()) }, [])
 
   const handleSave = item => setSaved(prev=>[{ ...item, id:Date.now(), date:new Date().toLocaleDateString() }, ...prev])
   const handleDelete = id => setSaved(prev=>prev.filter(i=>i.id!==id))
@@ -781,17 +851,25 @@ export default function App() {
             <div style={{ fontSize:22, fontWeight:400, color:T.text, letterSpacing:-.3 }}>{tb.title}</div>
             <div style={{ fontSize:13, color:T.text2, marginTop:4 }}>{tb.sub}</div>
           </>}
+          {tab==='eat' && (
+            <button onClick={()=>setTab('stack')} style={{ marginTop:10, fontSize:12, color:T.text3, border:'none', background:'none', padding:0, cursor:'pointer' }}>
+              View saved recipes
+            </button>
+          )}
         </div>
       )}
+
       <div style={{ flex:1, overflowY:'auto', paddingBottom:80 }}>
-        {tab==='home'    && <HomeScreen onNav={setTab} savedItems={saved} />}
+        {tab==='home'    && <HomeScreen onNav={setTab} savedItems={saved} profile={profile} />}
         {tab==='feel'    && <FeelScreen onSave={handleSave} />}
         {tab==='eat'     && <EatScreen onSave={handleSave} />}
         {tab==='play'    && <PlayScreen onSave={handleSave} />}
         {tab==='pillars' && !deepDive && <PillarsScreen onDeepDive={handleDeepDive} />}
         {tab==='pillars' && deepDive  && <DeepDiveScreen prompt={deepDive} onBack={()=>setDeepDive(null)} />}
         {tab==='stack'   && <StackScreen items={saved} onDelete={handleDelete} />}
+        {tab==='profile' && <ProfileScreen onSaved={p=>{ setProfile(p) }} />}
       </div>
+
       <nav style={{
         position:'fixed', bottom:0, left:'50%', transform:'translateX(-50%)',
         width:'100%', maxWidth:430, background:T.bg,
