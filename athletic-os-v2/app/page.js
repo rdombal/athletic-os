@@ -313,8 +313,6 @@ Be specific to the activity — not generic stretches. End with one sentence on 
 function RecipeCard({ text }) {
   if (!text) return null
   const lines = text.split('\n').map(l => l.trim()).filter(Boolean)
-
-').map(l => l.trim()).filter(Boolean)
   const name = lines[0] || ''
   const ingStart = lines.findIndex(l => l.toLowerCase().includes('ingredient'))
   const stepStart = lines.findIndex(l => l.toLowerCase().match(/^steps?:?$/))
