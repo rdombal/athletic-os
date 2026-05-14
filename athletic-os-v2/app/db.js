@@ -83,7 +83,8 @@ export async function setDailyCache(userId, cacheKey, cacheData) {
 
 // ─── Lift programs ────────────────────────────────────────────────────────────
 export async function getPrograms(userId) {
-  const { data } = await supabase.from('lift_programs').select('*').eq('user_id', userId).order('created_at', { ascending: false })
+  const { data, error } = await supabase.from('lift_programs').select('*').eq('user_id', userId).order('created_at', { ascending: false })
+  if (error) console.error('getPrograms error:', error)
   return (data || []).map(p => ({ ...p, phases: p.phases || [] }))
 }
 
