@@ -620,7 +620,7 @@ export default function LiftScreen() {
   const handleSaveProgram = (prog) => {
     const programs = loadPrograms()
     const idx = programs.findIndex(p=>p.id===prog.id)
-    if (idx>=0) programs[idx]=prog else programs.push(prog)
+    if (idx>=0) { programs[idx]=prog } else { programs.push(prog) }
     savePrograms(programs)
     setSelectedProgram(prog)
     setView('detail')
