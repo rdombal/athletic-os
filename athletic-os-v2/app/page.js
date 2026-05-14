@@ -92,6 +92,7 @@ const EFFORT_LEVELS = [
   { key:'normal', label:'Normal',      desc:'Standard weeknight'    },
   { key:'chef',   label:'Chef up',     desc:'Worth the extra time'  },
 ]
+const CUISINES = ['Mexican','Asian','Mediterranean','Italian','American','Middle Eastern','Indian']
 const GOALS = ['Build muscle','Lose fat','Maintain','Athletic performance']
 const ACTIVITY_LEVELS = ['Light (1-2x/week)','Moderate (3-4x/week)','Very active (5+/week)']
 const ADJUST_BUTTONS = [
@@ -482,20 +483,24 @@ function EatScreen({ onSave, userId }) {
   const [effort, setEffort] = useState('normal')
   const [meal, setMeal] = useState('Lunch')
   const [vibe, setVibe] = useState('')
+  const [cuisine, setCuisine] = useState('')
   const [resp, setResp] = useState('')
   const [loading, setLoading] = useState(false)
   const [adjusting, setAdjusting] = useState(false)
   const [saved, setSaved] = useState(false)
   const [attempts, setAttempts] = useState(0)
 
-  const effortDesc = { low:'minimal prep, one pan if possible', normal:'standard weeknight cooking', chef:'more involved, worth the extra effort' }
+  const ASSUMED_STAPLES = 'olive oil, butter, garlic, onion, salt, pepper, cumin, paprika, chili flakes, Italian seasoning, soy sauce, hot sauce, lemon, lime, vinegar, chicken broth, mustard, honey, Worcestershire sauce'
+  const TECHNIQUES = ['pan sear and sauce', 'sheet pan roast', 'stir fry', 'skillet scramble', 'soup or stew', 'marinate and grill', 'stuffed or wrapped', 'rice bowl with sauce', 'fried rice', 'frittata or egg bake']
+  const effortDesc = { low:'minimal prep, one pan, 15 min max', normal:'standard weeknight, 20-30 min', chef:'more involved, worth the effort, up to 45 min' }
+
   const ADJUST_PROMPTS = {
-    calories_up:   (_,r)=>`Take this recipe and make it significantly higher calorie. Add more of the calorie-dense ingredients or increase portions.\n\nOriginal:\n${r}\n\nReturn full modified recipe in same plain text format. No markdown.`,
-    calories_down: (_,r)=>`Take this recipe and make it lighter. Reduce portions or swap high-calorie ingredients.\n\nOriginal:\n${r}\n\nReturn full modified recipe in same plain text format. No markdown.`,
-    protein_up:    (_,r)=>`Take this recipe and increase the protein. Add more of the protein ingredient or add another source.\n\nOriginal:\n${r}\n\nReturn full modified recipe in same plain text format. No markdown.`,
-    carbs_up:      (_,r)=>`Take this recipe and increase the carbs. Add more rice, potatoes, or bread.\n\nOriginal:\n${r}\n\nReturn full modified recipe in same plain text format. No markdown.`,
-    quicker:       (_,r)=>`Take this recipe and make it faster. Should be doable in 10-15 minutes max.\n\nOriginal:\n${r}\n\nReturn full modified recipe in same plain text format. No markdown.`,
-    simpler:       (_,r)=>`Take this recipe and reduce the ingredient count. Aim for 5 ingredients or fewer.\n\nOriginal:\n${r}\n\nReturn full modified recipe in same plain text format. No markdown.`,
+    calories_up:   (_,r)=>`Make this recipe significantly higher calorie. Add more calorie-dense ingredients or increase portions.\n\nOriginal:\n${r}\n\nReturn full modified recipe in same plain text format. No markdown.`,
+    calories_down: (_,r)=>`Make this recipe lighter. Reduce portions or swap high-calorie ingredients for lighter versions.\n\nOriginal:\n${r}\n\nReturn full modified recipe in same plain text format. No markdown.`,
+    protein_up:    (_,r)=>`Increase the protein in this recipe. Add more of the protein source or add another.\n\nOriginal:\n${r}\n\nReturn full modified recipe in same plain text format. No markdown.`,
+    carbs_up:      (_,r)=>`Increase the carbs. Add more rice, potatoes, or bread to this recipe.\n\nOriginal:\n${r}\n\nReturn full modified recipe in same plain text format. No markdown.`,
+    quicker:       (_,r)=>`Make this recipe faster. Should be doable in 10-15 minutes max.\n\nOriginal:\n${r}\n\nReturn full modified recipe in same plain text format. No markdown.`,
+    simpler:       (_,r)=>`Reduce the ingredient count to 5 or fewer while keeping the core dish.\n\nOriginal:\n${r}\n\nReturn full modified recipe in same plain text format. No markdown.`,
   }
 
   const buildPrompt = async (attempt) => {
@@ -503,8 +508,46 @@ function EatScreen({ onSave, userId }) {
     const profile = userId ? await getProfile(userId) : {}
     const tasteCtx = buildTasteContext(mem)
     const profileCtx = buildProfileContext(profile)
-    const avoidNote = attempt>0?'\nGive a DIFFERENT recipe than before.':''
-    return `You are a smart, friendly home cook. Casual, clear, zero fluff.\n${tasteCtx}${profileCtx}\nPantry: ${pantry.join(', ')}\nMeal: ${meal}\nEffort: ${effortDesc[effort]}\nVibe: ${vibe||'tasty and simple'}\n${avoidNote}\n\nGive ONE recipe. Use only pantry ingredients. No specialty items.\nIMPORTANT: No markdown. No # symbols. Plain text only. Recipe name on the FIRST LINE.\n\nFormat:\n[Recipe name]\n\nIngredients:\n- [amount] [ingredient]\n\nSteps:\n1. [One line.]\n2. [One line.]\n\nMacros per serving:\nCalories: [number]\nProtein: [number]g\nCarbs: [number]g\nFat: [number]g\n\nVariations:\n- [One-line swap]\n- [Another]\n- [One more]`
+    const avoidNote = attempt>0?'\nGive a COMPLETELY DIFFERENT recipe — different protein, different technique, different flavor profile.':''
+    const cuisineNote = cuisine ? `Cuisine direction: ${cuisine}\n` : ''
+    const techNote = TECHNIQUES[Math.floor(Math.random()*TECHNIQUES.length)]
+    return `You are a skilled home cook helping someone eat well and actually enjoy their food. Sound like a knowledgeable friend giving a real recipe — not a meal prep slop bowl.
+${tasteCtx}${profileCtx}
+Main ingredients (proteins and bases): ${pantry.join(', ')}
+Assumed pantry staples always available: ${ASSUMED_STAPLES}
+Meal: ${meal}
+Effort: ${effortDesc[effort]}
+Vibe: ${vibe||'tasty, satisfying, something I would actually want to eat'}
+${cuisineNote}Cooking technique to try: ${techNote}
+${avoidNote}
+
+Give ONE recipe that feels like something from a good casual restaurant — not a bland bowl. Use the main ingredients as the base and enhance freely with assumed staples. The result should taste like a real dish with a name, not just "protein + carb."
+
+IMPORTANT: No markdown. No # symbols. Plain text only. Recipe name goes on the FIRST LINE with no prefix.
+
+Format exactly like this:
+
+[Creative recipe name]
+
+Ingredients:
+- [amount] [ingredient]
+
+Steps:
+1. [One punchy line. They know how to cook.]
+2. [One line.]
+3. [One line.]
+4. [One line.]
+
+Macros per serving:
+Calories: [number]
+Protein: [number]g
+Carbs: [number]g
+Fat: [number]g
+
+Variations:
+- [One-line twist that changes the whole vibe]
+- [Another quick variation]
+- [One more]`
   }
 
   const go = async (isRetry) => {
@@ -525,7 +568,7 @@ function EatScreen({ onSave, userId }) {
 
   const save = () => {
     if (userId) updateTasteMemory(userId,{savedIngredients:pantry})
-    onSave({ label:`${meal} — ${vibe||'recipe'}`, text:resp, type:'recipe' })
+    onSave({ label:`${meal} — ${cuisine||vibe||'recipe'}`, text:resp, type:'recipe' })
     setSaved(true)
   }
 
@@ -539,6 +582,10 @@ function EatScreen({ onSave, userId }) {
       </div>
       <PrefLabel>Meal type</PrefLabel>
       <ChipRow options={['Breakfast','Lunch','Dinner','Snack']} selected={meal} onSelect={setMeal} />
+      <PrefLabel>Cuisine (optional)</PrefLabel>
+      <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom:14 }}>
+        {CUISINES.map(cu=><button key={cu} onClick={()=>setCuisine(cuisine===cu?'':cu)} style={{ padding:'5px 12px', borderRadius:20, fontSize:12, border:`0.5px solid ${T.border}`, background:cuisine===cu?T.text:T.surface2, color:cuisine===cu?T.bg:T.text2 }}>{cu}</button>)}
+      </div>
       <PrefLabel>What's the vibe?</PrefLabel>
       <textarea value={vibe} onChange={e=>setVibe(e.target.value)} placeholder="high protein, comforting, fresh, post-workout..." rows={2} style={{ width:'100%', background:T.surface, border:`0.5px solid ${T.border}`, borderRadius:rr('md'), padding:'10px 12px', fontSize:14, color:T.text, resize:'none', outline:'none', marginBottom:8 }} />
       <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom:4 }}>
