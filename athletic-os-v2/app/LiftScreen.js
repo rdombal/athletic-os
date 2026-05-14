@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react'
 import { EXERCISE_LIBRARY, EXERCISE_GROUPS } from './exercises'
 import { getPrograms, saveProgram, deleteProgram, getSessions, saveSession } from './db'
 
-function uid() { return Math.random().toString(36).slice(2, 9) }
+function uid() { return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { const r = Math.random()*16|0; return (c==='x'?r:(r&0x3|0x8)).toString(16) }) }
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const T = {
