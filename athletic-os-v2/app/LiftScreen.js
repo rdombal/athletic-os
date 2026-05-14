@@ -7,8 +7,9 @@ function uid() { return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, 
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const T = {
-  bg:'var(--bg)', surface:'var(--surface)', surface2:'var(--surface2)',
-  border:'var(--border)', text:'var(--text)', text2:'var(--text2)', text3:'var(--text3)',
+  bg:'var(--bg)', surface:'var(--surface)', surface2:'var(--surface2)', surface3:'var(--surface3)',
+  border:'var(--border)', border2:'var(--border2)',
+  text:'var(--text)', text2:'var(--text2)', text3:'var(--text3)',
 }
 function rr(s) { return s==='sm'?'8px':s==='lg'?'16px':'12px' }
 
@@ -122,8 +123,8 @@ function ExercisePicker({ onSelect, onClose }) {
   })
 
   return (
-    <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.4)', zIndex:200, display:'flex', alignItems:'flex-end' }}>
-      <div style={{ background:T.bg, borderRadius:'16px 16px 0 0', width:'100%', maxWidth:430,
+    <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.7)', zIndex:200, display:'flex', alignItems:'flex-end' }}>
+      <div style={{ background:T.surface, border:`0.5px solid ${T.border}`, borderRadius:'16px 16px 0 0', width:'100%', maxWidth:430,
         margin:'0 auto', maxHeight:'80vh', display:'flex', flexDirection:'column' }}>
         <div style={{ padding:'16px 16px 8px', borderBottom:`0.5px solid ${T.border}`, flexShrink:0 }}>
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:10 }}>
@@ -172,14 +173,29 @@ function SetLogger({ set, lastSet, onSave, onClose }) {
   const [weight, setWeight] = useState(lastSet?.weight?.toString() || '')
   const [reps, setReps] = useState(lastSet?.reps?.toString() || set.targetReps?.toString() || '')
 
+  const inputStyle = {
+    width:'100%', padding:'16px 12px', borderRadius:rr('sm'), fontSize:28, fontWeight:500,
+    border:`0.5px solid ${T.border}`, background:T.surface2, color:T.text,
+    outline:'none', textAlign:'center', appearance:'none', MozAppearance:'textfield',
+  }
+
   return (
-    <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.4)', zIndex:200, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}>
-      <div style={{ background:T.bg, borderRadius:rr('lg'), width:'100%', maxWidth:340, padding:20 }}>
-        <div style={{ fontSize:16, fontWeight:500, color:T.text, marginBottom:4 }}>Log set {set.num}</div>
+    <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.6)', zIndex:200, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}>
+      <div style={{ background:T.surface, border:`0.5px solid ${T.border}`, borderRadius:rr('lg'), width:'100%', maxWidth:340, padding:20 }}>
+        <div style={{ fontSize:16, fontWeight:500, color:T.text, marginBottom:4 }}>Set {set.num}</div>
         {lastSet && <div style={{ fontSize:12, color:T.text3, marginBottom:16 }}>Last time: {lastSet.weight} lb × {lastSet.reps} reps</div>}
-        <div style={{ display:'flex', gap:12, marginBottom:16 }}>
-          <WeightStepper label="Weight (lb)" value={weight} onChange={setWeight} step={5} />
-          <Stepper label="Reps" value={parseInt(reps)||0} onChange={v=>setReps(String(v))} min={0} max={100} />
+        {!lastSet && <div style={{ marginBottom:16 }} />}
+        <div style={{ display:'flex', gap:12, marginBottom:20 }}>
+          <div style={{ flex:1 }}>
+            <Label>Weight (lb)</Label>
+            <input type="number" inputMode="decimal" value={weight} onChange={e=>setWeight(e.target.value)}
+              placeholder="0" autoFocus style={inputStyle} />
+          </div>
+          <div style={{ flex:1 }}>
+            <Label>Reps</Label>
+            <input type="number" inputMode="numeric" value={reps} onChange={e=>setReps(e.target.value)}
+              placeholder="0" style={inputStyle} />
+          </div>
         </div>
         <div style={{ display:'flex', gap:8 }}>
           <Btn outline onClick={onClose} style={{ flex:1 }}>Cancel</Btn>
