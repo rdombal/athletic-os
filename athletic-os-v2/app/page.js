@@ -310,6 +310,66 @@ Be specific to the activity — not generic stretches. End with one sentence on 
   )
 }
 
+function RecipeCard({ text }) {
+  if (!text) return null
+  const lines = text.split('
+').map(l => l.trim()).filter(Boolean)
+  const name = lines[0] || ''
+  const ingStart = lines.findIndex(l => l.toLowerCase().includes('ingredient'))
+  const stepStart = lines.findIndex(l => l.toLowerCase().match(/^steps?:?$/))
+  const macroStart = lines.findIndex(l => l.toLowerCase().includes('macro') || l.toLowerCase().includes('calorie'))
+  const ingredients = ingStart >= 0 ? lines.slice(ingStart+1, stepStart > 0 ? stepStart : macroStart > 0 ? macroStart : undefined).filter(l => !l.toLowerCase().includes('ingredient')) : []
+  const steps = stepStart >= 0 ? lines.slice(stepStart+1, macroStart > 0 ? macroStart : undefined).filter(l => !l.toLowerCase().match(/^steps?:?$/)) : []
+  const macroLines = macroStart >= 0 ? lines.slice(macroStart+1) : []
+  const macros = {}
+  macroLines.forEach(l => {
+    const num = l.match(/[\d]+/)?.[0] || ''
+    const lower = l.toLowerCase()
+    if (lower.includes('calorie') || lower.includes('kcal')) macros.cal = num
+    else if (lower.includes('protein')) macros.protein = num
+    else if (lower.includes('carb')) macros.carbs = num
+    else if (lower.includes('fat')) macros.fat = num
+  })
+  const stepIcons = ['1️⃣','2️⃣','3️⃣','4️⃣','5️⃣','6️⃣']
+  return (
+    <div style={{ marginTop:14, background:T.surface, border:`0.5px solid ${T.border}`, borderRadius:var_r('md'), overflow:'hidden' }}>
+      <div style={{ padding:'16px 16px 12px', borderBottom:`0.5px solid ${T.border}` }}>
+        <div style={{ fontSize:18, fontWeight:500, color:T.text }}>{name}</div>
+      </div>
+      {ingredients.length > 0 && (
+        <div style={{ padding:'12px 16px', borderBottom:`0.5px solid ${T.border}` }}>
+          <div style={{ fontSize:11, fontWeight:500, color:T.text3, letterSpacing:.6, textTransform:'uppercase', marginBottom:8 }}>🛒 Ingredients</div>
+          {ingredients.map((ing, i) => (
+            <div key={i} style={{ fontSize:13, color:T.text2, paddingBottom:5, lineHeight:1.4 }}>— {ing.replace(/^[-•*]\s*/, '')}</div>
+          ))}
+        </div>
+      )}
+      {steps.length > 0 && (
+        <div style={{ padding:'12px 16px', borderBottom:`0.5px solid ${T.border}` }}>
+          <div style={{ fontSize:11, fontWeight:500, color:T.text3, letterSpacing:.6, textTransform:'uppercase', marginBottom:8 }}>👨‍🍳 Steps</div>
+          {steps.map((step, i) => (
+            <div key={i} style={{ display:'flex', gap:10, marginBottom:8, alignItems:'flex-start' }}>
+              <span style={{ fontSize:14, flexShrink:0 }}>{stepIcons[i] || '▸'}</span>
+              <div style={{ fontSize:13, color:T.text, lineHeight:1.5 }}>{step.replace(/^\d+[\.)\s]+/, '').replace(/^[-•*]\s*/, '')}</div>
+            </div>
+          ))}
+        </div>
+      )}
+      {Object.keys(macros).length > 0 && (
+        <div style={{ padding:'12px 16px' }}>
+          <div style={{ fontSize:11, fontWeight:500, color:T.text3, letterSpacing:.6, textTransform:'uppercase', marginBottom:10 }}>📊 Macros per serving</div>
+          <div style={{ display:'flex', gap:8 }}>
+            {macros.cal && <div style={{ flex:1, background:T.surface2, borderRadius:var_r('sm'), padding:'8px 6px', textAlign:'center' }}><div style={{ fontSize:15, fontWeight:500, color:T.text }}>{macros.cal}</div><div style={{ fontSize:10, color:T.text3, marginTop:2 }}>cal</div></div>}
+            {macros.protein && <div style={{ flex:1, background:T.surface2, borderRadius:var_r('sm'), padding:'8px 6px', textAlign:'center' }}><div style={{ fontSize:15, fontWeight:500, color:T.text }}>{macros.protein}g</div><div style={{ fontSize:10, color:T.text3, marginTop:2 }}>protein</div></div>}
+            {macros.carbs && <div style={{ flex:1, background:T.surface2, borderRadius:var_r('sm'), padding:'8px 6px', textAlign:'center' }}><div style={{ fontSize:15, fontWeight:500, color:T.text }}>{macros.carbs}g</div><div style={{ fontSize:10, color:T.text3, marginTop:2 }}>carbs</div></div>}
+            {macros.fat && <div style={{ flex:1, background:T.surface2, borderRadius:var_r('sm'), padding:'8px 6px', textAlign:'center' }}><div style={{ fontSize:15, fontWeight:500, color:T.text }}>{macros.fat}g</div><div style={{ fontSize:10, color:T.text3, marginTop:2 }}>fat</div></div>}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function EatScreen({ onSave }) {
   const [ings, setIngs] = useState(new Set(DEFAULT_INGS))
   const [time, setTime] = useState('Under 20 min')
@@ -324,21 +384,25 @@ function EatScreen({ onSave }) {
   const go = async () => {
     setLoading(true); setResp(''); setSaved(false)
     try {
-      const text = await callAI(`You are a practical home cook and nutritionist. The user eats simple foods on rotation and wants new combinations — not exotic recipes, just fresh preparations of what they already buy.
+      const text = await callAI(`You are a fun, friendly home cook. Give ONE recipe using these ingredients. Keep the tone light — like a friend texting you a recipe.
 
 Available ingredients: ${[...ings].join(', ')}
 Meal: ${meal}
 Time: ${time}
 Vibe: ${extra||'something tasty and simple'}
 
-Give ONE recipe. Format exactly as:
-[Recipe name]
+Format EXACTLY like this:
+
+[Fun recipe name]
 
 Ingredients:
-[list with amounts]
+- [amount] [ingredient]
 
 Steps:
-[4-5 numbered steps, simple and clear]
+1. [One punchy line. Assume they know how to cook.]
+2. [One line.]
+3. [One line.]
+4. [One line.]
 
 Macros per serving:
 Calories: [number]
@@ -346,7 +410,7 @@ Protein: [number]g
 Carbs: [number]g
 Fat: [number]g
 
-Keep it realistic. Nothing that requires specialty ingredients.`)
+Max 5 steps. One line each. No explaining basic techniques.`)
       setResp(text)
     } catch(e) { setResp('Something went wrong. Try again.') }
     setLoading(false)
@@ -379,9 +443,10 @@ Keep it realistic. Nothing that requires specialty ingredients.`)
       <StyledTextarea value={extra} onChange={setExtra}
         placeholder="e.g. something warm and filling, bold flavors, super simple..." />
       <PrimaryBtn onClick={go} disabled={loading}>
-        {loading ? 'Getting recipe...' : 'Get recipe ideas'}
+        {loading ? 'Finding something good...' : 'Get recipe ideas'}
       </PrimaryBtn>
-      <ResponseBox text={resp} loading={loading} />
+      {loading && <ResponseBox text='' loading={true} />}
+      {resp && !loading && <RecipeCard text={resp} />}
       {resp && !loading && (
         <SecondaryBtn onClick={save}>{saved ? '✓ Saved to My Stack' : '+ Save to My Stack'}</SecondaryBtn>
       )}
