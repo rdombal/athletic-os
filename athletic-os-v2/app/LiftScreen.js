@@ -1,17 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { EXERCISE_LIBRARY, EXERCISE_GROUPS } from './exercises'
-
-// ─── Storage ──────────────────────────────────────────────────────────────────
-function ls(key, fallback) {
-  try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback } catch { return fallback }
-}
-function lsSet(key, val) { try { localStorage.setItem(key, JSON.stringify(val)) } catch {} }
-
-function loadPrograms() { return ls('lift_programs', []) }
-function savePrograms(p) { lsSet('lift_programs', p) }
-function loadSessions() { return ls('lift_sessions', []) }
-function saveSessions(s) { lsSet('lift_sessions', s) }
+import { getPrograms, saveProgram, deleteProgram, getSessions, saveSession } from './db'
 
 function uid() { return Math.random().toString(36).slice(2, 9) }
 
@@ -389,13 +379,17 @@ function ProgramBuilder({ program, onSave, onBack, onDelete }) {
 }
 
 // ─── Session logger ───────────────────────────────────────────────────────────
-function SessionLogger({ workout, programId, phaseId, onFinish, onBack }) {
-  const sessions = loadSessions()
+function SessionLogger({ workout, programId, phaseId, userId, onFinish, onBack }) {
+  const [sessions, setSessions] = useState([])
   const [currentEx, setCurrentEx] = useState(0)
   const [loggedSets, setLoggedSets] = useState(
     workout.exercises.map(ex => ({ exerciseId:ex.exerciseId||ex.id, name:ex.name, sets:[] }))
   )
   const [loggingSet, setLoggingSet] = useState(null)
+
+  useEffect(() => {
+    if (userId) getSessions(userId, programId).then(s => setSessions(s)).catch(()=>{})
+  }, [programId])
 
   const getLastSession = (exerciseId) => {
     const prev = sessions.filter(s => s.programId===programId && s.phaseId===phaseId)
@@ -421,16 +415,13 @@ function SessionLogger({ workout, programId, phaseId, onFinish, onBack }) {
     setLoggingSet(null)
   }
 
-  const finishSession = () => {
-    const session = {
-      id: uid(),
+  const finishSession = async () => {
+    await saveSession(userId, {
       programId, phaseId,
       workoutId: workout.id,
       workoutName: workout.name,
-      date: Date.now(),
       exercises: loggedSets,
-    }
-    saveSessions([...sessions, session])
+    }).catch(()=>{})
     onFinish()
   }
 
@@ -514,11 +505,9 @@ function SessionLogger({ workout, programId, phaseId, onFinish, onBack }) {
 }
 
 // ─── Programs list ────────────────────────────────────────────────────────────
-function ProgramsList({ onSelectProgram, onNewProgram }) {
-  const [programs, setPrograms] = useState(loadPrograms())
+function ProgramsList({ programs, loading, onSelectProgram, onNewProgram }) {
 
-  useEffect(() => { setPrograms(loadPrograms()) }, [])
-
+  if (loading) return <div style={{ padding:20, display:'flex', justifyContent:'center' }}><div style={{ display:'flex', gap:5, padding:'10px 0', alignItems:'center' }}>{[0,1,2].map(i=><div key={i} style={{ width:6,height:6,borderRadius:'50%',background:'var(--text3)',animation:'blink 1.2s infinite',animationDelay:i*.2+'s' }} />)}<style>{"@keyframes blink{0%,80%,100%{opacity:.2}40%{opacity:1}}"}</style></div></div>
   if (programs.length === 0) {
     return (
       <div style={{ padding:'20px 20px' }}>
@@ -599,16 +588,25 @@ function SessionComplete({ onDone }) {
 }
 
 // ─── Root Lift screen ─────────────────────────────────────────────────────────
-export default function LiftScreen() {
+export default function LiftScreen({ userId }) {
   const [view, setView] = useState('list')
   const [selectedProgram, setSelectedProgram] = useState(null)
   const [editingProgram, setEditingProgram] = useState(null)
   const [activeSession, setActiveSession] = useState(null)
+  const [programs, setPrograms] = useState([])
+  const [programsLoading, setProgramsLoading] = useState(true)
 
-  const reloadPrograms = () => {
+  useEffect(() => {
+    if (!userId) return
+    getPrograms(userId).then(p => { setPrograms(p); setProgramsLoading(false) })
+  }, [userId])
+
+  const reloadPrograms = async () => {
+    const fresh = await getPrograms(userId)
+    setPrograms(fresh)
     if (selectedProgram) {
-      const fresh = loadPrograms().find(p=>p.id===selectedProgram.id)
-      if (fresh) setSelectedProgram(fresh)
+      const found = fresh.find(p=>p.id===selectedProgram.id)
+      if (found) setSelectedProgram(found)
     }
   }
 
@@ -617,21 +615,21 @@ export default function LiftScreen() {
     setView('builder')
   }
 
-  const handleSaveProgram = (prog) => {
-    const programs = loadPrograms()
-    const idx = programs.findIndex(p=>p.id===prog.id)
-    if (idx>=0) { programs[idx]=prog } else { programs.push(prog) }
-    savePrograms(programs)
+  const handleSaveProgram = async (prog) => {
+    await saveProgram(userId, prog)
     setSelectedProgram(prog)
     setView('detail')
+    const fresh = await getPrograms(userId)
+    setPrograms(fresh)
   }
 
-  const handleDeleteProgram = () => {
+  const handleDeleteProgram = async () => {
     if (!window.confirm('Delete this program? This cannot be undone.')) return
-    const programs = loadPrograms().filter(p=>p.id!==editingProgram.id)
-    savePrograms(programs)
+    await deleteProgram(editingProgram.id)
     setSelectedProgram(null)
     setView('list')
+    const fresh = await getPrograms(userId)
+    setPrograms(fresh)
   }
 
   const handleStartWorkout = (workout, programId, phaseId) => {
@@ -639,7 +637,7 @@ export default function LiftScreen() {
     setView('session')
   }
 
-  const handleFinishSession = () => {
+  const handleFinishSession = async () => {
     setActiveSession(null)
     setView('complete')
   }
@@ -648,6 +646,8 @@ export default function LiftScreen() {
     <div style={{ paddingBottom:20 }}>
       {view==='list' && (
         <ProgramsList
+          programs={programs}
+          loading={programsLoading}
           onSelectProgram={p=>{ setSelectedProgram(p); setView('detail') }}
           onNewProgram={handleNewProgram} />
       )}
@@ -673,6 +673,7 @@ export default function LiftScreen() {
           workout={activeSession.workout}
           programId={activeSession.programId}
           phaseId={activeSession.phaseId}
+          userId={userId}
           onFinish={handleFinishSession}
           onBack={()=>{ setActiveSession(null); setView('detail') }} />
       )}
