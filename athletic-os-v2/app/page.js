@@ -14,15 +14,16 @@ import {
 } from './db'
 
 const T = {
-  bg:'var(--bg)', surface:'var(--surface)', surface2:'var(--surface2)',
-  border:'var(--border)', text:'var(--text)', text2:'var(--text2)', text3:'var(--text3)',
+  bg:'var(--bg)', surface:'var(--surface)', surface2:'var(--surface2)', surface3:'var(--surface3)',
+  border:'var(--border)', border2:'var(--border2)',
+  text:'var(--text)', text2:'var(--text2)', text3:'var(--text3)',
 }
 
 const SECTION_COLORS = {
-  feel:   { bg:'var(--purple-bg)' },
-  eat:    { bg:'var(--green-bg)'  },
-  play:   { bg:'var(--coral-bg)' },
-  pillars:{ bg:'var(--blue-bg)'  },
+  feel:   { bg:'var(--purple-bg)', dot:'var(--purple-dim)' },
+  eat:    { bg:'var(--green-bg)',  dot:'var(--green-dim)'  },
+  play:   { bg:'var(--coral-bg)', dot:'var(--coral-dim)'  },
+  pillars:{ bg:'var(--blue-bg)',  dot:'var(--blue-dim)'   },
 }
 
 const PILLAR_COLORS = {
@@ -232,6 +233,14 @@ const CAT_COLORS = {
   'the human body':'var(--amber-bg)', 'sports performance':'var(--coral-bg)',
   'longevity':'var(--blue-bg)', 'mental health and exercise':'var(--pink-bg)'
 }
+const CAT_TEXT = {
+  sleep:'var(--purple)', nutrition:'var(--green)', movement:'var(--amber)',
+  recovery:'var(--blue)', mindset:'var(--pink)', performance:'var(--coral)',
+  hydration:'var(--blue)', 'exercise science':'var(--coral)',
+  'nutrition science':'var(--green)', 'sleep science':'var(--purple)',
+  'the human body':'var(--amber)', 'sports performance':'var(--coral)',
+  'longevity':'var(--blue)', 'mental health and exercise':'var(--pink)'
+}
 
 function DailyCard({ userId, cacheKey, category, cardLabel, promptFn, fallback }) {
   const [item, setItem] = useState(null)
@@ -256,7 +265,7 @@ function DailyCard({ userId, cacheKey, category, cardLabel, promptFn, fallback }
     <div style={{ background:T.surface, border:`0.5px solid ${T.border}`, borderRadius:rr('md'), overflow:'hidden', marginBottom:12 }}>
       <div style={{ padding:'9px 14px', background:item?(CAT_COLORS[item.category]||'var(--green-bg)'):T.surface2, borderBottom:`0.5px solid ${T.border}` }}>
         <div style={{ fontSize:10, fontWeight:500, letterSpacing:.6, textTransform:'uppercase', color:T.text2 }}>
-          {cardLabel}{item?' · '+item.category:''}
+          {cardLabel}{item ? <span style={{ color: CAT_TEXT[item.category]||'var(--green)', marginLeft:4 }}>· {item.category}</span> : ''}
         </div>
       </div>
       <div style={{ padding:'12px 14px' }}>
