@@ -107,7 +107,8 @@ export async function deleteProgram(programId) {
 export async function getSessions(userId, programId) {
   let query = supabase.from('lift_sessions').select('*').eq('user_id', userId).order('logged_at', { ascending: false })
   if (programId) query = query.eq('program_id', programId)
-  const { data } = await query
+  const { data, error } = await query
+  if (error) console.error('getSessions error:', error)
   return (data || []).map(s => ({ ...s, date: s.logged_at }))
 }
 
