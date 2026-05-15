@@ -365,9 +365,12 @@ function ProgramBuilder({ program, onSave, onBack, onDelete }) {
 // ─── Session logger ────────────────────────────────────────────────────────────
 function SessionLogger({ workout, programId, phaseId, userId, onFinish, onBack }) {
   const [sessions, setSessions] = useState([])
-  const [currentEx, setCurrentEx] = useState(0)
-  const [loggedSets, setLoggedSets] = useState(workout.exercises.map(ex => ({ exerciseId:ex.exerciseId||ex.id, name:ex.name, sets:[] })))
+  const [loggedSets, setLoggedSets] = useState(
+    workout.exercises.map(ex => ({ exerciseId:ex.exerciseId||ex.id, name:ex.name, sets:[] }))
+  )
+  const [expandedEx, setExpandedEx] = useState(0)
   const [loggingSet, setLoggingSet] = useState(null)
+  const [loggingExIdx, setLoggingExIdx] = useState(null)
   const [sessionComplete, setSessionComplete] = useState(false)
   const [sessionStats, setSessionStats] = useState(null)
   const { elapsed, formatted } = useStopwatch(true)
@@ -377,114 +380,142 @@ function SessionLogger({ workout, programId, phaseId, userId, onFinish, onBack }
   }, [programId])
 
   const getLastSession = (exerciseId) => {
-    const prev = sessions.filter(s=>s.program_id===programId||s.programId===programId)
-      .sort((a,b) => new Date(b.logged_at||b.date) - new Date(a.logged_at||a.date))
-      .find(s => (s.exercises||[]).some(e=>e.exerciseId===exerciseId))
+    const prev = sessions
+      .filter(s=>s.program_id===programId||s.programId===programId)
+      .sort((a,b)=>new Date(b.logged_at||b.date)-new Date(a.logged_at||a.date))
+      .find(s=>(s.exercises||[]).some(e=>e.exerciseId===exerciseId))
     if (!prev) return null
     return prev.exercises.find(e=>e.exerciseId===exerciseId)
   }
 
-  const exercise = workout.exercises[currentEx]
-  const logged = loggedSets[currentEx]
-  const lastSession = exercise ? getLastSession(exercise.exerciseId||exercise.id) : null
-  const targetSets = exercise?.sets || 3
-  const nextExercise = workout.exercises[currentEx+1]
-
-  const logSet = (setIdx, data) => {
+  const logSet = (exIdx, setIdx, data) => {
     setLoggedSets(prev => {
-      const next=[...prev]; const sets=[...next[currentEx].sets]; sets[setIdx]=data; next[currentEx]={ ...next[currentEx], sets }; return next
+      const next=[...prev]
+      const sets=[...next[exIdx].sets]
+      sets[setIdx]=data
+      next[exIdx]={ ...next[exIdx], sets }
+      return next
     })
     setLoggingSet(null)
-  }
-
-  const buildStats = () => {
-    let totalVolume = 0; let totalSets = 0; const prs = []
-    loggedSets.forEach(ex => {
-      ex.sets.forEach(s => { totalVolume += (s.weight||0) * (s.reps||0); totalSets++ })
-      const lastEx = getLastSession(ex.exerciseId)
-      const myMax = ex.sets.reduce((best,s) => Math.max(best, s.weight||0), 0)
-      const lastMax = lastEx ? lastEx.sets.reduce((best,s) => Math.max(best, s.weight||0), 0) : 0
-      if (myMax > lastMax && myMax > 0) prs.push(`${ex.name}: ${myMax} lb`)
-    })
-    const mins = Math.floor(elapsed/60); const secs = elapsed%60
-    return {
-      workoutName: workout.name,
-      duration: `${mins}:${secs.toString().padStart(2,'0')}`,
-      volume: totalVolume,
-      totalSets,
-      prs,
-      exerciseNames: loggedSets.map(e=>e.name),
+    setLoggingExIdx(null)
+    // auto-expand next exercise when all sets done
+    const ex = workout.exercises[exIdx]
+    const filled = loggedSets[exIdx].sets.filter(Boolean).length + 1
+    if (filled >= (ex?.sets||3) && exIdx < workout.exercises.length-1) {
+      setExpandedEx(exIdx+1)
     }
   }
 
+  const buildStats = () => {
+    let totalVolume=0; let totalSets=0; const prs=[]
+    loggedSets.forEach(ex => {
+      ex.sets.forEach(s=>{ totalVolume+=(s.weight||0)*(s.reps||0); totalSets++ })
+      const lastEx=getLastSession(ex.exerciseId)
+      const myMax=ex.sets.reduce((b,s)=>Math.max(b,s.weight||0),0)
+      const lastMax=lastEx?lastEx.sets.reduce((b,s)=>Math.max(b,s.weight||0),0):0
+      if(myMax>lastMax&&myMax>0) prs.push(`${ex.name}: ${myMax} lb`)
+    })
+    const mins=Math.floor(elapsed/60); const secs=elapsed%60
+    return { workoutName:workout.name, duration:`${mins}:${secs.toString().padStart(2,'0')}`, volume:totalVolume, totalSets, prs, exerciseNames:loggedSets.map(e=>e.name) }
+  }
+
   const finishSession = async () => {
-    const stats = buildStats()
-    await saveSession(userId, { programId, phaseId, workoutId:workout.id, workoutName:workout.name, exercises:loggedSets }).catch(()=>{})
+    const stats=buildStats()
+    await saveSession(userId,{ programId, phaseId, workoutId:workout.id, workoutName:workout.name, exercises:loggedSets }).catch(()=>{})
     setSessionStats(stats)
     setSessionComplete(true)
   }
 
-  if (!exercise) return null
+  const currentLoggingEx = loggingExIdx !== null ? workout.exercises[loggingExIdx] : null
+  const currentLastSession = currentLoggingEx ? getLastSession(currentLoggingEx.exerciseId||currentLoggingEx.id) : null
 
   return (
-    <div style={{ padding:'0 20px', paddingBottom:20 }}>
-      {loggingSet!==null && (
-        <SetLogger set={{ num:loggingSet+1, targetReps:exercise.targetReps }}
-          lastSet={lastSession?.sets?.[loggingSet]}
-          onSave={data=>logSet(loggingSet,data)} onClose={()=>setLoggingSet(null)} />
+    <div style={{ padding:'0 20px', paddingBottom:80 }}>
+      {loggingSet!==null && currentLoggingEx && (
+        <SetLogger
+          set={{ num:loggingSet+1, targetReps:currentLoggingEx.targetReps }}
+          lastSet={currentLastSession?.sets?.[loggingSet]}
+          onSave={data=>logSet(loggingExIdx,loggingSet,data)}
+          onClose={()=>{ setLoggingSet(null); setLoggingExIdx(null) }} />
       )}
       {sessionComplete && sessionStats && (
-        <SessionCompleteModal stats={sessionStats} onDone={()=>{ onFinish(sessionStats) }} />
+        <SessionCompleteModal stats={sessionStats} onDone={()=>onFinish(sessionStats)} />
       )}
 
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16, paddingTop:4 }}>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:18, paddingTop:4 }}>
         <button onClick={onBack} style={{ border:'none', background:'none', color:T.text3, fontSize:12, padding:0, cursor:'pointer' }}>← Exit</button>
         <div style={{ fontSize:14, fontWeight:500, color:T.text2 }}>{formatted}</div>
       </div>
 
-      <div style={{ marginBottom:6 }}>
-        <div style={{ fontSize:11, color:T.text3, letterSpacing:.5, textTransform:'uppercase', marginBottom:4 }}>
-          Exercise {currentEx+1} of {workout.exercises.length}
-        </div>
-        <div style={{ fontSize:22, fontWeight:500, color:T.text, letterSpacing:-.3 }}>{exercise.name}</div>
-        <div style={{ fontSize:12, color:T.text3, marginTop:2 }}>{exercise.sets} sets × {exercise.targetReps} reps</div>
-      </div>
+      <div style={{ fontSize:18, fontWeight:500, color:T.text, letterSpacing:-.3, marginBottom:16 }}>{workout.name}</div>
 
-      {nextExercise && (
-        <div style={{ background:T.surface2, borderRadius:rr('sm'), padding:'8px 12px', marginBottom:14, display:'flex', alignItems:'center', gap:8 }}>
-          <div style={{ fontSize:11, color:T.text3 }}>Next up</div>
-          <div style={{ fontSize:12, fontWeight:500, color:T.text2 }}>{nextExercise.name}</div>
-        </div>
-      )}
+      {workout.exercises.map((ex, exIdx) => {
+        const logged = loggedSets[exIdx]
+        const lastSess = getLastSession(ex.exerciseId||ex.id)
+        const targetSets = ex.sets || 3
+        const isExpanded = expandedEx === exIdx
+        const setsLogged = logged.sets.filter(Boolean).length
+        const allDone = setsLogged >= targetSets
 
-      {lastSession && (
-        <div style={{ background:T.surface2, borderRadius:rr('sm'), padding:'10px 12px', marginBottom:14 }}>
-          <div style={{ fontSize:11, color:T.text3, marginBottom:4 }}>Last session</div>
-          <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
-            {lastSession.sets.map((s,i) => <div key={i} style={{ fontSize:12, color:T.text2 }}>{s.weight}×{s.reps}</div>)}
-          </div>
-        </div>
-      )}
-
-      <Label>Your sets — tap to log</Label>
-      {Array.from({ length:targetSets }).map((_,i) => {
-        const done = logged.sets[i]
         return (
-          <div key={i} onClick={()=>setLoggingSet(i)} style={{ display:'flex', gap:10, marginBottom:8, alignItems:'center', cursor:'pointer' }}>
-            <div style={{ width:24,height:24,borderRadius:'50%',flexShrink:0, background:done?T.text:T.surface2, display:'flex',alignItems:'center',justifyContent:'center', fontSize:11,fontWeight:500, color:done?T.bg:T.text2 }}>{i+1}</div>
-            <div style={{ flex:1, background:done?T.surface:T.surface2, border:`0.5px solid ${done?T.text:T.border}`, borderRadius:rr('sm'), padding:'9px 12px', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-              {done ? <><div style={{ fontSize:14,fontWeight:500,color:T.text }}>{done.weight} lb × {done.reps} reps</div><div style={{ fontSize:11,color:T.text3 }}>tap to edit</div></> : <div style={{ fontSize:13,color:T.text3 }}>Tap to log</div>}
+          <div key={ex.id||exIdx} style={{ marginBottom:8 }}>
+            <div
+              onClick={()=>setExpandedEx(isExpanded ? null : exIdx)}
+              style={{ background:T.surface, border:`0.5px solid ${allDone ? 'var(--green-dim)' : isExpanded ? T.text : T.border}`,
+                borderRadius: isExpanded ? `${rr('md')} ${rr('md')} 0 0` : rr('md'),
+                padding:'12px 14px', cursor:'pointer', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+              <div>
+                <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                  <div style={{ fontSize:14, fontWeight:500, color: allDone ? 'var(--green)' : T.text }}>{ex.name}</div>
+                  {allDone && <div style={{ fontSize:10, color:'var(--green)', border:'0.5px solid var(--green-dim)', borderRadius:20, padding:'1px 7px' }}>done</div>}
+                </div>
+                <div style={{ fontSize:11, color:T.text3, marginTop:2 }}>
+                  {targetSets} sets × {ex.targetReps} reps
+                  {setsLogged > 0 && !allDone && <span style={{ color:T.text2, marginLeft:6 }}>{setsLogged}/{targetSets} logged</span>}
+                </div>
+              </div>
+              <div style={{ fontSize:14, color:T.text3, transition:'transform .2s', transform: isExpanded ? 'rotate(180deg)' : 'none' }}>∨</div>
             </div>
+
+            {isExpanded && (
+              <div style={{ background:T.surface, border:`0.5px solid ${isExpanded ? T.text : T.border}`, borderTop:'none',
+                borderRadius:`0 0 ${rr('md')} ${rr('md')}`, padding:'12px 14px' }}>
+                {lastSess && (
+                  <div style={{ background:T.surface2, borderRadius:rr('sm'), padding:'8px 12px', marginBottom:12 }}>
+                    <div style={{ fontSize:10, color:T.text3, marginBottom:4 }}>Last session</div>
+                    <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+                      {lastSess.sets.map((s,i)=><div key={i} style={{ fontSize:12, color:T.text2 }}>{s.weight}×{s.reps}</div>)}
+                    </div>
+                  </div>
+                )}
+                {Array.from({ length:targetSets }).map((_,i) => {
+                  const done = logged.sets[i]
+                  return (
+                    <div key={i} onClick={()=>{ setLoggingExIdx(exIdx); setLoggingSet(i) }}
+                      style={{ display:'flex', gap:10, marginBottom:8, alignItems:'center', cursor:'pointer' }}>
+                      <div style={{ width:24,height:24,borderRadius:'50%',flexShrink:0,
+                        background:done?T.text:T.surface2, display:'flex',alignItems:'center',
+                        justifyContent:'center',fontSize:11,fontWeight:500,color:done?T.bg:T.text2 }}>{i+1}</div>
+                      <div style={{ flex:1, background:done?T.surface:T.surface2,
+                        border:`0.5px solid ${done?T.text:T.border}`, borderRadius:rr('sm'),
+                        padding:'9px 12px', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                        {done
+                          ? <><div style={{ fontSize:14,fontWeight:500,color:T.text }}>{done.weight} lb × {done.reps} reps</div><div style={{ fontSize:11,color:T.text3 }}>edit</div></>
+                          : <div style={{ fontSize:13,color:T.text3 }}>Tap to log</div>}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </div>
         )
       })}
 
-      <div style={{ display:'flex', gap:8, marginTop:14 }}>
-        {currentEx>0 && <Btn outline onClick={()=>setCurrentEx(i=>i-1)} style={{ flex:1 }}>← Previous</Btn>}
-        {currentEx<workout.exercises.length-1
-          ? <Btn onClick={()=>setCurrentEx(i=>i+1)} style={{ flex:1 }}>Next exercise →</Btn>
-          : <Btn onClick={finishSession} style={{ flex:1, background:'var(--green-dim)', color:'#fff', border:'none' }}>Finish session</Btn>
-        }
+      <div style={{ marginTop:16 }}>
+        <Btn onClick={finishSession} style={{ width:'100%', padding:'12px', background:'var(--green-dim)', color:'#fff', border:'none', fontSize:14 }}>
+          Finish session
+        </Btn>
       </div>
     </div>
   )
