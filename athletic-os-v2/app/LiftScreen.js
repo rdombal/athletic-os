@@ -362,6 +362,55 @@ function ProgramBuilder({ program, onSave, onBack, onDelete }) {
   )
 }
 
+
+// ─── Inline set row ───────────────────────────────────────────────────────────
+function InlineSetRow({ setNum, initial, placeholder, onSave }) {
+  const [weight, setWeight] = useState(initial?.weight?.toString() || '')
+  const [reps, setReps] = useState(initial?.reps?.toString() || '')
+  const [saved, setSaved] = useState(!!initial)
+
+  const handleSave = () => {
+    if (!weight || !reps) return
+    onSave({ weight: parseFloat(weight)||0, reps: parseInt(reps)||0 })
+    setSaved(true)
+  }
+
+  const inputStyle = (val) => ({
+    flex:1, padding:'10px 8px', borderRadius:rr('sm'), fontSize:16, fontWeight:500,
+    border: `0.5px solid ${saved && val ? 'var(--green-dim)' : T.border}`,
+    background: saved && val ? 'rgba(29,158,117,0.08)' : T.surface2,
+    color: T.text, outline:'none', textAlign:'center', width:'100%',
+  })
+
+  return (
+    <div style={{ display:'flex', gap:8, marginBottom:8, alignItems:'center' }}>
+      <div style={{ width:24, height:24, borderRadius:'50%', flexShrink:0,
+        background: saved ? T.text : T.surface2, display:'flex', alignItems:'center',
+        justifyContent:'center', fontSize:11, fontWeight:500,
+        color: saved ? T.bg : T.text2 }}>{setNum}</div>
+      <input
+        type="number" inputMode="decimal" value={weight}
+        onChange={e=>{ setWeight(e.target.value); setSaved(false) }}
+        onBlur={()=>{ if(weight&&reps) handleSave() }}
+        placeholder={placeholder ? placeholder.split('/')[0].trim() : 'lb'}
+        style={inputStyle(weight)} />
+      <div style={{ fontSize:12, color:T.text3, flexShrink:0 }}>×</div>
+      <input
+        type="number" inputMode="numeric" value={reps}
+        onChange={e=>{ setReps(e.target.value); setSaved(false) }}
+        onBlur={()=>{ if(weight&&reps) handleSave() }}
+        placeholder={placeholder ? placeholder.split('/')[1]?.trim() : 'reps'}
+        style={inputStyle(reps)} />
+      <button onClick={handleSave} disabled={!weight||!reps} style={{
+        width:32, height:32, borderRadius:'50%', flexShrink:0,
+        border:'none', background: (!weight||!reps) ? T.surface2 : saved ? 'var(--green-dim)' : T.text,
+        color: (!weight||!reps) ? T.text3 : '#fff', fontSize:14, cursor: (!weight||!reps) ? 'not-allowed' : 'pointer',
+        display:'flex', alignItems:'center', justifyContent:'center'
+      }}>{saved ? '✓' : '→'}</button>
+    </div>
+  )
+}
+
 // ─── Session logger ────────────────────────────────────────────────────────────
 function SessionLogger({ workout, programId, phaseId, userId, onFinish, onBack }) {
   const [sessions, setSessions] = useState([])
@@ -369,8 +418,8 @@ function SessionLogger({ workout, programId, phaseId, userId, onFinish, onBack }
     workout.exercises.map(ex => ({ exerciseId:ex.exerciseId||ex.id, name:ex.name, sets:[] }))
   )
   const [expandedEx, setExpandedEx] = useState(0)
-  const [loggingSet, setLoggingSet] = useState(null)
-  const [loggingExIdx, setLoggingExIdx] = useState(null)
+  const [_unused1, _setUnused1] = useState(null)
+  const [_unused2, _setUnused2] = useState(null)
   const [sessionComplete, setSessionComplete] = useState(false)
   const [sessionStats, setSessionStats] = useState(null)
   const { elapsed, formatted } = useStopwatch(true)
@@ -396,8 +445,6 @@ function SessionLogger({ workout, programId, phaseId, userId, onFinish, onBack }
       next[exIdx]={ ...next[exIdx], sets }
       return next
     })
-    setLoggingSet(null)
-    setLoggingExIdx(null)
     // auto-expand next exercise when all sets done
     const ex = workout.exercises[exIdx]
     const filled = loggedSets[exIdx].sets.filter(Boolean).length + 1
@@ -426,18 +473,11 @@ function SessionLogger({ workout, programId, phaseId, userId, onFinish, onBack }
     setSessionComplete(true)
   }
 
-  const currentLoggingEx = loggingExIdx !== null ? workout.exercises[loggingExIdx] : null
-  const currentLastSession = currentLoggingEx ? getLastSession(currentLoggingEx.exerciseId||currentLoggingEx.id) : null
+
 
   return (
     <div style={{ padding:'0 20px', paddingBottom:80 }}>
-      {loggingSet!==null && currentLoggingEx && (
-        <SetLogger
-          set={{ num:loggingSet+1, targetReps:currentLoggingEx.targetReps }}
-          lastSet={currentLastSession?.sets?.[loggingSet]}
-          onSave={data=>logSet(loggingExIdx,loggingSet,data)}
-          onClose={()=>{ setLoggingSet(null); setLoggingExIdx(null) }} />
-      )}
+
       {sessionComplete && sessionStats && (
         <SessionCompleteModal stats={sessionStats} onDone={()=>onFinish(sessionStats)} />
       )}
@@ -490,20 +530,15 @@ function SessionLogger({ workout, programId, phaseId, userId, onFinish, onBack }
                 )}
                 {Array.from({ length:targetSets }).map((_,i) => {
                   const done = logged.sets[i]
+                  const lastSet = lastSess?.sets?.[i]
                   return (
-                    <div key={i} onClick={()=>{ setLoggingExIdx(exIdx); setLoggingSet(i) }}
-                      style={{ display:'flex', gap:10, marginBottom:8, alignItems:'center', cursor:'pointer' }}>
-                      <div style={{ width:24,height:24,borderRadius:'50%',flexShrink:0,
-                        background:done?T.text:T.surface2, display:'flex',alignItems:'center',
-                        justifyContent:'center',fontSize:11,fontWeight:500,color:done?T.bg:T.text2 }}>{i+1}</div>
-                      <div style={{ flex:1, background:done?T.surface:T.surface2,
-                        border:`0.5px solid ${done?T.text:T.border}`, borderRadius:rr('sm'),
-                        padding:'9px 12px', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                        {done
-                          ? <><div style={{ fontSize:14,fontWeight:500,color:T.text }}>{done.weight} lb × {done.reps} reps</div><div style={{ fontSize:11,color:T.text3 }}>edit</div></>
-                          : <div style={{ fontSize:13,color:T.text3 }}>Tap to log</div>}
-                      </div>
-                    </div>
+                    <InlineSetRow
+                      key={i}
+                      setNum={i+1}
+                      initial={done}
+                      placeholder={lastSet ? `${lastSet.weight} / ${lastSet.reps}` : null}
+                      onSave={data => logSet(exIdx, i, data)}
+                    />
                   )
                 })}
               </div>
