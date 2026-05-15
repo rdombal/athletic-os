@@ -364,9 +364,9 @@ function ProgramBuilder({ program, onSave, onBack, onDelete }) {
 
 
 // ─── Inline set row ───────────────────────────────────────────────────────────
-function InlineSetRow({ setNum, initial, placeholder, onSave }) {
-  const [weight, setWeight] = useState(initial?.weight?.toString() || '')
-  const [reps, setReps] = useState(initial?.reps?.toString() || '')
+function InlineSetRow({ setNum, initial, lastSet, onSave }) {
+  const [weight, setWeight] = useState(initial?.weight?.toString() || lastSet?.weight?.toString() || '')
+  const [reps, setReps] = useState(initial?.reps?.toString() || lastSet?.reps?.toString() || '')
   const [saved, setSaved] = useState(!!initial)
 
   const handleSave = () => {
@@ -392,14 +392,14 @@ function InlineSetRow({ setNum, initial, placeholder, onSave }) {
         type="number" inputMode="decimal" value={weight}
         onChange={e=>{ setWeight(e.target.value); setSaved(false) }}
         onBlur={()=>{ if(weight&&reps) handleSave() }}
-        placeholder={placeholder ? placeholder.split('/')[0].trim() : 'lb'}
+        placeholder={lastSet?.weight?.toString() || 'lb'}
         style={inputStyle(weight)} />
       <div style={{ fontSize:12, color:T.text3, flexShrink:0 }}>×</div>
       <input
         type="number" inputMode="numeric" value={reps}
         onChange={e=>{ setReps(e.target.value); setSaved(false) }}
         onBlur={()=>{ if(weight&&reps) handleSave() }}
-        placeholder={placeholder ? placeholder.split('/')[1]?.trim() : 'reps'}
+        placeholder={lastSet?.reps?.toString() || 'reps'}
         style={inputStyle(reps)} />
       <button onClick={handleSave} disabled={!weight||!reps} style={{
         width:32, height:32, borderRadius:'50%', flexShrink:0,
@@ -407,6 +407,51 @@ function InlineSetRow({ setNum, initial, placeholder, onSave }) {
         color: (!weight||!reps) ? T.text3 : '#fff', fontSize:14, cursor: (!weight||!reps) ? 'not-allowed' : 'pointer',
         display:'flex', alignItems:'center', justifyContent:'center'
       }}>{saved ? '✓' : '→'}</button>
+    </div>
+  )
+}
+
+
+// ─── Warmup suggestion ────────────────────────────────────────────────────────
+function WarmupSuggestion({ workout }) {
+  const [open, setOpen] = useState(false)
+  const [suggestion, setSuggestion] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  const getSuggestion = async () => {
+    if (suggestion) { setOpen(true); return }
+    setLoading(true); setOpen(true)
+    const exercises = workout.exercises.map(e => e.name).join(', ')
+    try {
+      const res = await fetch('/api/claude', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ prompt: `You are a sports performance coach. Give a 5-minute warmup routine for someone about to do this workout: ${exercises}.
+
+Give 4-5 specific movements with duration. Focus on what actually prepares those muscles and joints. Be direct, no fluff.
+
+Format each as: [Movement] — [duration or reps]` })
+      })
+      const data = await res.json()
+      setSuggestion(data.text || '')
+    } catch { setSuggestion('Hip circles 30s, leg swings 10/side, arm circles 30s, light cardio 2 min, dynamic stretching 1 min.') }
+    setLoading(false)
+  }
+
+  return (
+    <div style={{ marginBottom:16 }}>
+      {!open ? (
+        <button onClick={getSuggestion} style={{ fontSize:12, color:T.text3, border:`0.5px solid ${T.border}`, borderRadius:rr('sm'), padding:'6px 12px', background:'transparent', cursor:'pointer' }}>
+          Warmup suggestions
+        </button>
+      ) : (
+        <div style={{ background:T.surface2, borderRadius:rr('md'), padding:'12px 14px' }}>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8 }}>
+            <div style={{ fontSize:11, fontWeight:500, color:T.text3, letterSpacing:.5, textTransform:'uppercase' }}>Warmup</div>
+            <button onClick={()=>setOpen(false)} style={{ border:'none', background:'none', color:T.text3, fontSize:12, cursor:'pointer' }}>×</button>
+          </div>
+          {loading ? <LoadingDots /> : <div style={{ fontSize:13, color:T.text2, lineHeight:1.7, whiteSpace:'pre-wrap' }}>{suggestion}</div>}
+        </div>
+      )}
     </div>
   )
 }
@@ -487,7 +532,8 @@ function SessionLogger({ workout, programId, phaseId, userId, onFinish, onBack }
         <div style={{ fontSize:14, fontWeight:500, color:T.text2 }}>{formatted}</div>
       </div>
 
-      <div style={{ fontSize:18, fontWeight:500, color:T.text, letterSpacing:-.3, marginBottom:16 }}>{workout.name}</div>
+      <div style={{ fontSize:18, fontWeight:500, color:T.text, letterSpacing:-.3, marginBottom:6 }}>{workout.name}</div>
+      <WarmupSuggestion workout={workout} />
 
       {workout.exercises.map((ex, exIdx) => {
         const logged = loggedSets[exIdx]
@@ -536,7 +582,7 @@ function SessionLogger({ workout, programId, phaseId, userId, onFinish, onBack }
                       key={i}
                       setNum={i+1}
                       initial={done}
-                      placeholder={lastSet ? `${lastSet.weight} / ${lastSet.reps}` : null}
+                      lastSet={lastSess?.sets?.[i]}
                       onSave={data => logSet(exIdx, i, data)}
                     />
                   )
@@ -557,7 +603,7 @@ function SessionLogger({ workout, programId, phaseId, userId, onFinish, onBack }
 }
 
 // ─── Session history ──────────────────────────────────────────────────────────
-function SessionHistory({ userId, programId, onBack }) {
+function SessionHistory({ userId, programId, onBack, onViewProgress }) {
   const [sessions, setSessions] = useState([])
   const [loading, setLoading] = useState(true)
   const [expanded, setExpanded] = useState(null)
@@ -594,7 +640,7 @@ function SessionHistory({ userId, programId, onBack }) {
                 <Divider />
                 {(s.exercises||[]).map((ex,j) => (
                   <div key={j} style={{ marginBottom:10 }}>
-                    <div style={{ fontSize:12, fontWeight:500, color:T.text2, marginBottom:4 }}>{ex.name}</div>
+                    <div onClick={()=>onViewProgress&&onViewProgress(ex.name, ex.exerciseId)} style={{ fontSize:12, fontWeight:500, color:T.text2, marginBottom:4, cursor:onViewProgress?'pointer':'default', textDecoration:onViewProgress?'underline':'none' }}>{ex.name}</div>
                     <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
                       {ex.sets.map((set,k) => (
                         <div key={k} style={{ background:T.surface2, borderRadius:rr('sm'), padding:'4px 10px', fontSize:12, color:T.text }}>
@@ -609,6 +655,179 @@ function SessionHistory({ userId, programId, onBack }) {
           </Card>
         )
       })}
+    </div>
+  )
+}
+
+
+// ─── Exercise progress ────────────────────────────────────────────────────────
+function ExerciseProgress({ userId, programId, exerciseName, exerciseId, onBack }) {
+  const [sessions, setSessions] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    getSessions(userId, programId).then(s => {
+      const relevant = s.filter(sess =>
+        (sess.exercises||[]).some(e => e.exerciseId === exerciseId || e.name === exerciseName)
+      ).sort((a,b) => new Date(a.logged_at||a.date) - new Date(b.logged_at||b.date))
+      setSessions(relevant)
+      setLoading(false)
+    }).catch(() => setLoading(false))
+  }, [])
+
+  if (loading) return <div style={{ padding:20 }}><LoadingDots /></div>
+
+  const getExData = (sess) => (sess.exercises||[]).find(e => e.exerciseId === exerciseId || e.name === exerciseName)
+  const getBestSet = (ex) => ex?.sets?.reduce((best, s) => (s.weight||0) > (best.weight||0) ? s : best, {weight:0,reps:0})
+  const allBest = sessions.map(s => getBestSet(getExData(s))).filter(s => s?.weight > 0)
+  const overallBest = allBest.reduce((b, s) => (s.weight||0) > (b.weight||0) ? s : b, {weight:0,reps:0})
+  const last5 = sessions.slice(-5)
+
+  return (
+    <div style={{ padding:'0 20px' }}>
+      <BackBtn label="Back" onClick={onBack} />
+      <div style={{ fontSize:20, fontWeight:400, color:T.text, letterSpacing:-.3, marginBottom:4 }}>{exerciseName}</div>
+      <div style={{ fontSize:12, color:T.text2, marginBottom:20 }}>Progress over time</div>
+
+      {overallBest.weight > 0 && (
+        <div style={{ background:'var(--green-bg)', border:'0.5px solid var(--green-dim)', borderRadius:rr('md'), padding:'14px 16px', marginBottom:16 }}>
+          <div style={{ fontSize:11, fontWeight:500, color:'var(--green)', letterSpacing:.5, textTransform:'uppercase', marginBottom:4 }}>Best set</div>
+          <div style={{ fontSize:24, fontWeight:500, color:T.text }}>{overallBest.weight} lb <span style={{ fontSize:14, color:T.text2, fontWeight:400 }}>× {overallBest.reps} reps</span></div>
+        </div>
+      )}
+
+      <div style={{ fontSize:11, fontWeight:500, color:T.text3, letterSpacing:.6, textTransform:'uppercase', marginBottom:10 }}>Last {last5.length} sessions</div>
+      {last5.length === 0 && <div style={{ fontSize:13, color:T.text3 }}>No data yet.</div>}
+      {last5.map((sess, i) => {
+        const ex = getExData(sess)
+        const best = getBestSet(ex)
+        const prev = i > 0 ? getBestSet(getExData(last5[i-1])) : null
+        const trend = prev ? (best?.weight > prev?.weight ? '↑' : best?.weight < prev?.weight ? '↓' : '→') : null
+        const date = new Date(sess.logged_at||sess.date).toLocaleDateString('en-US', { month:'short', day:'numeric' })
+        return (
+          <div key={i} style={{ background:T.surface, border:`0.5px solid ${T.border}`, borderRadius:rr('md'), padding:'12px 14px', marginBottom:8 }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
+              <div style={{ fontSize:12, color:T.text3 }}>{date}</div>
+              {trend && <div style={{ fontSize:14, color: trend==='↑'?'var(--green)':trend==='↓'?'var(--coral)':T.text3 }}>{trend}</div>}
+            </div>
+            <div style={{ fontSize:15, fontWeight:500, color:T.text, marginTop:4 }}>
+              {best?.weight} lb × {best?.reps} reps
+              <span style={{ fontSize:11, color:T.text3, fontWeight:400, marginLeft:8 }}>best set</span>
+            </div>
+            <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginTop:6 }}>
+              {(ex?.sets||[]).map((s,j) => (
+                <div key={j} style={{ fontSize:11, color:T.text2, background:T.surface2, borderRadius:rr('sm'), padding:'3px 8px' }}>
+                  {s.weight}×{s.reps}
+                </div>
+              ))}
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+// ─── Weekly overview ──────────────────────────────────────────────────────────
+function WeeklyOverview({ programs, sessions, activeProgramId, lastWorkoutId, onSelectProgram, onNewProgram, loading }) {
+  const activeProgram = programs.find(p => p.id === activeProgramId) || programs[0]
+
+  const getNextWorkout = (program) => {
+    if (!program) return null
+    for (const ph of program.phases) {
+      if (!ph.workouts.length) continue
+      if (!lastWorkoutId) return { workout: ph.workouts[0], phase: ph }
+      const lastIdx = ph.workouts.findIndex(w => w.id === lastWorkoutId)
+      if (lastIdx >= 0) {
+        const next = ph.workouts[(lastIdx + 1) % ph.workouts.length]
+        return { workout: next, phase: ph }
+      }
+    }
+    return activeProgram?.phases?.[0]?.workouts?.[0]
+      ? { workout: activeProgram.phases[0].workouts[0], phase: activeProgram.phases[0] }
+      : null
+  }
+
+  // Recent sessions — last 7 days
+  const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000
+  const recentSessions = sessions.filter(s => new Date(s.logged_at||s.date).getTime() > sevenDaysAgo)
+
+  const nextUp = getNextWorkout(activeProgram)
+
+  if (loading) return <div style={{ padding:20 }}><LoadingDots /></div>
+
+  return (
+    <div style={{ padding:'20px 20px' }}>
+      {activeProgram ? (
+        <>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:20 }}>
+            <div>
+              <div style={{ fontSize:11, color:T.text3, letterSpacing:.5, textTransform:'uppercase', marginBottom:4 }}>Current program</div>
+              <div style={{ fontSize:22, fontWeight:400, color:T.text, letterSpacing:-.3 }}>{activeProgram.name}</div>
+            </div>
+          </div>
+
+          {nextUp && (
+            <div style={{ background:T.surface, border:`1.5px solid ${T.text}`, borderRadius:rr('md'), padding:'14px 16px', marginBottom:16 }}>
+              <div style={{ fontSize:11, color:T.text3, letterSpacing:.5, textTransform:'uppercase', marginBottom:6 }}>Up next</div>
+              <div style={{ fontSize:18, fontWeight:500, color:T.text }}>{nextUp.workout.name}</div>
+              <div style={{ fontSize:12, color:T.text2, marginTop:3 }}>
+                {nextUp.phase.name} · {nextUp.workout.exercises.length} exercise{nextUp.workout.exercises.length!==1?'s':''}
+              </div>
+              <button onClick={()=>onSelectProgram(activeProgram, nextUp.workout, nextUp.phase.id)}
+                style={{ marginTop:12, width:'100%', padding:'10px', borderRadius:rr('sm'), border:'none',
+                  background:T.text, color:T.bg, fontSize:13, fontWeight:500, cursor:'pointer' }}>
+                Start session
+              </button>
+            </div>
+          )}
+
+          {recentSessions.length > 0 && (
+            <>
+              <div style={{ fontSize:11, color:T.text3, letterSpacing:.5, textTransform:'uppercase', marginBottom:10 }}>This week</div>
+              {recentSessions.slice(0,4).map((s,i) => {
+                const date = new Date(s.logged_at||s.date).toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' })
+                const vol = (s.exercises||[]).reduce((sum,ex) => sum + ex.sets.reduce((a,set) => a+(set.weight||0)*(set.reps||0), 0), 0)
+                return (
+                  <div key={i} style={{ background:T.surface, border:`0.5px solid ${T.border}`, borderRadius:rr('md'), padding:'10px 14px', marginBottom:8, display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                    <div>
+                      <div style={{ fontSize:13, fontWeight:500, color:T.text }}>{s.workout_name||s.workoutName}</div>
+                      <div style={{ fontSize:11, color:T.text3, marginTop:2 }}>{date}</div>
+                    </div>
+                    <div style={{ fontSize:12, color:T.text2 }}>{vol.toLocaleString()} lbs</div>
+                  </div>
+                )
+              })}
+            </>
+          )}
+
+          <div style={{ marginTop:16, display:'flex', gap:8 }}>
+            <button onClick={()=>onSelectProgram(activeProgram)}
+              style={{ flex:1, padding:'9px', borderRadius:rr('sm'), border:`0.5px solid ${T.border}`, background:'transparent', color:T.text2, fontSize:12, cursor:'pointer' }}>
+              View program
+            </button>
+            <button onClick={onNewProgram}
+              style={{ flex:1, padding:'9px', borderRadius:rr('sm'), border:`0.5px solid ${T.border}`, background:'transparent', color:T.text2, fontSize:12, cursor:'pointer' }}>
+              + New program
+            </button>
+          </div>
+        </>
+      ) : (
+        <>
+          <div style={{ textAlign:'center', padding:'3rem 0' }}>
+            <div style={{ fontSize:14, color:T.text2, marginBottom:8 }}>No program yet.</div>
+            <div style={{ fontSize:12, color:T.text3 }}>Build your first one to get started.</div>
+          </div>
+          <button onClick={onNewProgram} style={{ width:'100%', marginTop:10, padding:'12px 16px', borderRadius:rr('md'), border:'none', background:T.text, color:T.bg, fontSize:14, fontWeight:500, cursor:'pointer' }}>
+            + New program
+          </button>
+          {programs.length > 0 && (
+            <button onClick={()=>onSelectProgram(programs[0])} style={{ width:'100%', marginTop:8, padding:'10px', borderRadius:rr('sm'), border:`0.5px solid ${T.border}`, background:'transparent', color:T.text2, fontSize:13, cursor:'pointer' }}>
+              View all programs
+            </button>
+          )}
+        </>
+      )}
     </div>
   )
 }
@@ -649,7 +868,7 @@ function ProgramsList({ programs, loading, activeProgramId, onSelectProgram, onN
 }
 
 // ─── Program detail ───────────────────────────────────────────────────────────
-function ProgramDetail({ program, lastWorkoutId, onBack, onEdit, onStartWorkout, onViewHistory }) {
+function ProgramDetail({ program, lastWorkoutId, onBack, onEdit, onStartWorkout, onViewHistory, onViewProgress }) {
   const getNextWorkout = (phase) => {
     if (!phase || phase.workouts.length === 0) return null
     if (!lastWorkoutId) return phase.workouts[0]
@@ -707,21 +926,29 @@ function ProgramDetail({ program, lastWorkoutId, onBack, onEdit, onStartWorkout,
 
 // ─── Root Lift screen ─────────────────────────────────────────────────────────
 export default function LiftScreen({ userId }) {
-  const [view, setView] = useState('list')
+  const [view, setView] = useState('home')
   const [selectedProgram, setSelectedProgram] = useState(null)
   const [editingProgram, setEditingProgram] = useState(null)
   const [activeSession, setActiveSession] = useState(null)
   const [programs, setPrograms] = useState([])
+  const [sessions, setSessions] = useState([])
   const [programsLoading, setProgramsLoading] = useState(true)
   const [activeProgramId, setActiveProgramId] = useState(null)
   const [lastWorkoutId, setLastWorkoutId] = useState(null)
+  const [progressExercise, setProgressExercise] = useState(null)
 
   useEffect(() => {
     if (!userId) return
     getPrograms(userId).then(p => { setPrograms(p); setProgramsLoading(false) })
+    getSessions(userId).then(s => setSessions(s)).catch(()=>{})
     try { setActiveProgramId(localStorage.getItem('active_program_id')) } catch {}
-    try { setLastWorkoutId(localStorage.getItem(`last_workout_${selectedProgram?.id}`)) } catch {}
   }, [userId])
+
+  useEffect(() => {
+    if (activeProgramId) {
+      try { setLastWorkoutId(localStorage.getItem(`last_workout_${activeProgramId}`)) } catch {}
+    }
+  }, [activeProgramId])
 
   useEffect(() => {
     if (selectedProgram) {
@@ -729,11 +956,15 @@ export default function LiftScreen({ userId }) {
     }
   }, [selectedProgram])
 
-  const reloadPrograms = async () => {
-    const fresh = await getPrograms(userId)
-    setPrograms(fresh)
+  const reloadAll = async () => {
+    const [freshPrograms, freshSessions] = await Promise.all([
+      getPrograms(userId),
+      getSessions(userId).catch(()=>[])
+    ])
+    setPrograms(freshPrograms)
+    setSessions(freshSessions)
     if (selectedProgram) {
-      const found = fresh.find(p=>p.id===selectedProgram.id)
+      const found = freshPrograms.find(p=>p.id===selectedProgram.id)
       if (found) setSelectedProgram(found)
     }
   }
@@ -741,38 +972,56 @@ export default function LiftScreen({ userId }) {
   const handleStartWorkout = (workout, programId, phaseId) => {
     setActiveSession({ workout, programId, phaseId })
     setView('session')
-    try {
-      localStorage.setItem('active_program_id', programId)
-      setActiveProgramId(programId)
-    } catch {}
+    try { localStorage.setItem('active_program_id', programId); setActiveProgramId(programId) } catch {}
   }
 
-  const handleFinishSession = (stats) => {
+  const handleFinishSession = () => {
     try { localStorage.setItem(`last_workout_${activeSession.programId}`, activeSession.workout.id) } catch {}
     setLastWorkoutId(activeSession.workout.id)
     setActiveSession(null)
-    setView('detail')
+    reloadAll()
+    setView('home')
   }
 
   const handleSaveProgram = async (prog) => {
     await saveProgram(userId, prog)
     setSelectedProgram(prog)
     setView('detail')
-    const fresh = await getPrograms(userId)
-    setPrograms(fresh)
+    await reloadAll()
   }
 
   const handleDeleteProgram = async () => {
     if (!window.confirm('Delete this program? This cannot be undone.')) return
     await deleteProgram(editingProgram.id)
     setSelectedProgram(null)
-    setView('list')
-    const fresh = await getPrograms(userId)
-    setPrograms(fresh)
+    setView('home')
+    await reloadAll()
+  }
+
+  // Handle "Start session" from weekly overview — jump straight in
+  const handleOverviewStart = (program, workout, phaseId) => {
+    setSelectedProgram(program)
+    if (workout && phaseId) {
+      handleStartWorkout(workout, program.id, phaseId)
+    } else {
+      setView('detail')
+    }
   }
 
   return (
     <div style={{ paddingBottom:20 }}>
+      {view==='home' && (
+        <WeeklyOverview
+          programs={programs} sessions={sessions}
+          activeProgramId={activeProgramId} lastWorkoutId={lastWorkoutId}
+          loading={programsLoading}
+          onSelectProgram={(prog, workout, phaseId) => {
+            setSelectedProgram(prog)
+            if (workout && phaseId) handleStartWorkout(workout, prog.id, phaseId)
+            else setView('detail')
+          }}
+          onNewProgram={()=>{ setEditingProgram({ id:uid(), name:'', phases:[] }); setView('builder') }} />
+      )}
       {view==='list' && (
         <ProgramsList programs={programs} loading={programsLoading} activeProgramId={activeProgramId}
           onSelectProgram={p=>{ setSelectedProgram(p); setView('detail') }}
@@ -780,14 +1029,15 @@ export default function LiftScreen({ userId }) {
       )}
       {view==='detail' && selectedProgram && (
         <ProgramDetail program={selectedProgram} lastWorkoutId={lastWorkoutId}
-          onBack={()=>setView('list')}
+          onBack={()=>setView('home')}
           onEdit={()=>{ setEditingProgram(selectedProgram); setView('builder') }}
           onStartWorkout={handleStartWorkout}
-          onViewHistory={()=>setView('history')} />
+          onViewHistory={()=>setView('history')}
+          onViewProgress={(name, id)=>{ setProgressExercise({ name, id }); setView('progress') }} />
       )}
       {view==='builder' && editingProgram && (
         <ProgramBuilder program={editingProgram} onSave={handleSaveProgram}
-          onBack={()=>{ setView(selectedProgram?'detail':'list'); reloadPrograms() }}
+          onBack={()=>{ setView(selectedProgram?'detail':'home'); reloadAll() }}
           onDelete={selectedProgram?handleDeleteProgram:null} />
       )}
       {view==='session' && activeSession && (
@@ -797,7 +1047,14 @@ export default function LiftScreen({ userId }) {
           onBack={()=>{ setActiveSession(null); setView('detail') }} />
       )}
       {view==='history' && selectedProgram && (
-        <SessionHistory userId={userId} programId={selectedProgram.id} onBack={()=>setView('detail')} />
+        <SessionHistory userId={userId} programId={selectedProgram.id}
+          onBack={()=>setView('detail')}
+          onViewProgress={(name,id)=>{ setProgressExercise({ name, id }); setView('progress') }} />
+      )}
+      {view==='progress' && progressExercise && selectedProgram && (
+        <ExerciseProgress userId={userId} programId={selectedProgram.id}
+          exerciseName={progressExercise.name} exerciseId={progressExercise.id}
+          onBack={()=>setView(view==='progress'?'history':'detail')} />
       )}
     </div>
   )
