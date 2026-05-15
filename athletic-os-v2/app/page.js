@@ -797,7 +797,7 @@ export default function App() {
 
   return (
     <div style={{ maxWidth:430, margin:'0 auto', minHeight:'100dvh', background:T.bg, display:'flex', flexDirection:'column' }}>
-      {tab!=='home'&&(
+      {tab!=='home' && tb && (
         <div style={{ padding:'48px 20px 16px', borderBottom:`0.5px solid ${T.border}`, background:T.bg, flexShrink:0 }}>
           {tb&&<><div style={{ fontSize:22, fontWeight:400, color:T.text, letterSpacing:-.3 }}>{tb.title}</div><div style={{ fontSize:13, color:T.text2, marginTop:4 }}>{tb.sub}</div></>}
         </div>
