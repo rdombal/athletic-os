@@ -92,21 +92,20 @@ function Stepper({ value, onChange, min=1, max=999, label }) {
 }
 
 // ─── Stopwatch ────────────────────────────────────────────────────────────────
-function useStopwatch(running) {
+function useStopwatch() {
   const [elapsed, setElapsed] = useState(0)
-  const startRef = useRef(null)
+  const startRef = useRef(Date.now())
   const frameRef = useRef(null)
   useEffect(() => {
-    if (running) {
-      startRef.current = Date.now() - elapsed * 1000
-      const tick = () => { setElapsed(Math.floor((Date.now() - startRef.current) / 1000)); frameRef.current = requestAnimationFrame(tick) }
+    startRef.current = Date.now()
+    const tick = () => {
+      setElapsed(Math.floor((Date.now() - startRef.current) / 1000))
       frameRef.current = requestAnimationFrame(tick)
-    } else {
-      if (frameRef.current) cancelAnimationFrame(frameRef.current)
     }
+    frameRef.current = requestAnimationFrame(tick)
     return () => { if (frameRef.current) cancelAnimationFrame(frameRef.current) }
-  }, [running])
-  const fmt = (s) => { const m = Math.floor(s/60); const sec = s%60; return `${m}:${sec.toString().padStart(2,'0')}` }
+  }, [])
+  const fmt = (s) => { const m = Math.floor(s/60); const sec = s%60; return `${m}m ${sec}s` }
   return { elapsed, formatted: fmt(elapsed) }
 }
 
@@ -467,7 +466,7 @@ function SessionLogger({ workout, programId, phaseId, userId, onFinish, onBack }
   const [_unused2, _setUnused2] = useState(null)
   const [sessionComplete, setSessionComplete] = useState(false)
   const [sessionStats, setSessionStats] = useState(null)
-  const { elapsed, formatted } = useStopwatch(true)
+  const { elapsed, formatted } = useStopwatch()
 
   useEffect(() => {
     if (userId) getSessions(userId, programId).then(s=>setSessions(s)).catch(()=>{})
@@ -811,6 +810,27 @@ function WeeklyOverview({ programs, sessions, activeProgramId, lastWorkoutId, on
               + New program
             </button>
           </div>
+
+          {programs.length > 0 && (
+            <div style={{ marginTop:24 }}>
+              <div style={{ fontSize:11, color:T.text3, letterSpacing:.5, textTransform:'uppercase', marginBottom:10 }}>All programs</div>
+              {programs.map(p => (
+                <div key={p.id} onClick={()=>onSelectProgram(p)}
+                  style={{ background:T.surface, border:`0.5px solid ${p.id===activeProgramId?'var(--green-dim)':T.border}`,
+                    borderRadius:rr('md'), padding:'12px 14px', marginBottom:8, cursor:'pointer',
+                    display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                  <div>
+                    {p.id===activeProgramId && <div style={{ fontSize:10, color:'var(--green)', letterSpacing:.4, marginBottom:3 }}>Current</div>}
+                    <div style={{ fontSize:14, fontWeight:500, color:T.text }}>{p.name}</div>
+                    <div style={{ fontSize:11, color:T.text3, marginTop:2 }}>
+                      {p.phases.length} phase{p.phases.length!==1?'s':''} · {p.phases.reduce((a,ph)=>a+ph.workouts.length,0)} workouts
+                    </div>
+                  </div>
+                  <div style={{ fontSize:16, color:T.text3 }}>›</div>
+                </div>
+              ))}
+            </div>
+          )}
         </>
       ) : (
         <>
