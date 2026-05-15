@@ -766,6 +766,17 @@ function WeeklyOverview({ programs, sessions, activeProgramId, lastWorkoutId, on
             </div>
           </div>
 
+          {!nextUp && activeProgram && (
+            <div style={{ background:T.surface, border:`0.5px solid ${T.border}`, borderRadius:rr('md'), padding:'16px', marginBottom:16 }}>
+              <div style={{ fontSize:14, fontWeight:500, color:T.text, marginBottom:4 }}>No workouts yet</div>
+              <div style={{ fontSize:12, color:T.text2, lineHeight:1.6, marginBottom:12 }}>Add phases and workouts to this program to get started.</div>
+              <button onClick={()=>onSelectProgram(activeProgram)}
+                style={{ fontSize:12, padding:'7px 14px', borderRadius:rr('sm'), border:`0.5px solid ${T.border}`, background:'transparent', color:T.text2, cursor:'pointer' }}>
+                Edit program →
+              </button>
+            </div>
+          )}
+
           {nextUp && (
             <div style={{ background:T.surface, border:`1.5px solid ${T.text}`, borderRadius:rr('md'), padding:'14px 16px', marginBottom:16 }}>
               <div style={{ fontSize:11, color:T.text3, letterSpacing:.5, textTransform:'uppercase', marginBottom:6 }}>Up next</div>
