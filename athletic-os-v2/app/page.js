@@ -393,10 +393,12 @@ function HomeScreen({ onNav, savedItems, profile, userId }) {
       <Eyebrow>Quick access</Eyebrow>
       <div style={{ display:'grid', gridTemplateColumns:'repeat(2,minmax(0,1fr))', gap:10, marginBottom:28 }}>
         {tiles.map(t=>(
-          <button key={t.tab} onClick={()=>onNav(t.tab)} style={{ background:T.surface, border:`0.5px solid ${T.border}`, borderRadius:rr('md'), padding:14, textAlign:'left' }}>
-            <div style={{ width:28, height:28, borderRadius:7, background:t.color.bg, marginBottom:10 }} />
-            <div style={{ fontSize:13, fontWeight:500, color:T.text, marginBottom:2 }}>{t.label}</div>
-            <div style={{ fontSize:11, color:T.text2, lineHeight:1.4 }}>{t.desc}</div>
+          <button key={t.tab} onClick={()=>onNav(t.tab)} style={{ background:T.surface, borderRadius:rr('md'), overflow:'hidden', textAlign:'left', border:'none' }}>
+            <div style={{ height:3, background:t.color.dot||t.color.bg }} />
+            <div style={{ padding:14 }}>
+              <div style={{ width:24, height:24, borderRadius:6, background:t.color.bg, marginBottom:10 }} />
+              <div style={{ fontSize:13, fontWeight:500, color:T.text, marginBottom:2 }}>{t.label}</div>
+              <div style={{ fontSize:11, color:T.text2, lineHeight:1.4 }}>{t.desc}</div>
             </div>
           </button>
         ))}
@@ -543,9 +545,10 @@ function PillarsScreen({ onDeepDive }) {
   return (
     <div style={{ padding:'20px 20px' }}>
       {PILLARS.map(p=>{ const c=PILLAR_COLORS[p.color]; return (
-        <Card key={p.num}>
+        <div key={p.num} style={{ background:T.surface, borderRadius:rr('md'), marginBottom:10, overflow:'hidden' }}>
+          <div style={{ height:3, background:c.accent }} />
+          <div style={{ padding:'14px 16px' }}>
           <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:12 }}>
-<div style={{ height:3, background:c.accent, marginBottom:14 }} />
             <div style={{ width:34, height:34, borderRadius:9, background:c.bg, flexShrink:0 }} />
             <div><div style={{ fontSize:10, fontWeight:500, color:c.accent, letterSpacing:.5, textTransform:'uppercase' }}>Pillar {p.num}</div><div style={{ fontSize:16, fontWeight:500, color:T.text, marginTop:1 }}>{p.title}</div></div>
           </div>
@@ -556,7 +559,8 @@ function PillarsScreen({ onDeepDive }) {
             <div style={{ flex:1 }}><div style={{ fontSize:10, fontWeight:500, color:'var(--coral)', letterSpacing:.5, textTransform:'uppercase', marginBottom:4 }}>Ignore this</div><div style={{ fontSize:12, color:T.text2, lineHeight:1.55 }}>{p.skip}</div></div>
           </div>
           <button onClick={()=>onDeepDive(p.prompt)} style={{ width:'100%', padding:'9px 12px', borderRadius:rr('sm'), border:`0.5px solid ${T.border}`, background:'transparent', color:T.text2, fontSize:13, textAlign:'left' }}>Go deeper</button>
-        </Card>
+          </div>
+        </div>
       )})}
     </div>
   )
