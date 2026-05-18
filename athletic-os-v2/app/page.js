@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from './supabase'
 import AuthScreen from './AuthScreen'
 import LiftScreen from './LiftScreen'
+import MoveScreen, { SavedRoutineCard } from './MoveScreen'
 import {
   getProfile, saveProfile,
   getPantry, savePantry,
@@ -411,82 +412,6 @@ function HomeScreen({ onNav, savedItems, profile, userId }) {
   )
 }
 
-function FeelScreen({ onSave }) {
-  const [activity, setActivity] = useState('')
-  const [focus, setFocus] = useState('')
-  const [when, setWhen] = useState('Before activity')
-  const [extra, setExtra] = useState('')
-  const [resp, setResp] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [saved, setSaved] = useState(false)
-  const go = async () => {
-    if (!activity&&!focus&&!extra) return
-    setLoading(true); setResp(''); setSaved(false)
-    try { const text = await callAI(`You are a sports performance and mobility coach. Give exactly 5 specific exercises.\nActivity: ${activity||'general'}\nFocus area: ${focus||'general'}\nTiming: ${when}\nExtra context: ${extra||'none'}\n\nFormat each exercise as:\n[Number]. [Exercise name]\n[1-2 sentence instruction with exact execution cues]\n[Sets/reps or duration]\n\nBe specific to the activity. End with one sentence on why this matters for ${activity||'performance'}.`); setResp(text) } catch(e) { setResp('Something went wrong. Try again.') }
-    setLoading(false)
-  }
-  const save = () => { onSave({ label:`${activity||focus||'Mobility'} routine`, text:resp, type:'routine' }); setSaved(true) }
-  return (
-    <div style={{ padding:'20px 20px' }}>
-      <PrefLabel>Activity</PrefLabel>
-      <ChipRow options={['Golf','Running','Lifting','Basketball','Tennis','Pickleball']} selected={activity} onSelect={v=>setActivity(activity===v?'':v)} />
-      <PrefLabel>Focus area</PrefLabel>
-      <ChipRow options={['Hips','Lower back','Shoulders','Hamstrings','Upper back','Ankles and knees']} selected={focus} onSelect={v=>setFocus(focus===v?'':v)} />
-      <PrefLabel>When</PrefLabel>
-      <ChipRow options={['Before activity','After activity','General relief']} selected={when} onSelect={setWhen} />
-      <PrefLabel>Extra detail (optional)</PrefLabel>
-      <textarea value={extra} onChange={e=>setExtra(e.target.value)} placeholder="e.g. hips tight from sitting all day..." rows={3} style={{ width:'100%', background:T.surface, border:`0.5px solid ${T.border}`, borderRadius:rr('md'), padding:'10px 12px', fontSize:14, color:T.text, resize:'none', outline:'none' }} />
-      <PrimaryBtn onClick={go} disabled={loading||(!activity&&!focus&&!extra)}>{loading?'Getting exercises...':'Get exercises'}</PrimaryBtn>
-      <ResponseBox text={resp} loading={loading} />
-      {resp&&!loading&&<SecondaryBtn onClick={save}>{saved?'Saved to My Stack':'+ Save to My Stack'}</SecondaryBtn>}
-    </div>
-  )
-}
-
-function PlayScreen({ onSave }) {
-  const [sport, setSport] = useState('')
-  const [rtype, setRtype] = useState('Pre-session warmup')
-  const [resp, setResp] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [saved, setSaved] = useState(false)
-  const go = async () => {
-    if (!sport) return
-    setLoading(true); setResp(''); setSaved(false)
-    try { const text = await callAI(`You are a sports performance coach. Give a targeted ${rtype} for ${sport}.\nList exactly 6 movements. For each:\n[Number]. [Movement name]\n[1-2 sentences on execution]\n[Duration or reps]\nFocus on what matters for ${sport}. Total time under 15 minutes. No filler.`); setResp(text) } catch(e) { setResp('Something went wrong. Try again.') }
-    setLoading(false)
-  }
-  const save = () => { onSave({ label:`${sport} — ${rtype}`, text:resp, type:'routine' }); setSaved(true) }
-  return (
-    <div style={{ padding:'20px 20px' }}>
-      <PrefLabel>Select your sport</PrefLabel>
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(2,minmax(0,1fr))', gap:8, marginBottom:14 }}>
-        {SPORTS.map(s=><button key={s.name} onClick={()=>setSport(s.name)} style={{ background:T.surface, border:sport===s.name?`1.5px solid ${T.text}`:`0.5px solid ${T.border}`, borderRadius:rr('md'), padding:'12px 14px', textAlign:'left' }}><div style={{ fontSize:13, fontWeight:500, color:T.text }}>{s.name}</div><div style={{ fontSize:11, color:T.text3, marginTop:2 }}>{s.sub}</div></button>)}
-      </div>
-      <PrefLabel>Routine type</PrefLabel>
-      <ChipRow options={['Pre-session warmup','Post-session recovery','Both']} selected={rtype} onSelect={setRtype} />
-      <PrimaryBtn onClick={go} disabled={loading||!sport}>{loading?'Building routine...':'Get routine'}</PrimaryBtn>
-      {!sport&&<div style={{ fontSize:12, color:T.text3, textAlign:'center', marginTop:8 }}>Select a sport above</div>}
-      <ResponseBox text={resp} loading={loading} />
-      {resp&&!loading&&<SecondaryBtn onClick={save}>{saved?'Saved to My Stack':'+ Save to My Stack'}</SecondaryBtn>}
-    </div>
-  )
-}
-
-function MoveScreen({ onSave }) {
-  const [mode, setMode] = useState('mobility')
-  return (
-    <div>
-      <div style={{ display:'flex', gap:8, padding:'12px 20px 0', borderBottom:`0.5px solid ${T.border}` }}>
-        {[['mobility','Mobility & relief'],['sport','Sport routines']].map(([k,l])=>(
-          <button key={k} onClick={()=>setMode(k)} style={{ padding:'8px 16px', borderRadius:'8px 8px 0 0', fontSize:13, border:'none', background:mode===k?T.surface:'transparent', color:mode===k?T.text:T.text3, fontWeight:mode===k?500:400, borderBottom:mode===k?`2px solid ${T.text}`:'none' }}>{l}</button>
-        ))}
-      </div>
-      {mode==='mobility'&&<FeelScreen onSave={onSave} />}
-      {mode==='sport'&&<PlayScreen onSave={onSave} />}
-    </div>
-  )
-}
-
 function EatScreen({ onSave, userId }) {
   const { pantry, add, remove } = usePantry(userId)
   const [effort, setEffort] = useState('normal')
@@ -688,15 +613,22 @@ function StackScreen({ items, onDelete }) {
         {['routines','recipes'].map(t=><button key={t} onClick={()=>setTab(t)} style={{ flex:1, padding:'8px', borderRadius:rr('sm'), fontSize:13, border:'none', background:tab===t?T.text:T.surface2, color:tab===t?T.bg:T.text2, textTransform:'capitalize' }}>{t}</button>)}
       </div>
       {filtered.length===0?<div style={{ textAlign:'center', padding:'3rem 0', color:T.text3, fontSize:14, lineHeight:1.8 }}>Nothing saved yet.<br/><span style={{ fontSize:12 }}>Generate something and tap Save.</span></div>:filtered.map((item,i)=>(
-        <Card key={i}>
-          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
+        <Card key={i} style={{ padding: tab==='routines' ? '0' : '14px 16px' }}>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', padding: tab==='routines' ? '12px 14px 8px' : '0' }}>
             <div style={{ flex:1, minWidth:0 }}>
               <div style={{ fontSize:10, color:T.text3, letterSpacing:.5, textTransform:'uppercase', marginBottom:3 }}>{new Date(item.created_at||Date.now()).toLocaleDateString()}</div>
               <div style={{ fontSize:14, fontWeight:500, color:T.text }}>{item.label}</div>
-              <div style={{ fontSize:12, color:T.text2, marginTop:4, lineHeight:1.5, overflow:'hidden', maxHeight:44 }}>{item.text.substring(0,130)}...</div>
             </div>
             <button onClick={()=>onDelete(item.id)} style={{ border:'none', background:'none', color:T.text3, fontSize:13, paddingLeft:12, flexShrink:0 }}>x</button>
           </div>
+          {tab==='routines' ? (
+            <div style={{ padding:'0 14px 12px' }}>
+              <SavedRoutineCard item={item} />
+              {!SavedRoutineCard({ item }) && <div style={{ fontSize:12, color:T.text2, lineHeight:1.5 }}>{item.text.substring(0,130)}...</div>}
+            </div>
+          ) : (
+            <div style={{ fontSize:12, color:T.text2, marginTop:4, lineHeight:1.5, overflow:'hidden', maxHeight:44 }}>{item.text.substring(0,130)}...</div>
+          )}
         </Card>
       ))}
     </div>
