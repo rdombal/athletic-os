@@ -31,7 +31,7 @@ const SPORT_LIBRARY = {
         { name: 'Hip 90/90 with rotation', cue: 'Sit with both knees at 90°, rotate torso over front knee, hold briefly. Opens hip capsule for rotation.', reps: '8 each side' },
         { name: 'Thoracic spine rotation', cue: 'Hands behind head, thread elbow under opposite arm, then rotate open to ceiling. Unlocks the primary engine of the golf swing.', reps: '10 each side' },
         { name: 'Glute bridge', cue: 'Feet hip-width, drive hips to ceiling, squeeze glutes at top. Activates the posterior chain before you ask it to generate power.', reps: '15 reps' },
-        { name: 'World's greatest stretch', cue: 'Lunge forward, same-side elbow to floor, then rotate arm to ceiling. Hits hip flexor, thoracic, and groin in one movement.', reps: '6 each side' },
+        { name: 'World greatest stretch', cue: 'Lunge forward, same-side elbow to floor, then rotate arm to ceiling. Hits hip flexor, thoracic, and groin in one movement.', reps: '6 each side' },
         { name: 'Ankle circles + calf raise', cue: 'Slow circles both directions, then 10 calf raises. Ground contact and balance start here.', reps: '10 circles + 10 raises each' },
         { name: 'Half-swing rehearsal', cue: 'Slow motion swings focusing on hip turn and shoulder turn separately. Let the body find its range before you hit.', reps: '10 swings each direction' },
       ]
@@ -97,7 +97,7 @@ const SPORT_LIBRARY = {
       exercises: [
         { name: 'Couch stretch', cue: 'Rear foot elevated, lunge forward, squeeze glute. Addresses the hip flexor compression from squatting and deadlifting.', reps: '90 sec each side' },
         { name: 'Lat stretch on rack', cue: 'Hold rig or doorframe at shoulder height, sit back into stretch. Decompresses the lat after pulling.', reps: '60 sec each side' },
-        { name: 'Child's pose with reach', cue: 'Sit back on heels, reach arms forward, breathe into stretch. Full spinal decompression after loading.', reps: '90 sec' },
+        { name: 'Child pose with reach', cue: 'Sit back on heels, reach arms forward, breathe into stretch. Full spinal decompression after loading.', reps: '90 sec' },
         { name: 'Pec doorframe stretch', cue: 'Arm at 90° on wall, rotate away. Counteracts internal rotation from pressing.', reps: '45 sec each side' },
         { name: 'Deep squat hold', cue: 'Feet shoulder-width, hold bottom position passively. Restores joint space after loaded squatting.', reps: '60 sec' },
       ]
