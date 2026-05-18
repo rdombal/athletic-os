@@ -56,7 +56,7 @@ function BackBtn({ label, onClick }) {
 function SectionHeader({ title, sub }) {
   return (
     <div style={{ marginBottom:16 }}>
-      <div style={{ fontSize:20, fontWeight:400, color:T.text, letterSpacing:-.3 }}>{title}</div>
+      <div style={{ fontSize:28, fontWeight:500, color:T.text, letterSpacing:-.5 }}>{title}</div>
       {sub && <div style={{ fontSize:12, color:T.text2, marginTop:3 }}>{sub}</div>}
     </div>
   )
@@ -692,7 +692,7 @@ function ExerciseProgress({ userId, programId, exerciseName, exerciseId, onBack 
   return (
     <div style={{ padding:'0 20px' }}>
       <BackBtn label="Back" onClick={onBack} />
-      <div style={{ fontSize:20, fontWeight:400, color:T.text, letterSpacing:-.3, marginBottom:4 }}>{exerciseName}</div>
+      <div style={{ fontSize:28, fontWeight:500, color:T.text, letterSpacing:-.5, marginBottom:4 }}>{exerciseName}</div>
       <div style={{ fontSize:12, color:T.text2, marginBottom:20 }}>Progress over time</div>
 
       {overallBest.weight > 0 && (
