@@ -262,14 +262,16 @@ function DailyCard({ userId, cacheKey, category, cardLabel, promptFn, fallback }
         .catch(() => { setItem({ title:cardLabel, category, text:fallback }); setLoading(false) })
     })
   }, [userId])
+  const barColor = item ? (CAT_TEXT[item.category]||'var(--green)') : T.text3
   return (
-    <div style={{ background:T.surface, border:`0.5px solid ${T.border}`, borderRadius:rr('md'), overflow:'hidden', marginBottom:12 }}>
-      <div style={{ padding:'9px 14px', background:item?(CAT_COLORS[item.category]||'var(--green-bg)'):T.surface2, borderBottom:`0.5px solid ${T.border}` }}>
-        <div style={{ fontSize:10, fontWeight:500, letterSpacing:.6, textTransform:'uppercase', color:T.text2 }}>
-          {cardLabel}{item ? <span style={{ color: CAT_TEXT[item.category]||'var(--green)', marginLeft:4 }}>· {item.category}</span> : ''}
+    <div style={{ background:T.surface, borderRadius:rr('md'), overflow:'hidden', marginBottom:12 }}>
+      <div style={{ height:3, background:barColor }} />
+      <div style={{ padding:'10px 14px 4px' }}>
+        <div style={{ fontSize:10, fontWeight:600, letterSpacing:.6, textTransform:'uppercase', color:barColor }}>
+          {cardLabel}{item ? ` · ${item.category}` : ''}
         </div>
       </div>
-      <div style={{ padding:'12px 14px' }}>
+      <div style={{ padding:'4px 14px 14px' }}>
         {loading?<LoadingDots />:<>
           <div style={{ fontSize:14, fontWeight:500, color:T.text, marginBottom:6 }}>{item.title}</div>
           <div style={{ fontSize:13, color:T.text2, lineHeight:1.7 }}>{item.text}</div>
@@ -395,6 +397,7 @@ function HomeScreen({ onNav, savedItems, profile, userId }) {
             <div style={{ width:28, height:28, borderRadius:7, background:t.color.bg, marginBottom:10 }} />
             <div style={{ fontSize:13, fontWeight:500, color:T.text, marginBottom:2 }}>{t.label}</div>
             <div style={{ fontSize:11, color:T.text2, lineHeight:1.4 }}>{t.desc}</div>
+            </div>
           </button>
         ))}
       </div>
@@ -542,6 +545,7 @@ function PillarsScreen({ onDeepDive }) {
       {PILLARS.map(p=>{ const c=PILLAR_COLORS[p.color]; return (
         <Card key={p.num}>
           <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:12 }}>
+<div style={{ height:3, background:c.accent, marginBottom:14 }} />
             <div style={{ width:34, height:34, borderRadius:9, background:c.bg, flexShrink:0 }} />
             <div><div style={{ fontSize:10, fontWeight:500, color:c.accent, letterSpacing:.5, textTransform:'uppercase' }}>Pillar {p.num}</div><div style={{ fontSize:16, fontWeight:500, color:T.text, marginTop:1 }}>{p.title}</div></div>
           </div>
