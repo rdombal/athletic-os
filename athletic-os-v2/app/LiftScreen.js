@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { EXERCISE_LIBRARY, EXERCISE_GROUPS } from './exercises'
 import { getPrograms, saveProgram, deleteProgram, getSessions, saveSession } from './db'
+import { PostLiftRecovery } from './MoveScreen'
 
 function uid() { return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { const r = Math.random()*16|0; return (c==='x'?r:(r&0x3|0x8)).toString(16) }) }
 
@@ -228,11 +229,17 @@ Give 2-3 sentences max. Mention any PRs if there are any. Note one small win or 
           </div>
         )}
 
-        <div style={{ fontSize:13, color:T.text2, lineHeight:1.7, marginBottom:20 }}>
+        <div style={{ fontSize:13, color:T.text2, lineHeight:1.7, marginBottom:16 }}>
           {loading ? <LoadingDots /> : analysis}
         </div>
 
-        <Btn onClick={onDone} style={{ width:'100%', padding:'12px' }}>Done</Btn>
+        <PostLiftRecovery
+          workoutName={stats.workoutName}
+          exercises={stats.exerciseNames.map(n=>({ name:n }))}
+          onSave={()=>{}}
+        />
+
+        <Btn onClick={onDone} style={{ width:'100%', padding:'12px', marginTop:12 }}>Done</Btn>
       </div>
     </div>
   )
