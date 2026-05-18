@@ -229,7 +229,8 @@ const QUICK_RELIEF = {
 // ─── Routine card renderer ────────────────────────────────────────────────────
 function RoutineCard({ exercises, title, duration, source, onSave, saved }) {
   return (
-    <div style={{ marginTop:14, background:T.surface, border:`0.5px solid ${T.border}`, borderRadius:rr('md'), overflow:'hidden' }}>
+    <div style={{ marginTop:14, background:T.surface, borderRadius:rr('md'), overflow:'hidden' }}>
+      <div style={{ height:3, background:'var(--green-dim)' }} />
       {title && (
         <div style={{ padding:'14px 16px 12px', borderBottom:`0.5px solid ${T.border}` }}>
           <div style={{ fontSize:17, fontWeight:500, color:T.text }}>{title}</div>
