@@ -201,9 +201,10 @@ function SetLogger({ set, lastSet, onSave, onClose }) {
 function SessionCompleteModal({ stats, profile, onDone, onGoEat }) {
   const [analysis, setAnalysis] = useState('')
   const [loading, setLoading] = useState(true)
+  const [showDetails, setShowDetails] = useState(false)
 
   useEffect(() => {
-    const prText = stats.prs.length ? `PRs hit: ${stats.prs.join(', ')}. ` : ''
+    const prText = stats.prs.length ? `PRs hit: ${stats.prs.map(p=>p.name+': '+p.weight+'lb'+(p.firstEver?' (first ever)':'')).join(', ')}. ` : ''
     const prompt = `You are an encouraging coach giving a brief post-workout summary. Keep it warm, real, and concise — like a friend who also trains.
 
 Session: ${stats.workoutName}
@@ -221,7 +222,10 @@ Give 2-3 sentences max. Mention any PRs. Note one small win. No fluff, no exclam
   return (
     <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.85)', zIndex:300, display:'flex', alignItems:'center', justifyContent:'center', padding:16, overflowY:'auto' }}>
       <div style={{ background:T.surface, borderRadius:rr('lg'), width:'100%', maxWidth:360, padding:20, maxHeight:'90vh', overflowY:'auto' }}>
-        <div style={{ fontSize:22, fontWeight:500, color:T.text, marginBottom:2 }}>Session done.</div>
+        <div style={{ fontSize:22, fontWeight:500, color:T.text, marginBottom:2 }}>
+          {stats.returningAfterGap ? 'Good to have you back.' : 'You showed up.'}
+        </div>
+        {stats.returningAfterGap && <div style={{ fontSize:13, color:T.text2, marginBottom:4, lineHeight:1.5 }}>That is the one that counted.</div>}
         <div style={{ fontSize:13, color:T.text3, marginBottom:16 }}>{stats.workoutName}</div>
 
         <div style={{ display:'flex', gap:8, marginBottom:14 }}>
@@ -230,37 +234,44 @@ Give 2-3 sentences max. Mention any PRs. Note one small win. No fluff, no exclam
             <div style={{ fontSize:10, color:T.text3, marginTop:2 }}>duration</div>
           </div>
           <div style={{ flex:1, background:T.surface2, borderRadius:rr('sm'), padding:'10px 8px', textAlign:'center' }}>
-            <div style={{ fontSize:16, fontWeight:500, color:T.text }}>{stats.volume.toLocaleString()}</div>
-            <div style={{ fontSize:10, color:T.text3, marginTop:2 }}>total lbs</div>
-          </div>
-          <div style={{ flex:1, background:T.surface2, borderRadius:rr('sm'), padding:'10px 8px', textAlign:'center' }}>
             <div style={{ fontSize:16, fontWeight:500, color:T.text }}>{stats.totalSets}</div>
-            <div style={{ fontSize:10, color:T.text3, marginTop:2 }}>sets</div>
+            <div style={{ fontSize:10, color:T.text3, marginTop:2 }}>sets logged</div>
           </div>
         </div>
 
         {stats.prs.length > 0 && (
           <div style={{ background:'var(--green-bg)', border:'0.5px solid var(--green-dim)', borderRadius:rr('sm'), padding:'10px 12px', marginBottom:12 }}>
-            <div style={{ fontSize:11, fontWeight:500, color:'var(--green)', letterSpacing:.5, textTransform:'uppercase', marginBottom:4 }}>PR{stats.prs.length>1?'s':''} hit</div>
-            {stats.prs.map((pr,i) => <div key={i} style={{ fontSize:13, color:'var(--green)', marginTop:2 }}>{pr}</div>)}
+            <div style={{ fontSize:11, fontWeight:500, color:'var(--green)', letterSpacing:.5, textTransform:'uppercase', marginBottom:6 }}>PR{stats.prs.length>1?'s':''} hit</div>
+            {stats.prs.map((pr,i) => (
+              <div key={i} style={{ marginTop:4 }}>
+                <div style={{ fontSize:13, color:'var(--green)', fontWeight:500 }}>
+                  {pr.firstEver ? `🎯 ${pr.name}: ${pr.weight} lb — first time ever` : `${pr.name}: ${pr.weight} lb`}
+                </div>
+                {pr.firstEver && <div style={{ fontSize:11, color:'var(--green)', opacity:.8, marginTop:1 }}>That is a milestone worth noting.</div>}
+              </div>
+            ))}
           </div>
         )}
 
-        {stats.nextTargets?.length > 0 && (
+        <button onClick={()=>setShowDetails(v=>!v)} style={{ background:'none', border:'none', color:T.text3, fontSize:12, padding:'2px 0 10px', cursor:'pointer', display:'block' }}>
+          {showDetails ? 'Less detail ▲' : 'See details ▼'}
+        </button>
+
+        {showDetails && stats.nextTargets?.length > 0 && (
           <div style={{ background:T.surface2, borderRadius:rr('sm'), padding:'10px 12px', marginBottom:12 }}>
             <div style={{ fontSize:11, fontWeight:500, color:T.text2, letterSpacing:.5, textTransform:'uppercase', marginBottom:8 }}>Next session targets</div>
             {stats.nextTargets.map((t,i) => (
               <div key={i} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', paddingBottom:6, marginBottom:6, borderBottom: i < stats.nextTargets.length-1 ? `0.5px solid ${T.border}` : 'none' }}>
                 <div style={{ fontSize:12, color:T.text2 }}>{t.name}</div>
-                <div style={{ fontSize:12, fontWeight:500, color: t.next > t.current ? 'var(--green)' : T.text3 }}>
-                  {t.next > t.current ? `${t.next} lb ↑` : `${t.current} lb — hit all reps first`}
+                <div style={{ fontSize:12, fontWeight:500, color: t.next > t.current ? 'var(--green)' : T.text2 }}>
+                  {t.next > t.current ? `Try ${t.next} lb` : `Same weight — nail the reps first`}
                 </div>
               </div>
             ))}
           </div>
         )}
 
-        {stats.oneRMs?.length > 0 && (
+        {showDetails && stats.oneRMs?.length > 0 && (
           <div style={{ background:T.surface2, borderRadius:rr('sm'), padding:'10px 12px', marginBottom:12 }}>
             <div style={{ fontSize:11, fontWeight:500, color:T.text2, letterSpacing:.5, textTransform:'uppercase', marginBottom:8 }}>Estimated 1RM</div>
             {stats.oneRMs.map((e,i) => (
@@ -568,7 +579,8 @@ function SessionLogger({ workout, programId, phaseId, userId, profile, onGoEat, 
       const bestSet=ex.sets.reduce((b,s)=>(s.weight||0)*(s.reps||0)>(b.weight||0)*(b.reps||0)?s:b, {weight:0,reps:0})
       const myMax=ex.sets.reduce((b,s)=>Math.max(b,s.weight||0),0)
       const lastMax=lastEx?lastEx.sets.reduce((b,s)=>Math.max(b,s.weight||0),0):0
-      if(myMax>lastMax&&myMax>0) prs.push(`${ex.name}: ${myMax} lb`)
+      const isFirstEver = !lastEx && myMax > 0
+      if(myMax>lastMax&&myMax>0) prs.push({ name:ex.name, weight:myMax, firstEver:isFirstEver })
       // Progressive overload target: if hit all sets clean, suggest +5lb next time
       const targetSets = workout.exercises.find(e=>(e.exerciseId||e.id)===ex.exerciseId)?.sets || 3
       const allSetsHit = ex.sets.filter(Boolean).length >= targetSets
@@ -585,7 +597,11 @@ function SessionLogger({ workout, programId, phaseId, userId, profile, onGoEat, 
       }
     })
     const mins=Math.floor(elapsed/60); const secs=elapsed%60
-    return { workoutName:workout.name, duration:`${mins}m ${secs}s`, volume:totalVolume, totalSets, prs, nextTargets, oneRMs, exerciseNames:loggedSets.map(e=>e.name) }
+    // Check if returning after a gap
+    const lastSess = sessions.sort ? [...sessions].sort((a,b)=>new Date(b.logged_at||b.date)-new Date(a.logged_at||a.date))[0] : null
+    const daysSince = lastSess ? Math.floor((Date.now()-new Date(lastSess.logged_at||lastSess.date).getTime())/(1000*60*60*24)) : 0
+    const returningAfterGap = daysSince >= 5
+    return { workoutName:workout.name, duration:`${mins}m ${secs}s`, volume:totalVolume, totalSets, prs, nextTargets, oneRMs, exerciseNames:loggedSets.map(e=>e.name), returningAfterGap }
   }
 
   const finishSession = async () => {
@@ -922,8 +938,8 @@ function ProgramProgress({ program, sessions, onViewExercise }) {
       {exerciseData.map((ex, i) => {
         const first = ex.history[0]
         const last = ex.history[ex.history.length-1]
-        const trend = last.weight > first.weight ? '↑' : last.weight < first.weight ? '↓' : '→'
-        const trendColor = trend==='↑' ? 'var(--green)' : trend==='↓' ? 'var(--coral)' : T.text3
+        const trend = last.weight > first.weight ? '↑' : '→'
+        const trendColor = trend==='↑' ? 'var(--green)' : T.text3
         const gain = last.weight - first.weight
         const e1rm = epley(last.weight, last.reps)
         return (
@@ -946,7 +962,7 @@ function ProgramProgress({ program, sessions, onViewExercise }) {
 }
 
 // ─── Weekly overview ──────────────────────────────────────────────────────────
-function WeeklyOverview({ programs, sessions, activeProgramId, lastWorkoutId, onSelectProgram, onNewProgram, onViewExercise, loading }) {
+function WeeklyOverview({ programs, sessions, activeProgramId, lastWorkoutId, onSelectProgram, onNewProgram, onViewExercise, onGoMove, loading }) {
   const activeProgram = programs.find(p => p.id === activeProgramId) || programs[0]
 
   const getNextWorkout = (program) => {
@@ -968,6 +984,24 @@ function WeeklyOverview({ programs, sessions, activeProgramId, lastWorkoutId, on
   // Recent sessions — last 7 days
   const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000
   const recentSessions = sessions.filter(s => new Date(s.logged_at||s.date).getTime() > sevenDaysAgo)
+  const sessionCount = recentSessions.length
+
+  // Last session date — to detect gaps
+  const allSorted = [...sessions].sort((a,b) => new Date(b.logged_at||b.date) - new Date(a.logged_at||a.date))
+  const lastSessionDate = allSorted[0] ? new Date(allSorted[0].logged_at||allSorted[0].date) : null
+  const daysSinceLast = lastSessionDate ? Math.floor((Date.now() - lastSessionDate.getTime()) / (1000*60*60*24)) : null
+  const hasHistory = sessions.length > 0
+  const beenAWhile = hasHistory && daysSinceLast >= 5
+  const longGap = hasHistory && daysSinceLast >= 10
+
+  // Consistency note — only positive framing, never guilt
+  const consistencyNote = sessionCount >= 4
+    ? "Strong week."
+    : sessionCount >= 2
+    ? `${sessionCount} sessions this week. Keep it going.`
+    : sessionCount === 1
+    ? "One session in. Build on it."
+    : null
 
   const nextUp = getNextWorkout(activeProgram)
 
@@ -992,6 +1026,32 @@ function WeeklyOverview({ programs, sessions, activeProgramId, lastWorkoutId, on
                 style={{ fontSize:12, padding:'7px 14px', borderRadius:rr('sm'), border:`0.5px solid ${T.border}`, background:'transparent', color:T.text2, cursor:'pointer' }}>
                 Edit program →
               </button>
+            </div>
+          )}
+
+          {consistencyNote && (
+            <div style={{ fontSize:13, color:T.text3, marginBottom:16, fontStyle:'italic' }}>{consistencyNote}</div>
+          )}
+
+          {beenAWhile && !longGap && (
+            <div style={{ background:T.surface, borderRadius:rr('md'), padding:'14px 16px', marginBottom:16, borderLeft:`3px solid ${T.border2}` }}>
+              <div style={{ fontSize:14, fontWeight:500, color:T.text, marginBottom:4 }}>It has been a little while.</div>
+              <div style={{ fontSize:13, color:T.text2, lineHeight:1.6, marginBottom:10 }}>No big deal. Life gets busy. Pick up where you left off or just do something small today — even 15 minutes counts.</div>
+              <div style={{ display:'flex', gap:8 }}>
+                <button onClick={()=>onSelectProgram(activeProgram, nextUp?.workout, nextUp?.phase?.id)} style={{ flex:1, padding:'8px', borderRadius:rr('sm'), border:'none', background:T.text, color:T.bg, fontSize:12, fontWeight:500, cursor:'pointer' }}>Resume program</button>
+                <button onClick={onGoMove} style={{ flex:1, padding:'8px', borderRadius:rr('sm'), border:`0.5px solid ${T.border}`, background:'transparent', color:T.text2, fontSize:12, cursor:'pointer' }}>Move instead</button>
+              </div>
+            </div>
+          )}
+
+          {longGap && (
+            <div style={{ background:T.surface, borderRadius:rr('md'), padding:'14px 16px', marginBottom:16, borderLeft:`3px solid var(--amber-dim)` }}>
+              <div style={{ fontSize:14, fontWeight:500, color:T.text, marginBottom:4 }}>Welcome back.</div>
+              <div style={{ fontSize:13, color:T.text2, lineHeight:1.6, marginBottom:10 }}>No catching up needed. No guilt. Just pick one workout and do that. Everything else will follow.</div>
+              <div style={{ display:'flex', gap:8 }}>
+                <button onClick={()=>onSelectProgram(activeProgram, nextUp?.workout, nextUp?.phase?.id)} style={{ flex:1, padding:'8px', borderRadius:rr('sm'), border:'none', background:T.text, color:T.bg, fontSize:12, fontWeight:500, cursor:'pointer' }}>Start a session</button>
+                <button onClick={onGoMove} style={{ flex:1, padding:'8px', borderRadius:rr('sm'), border:`0.5px solid ${T.border}`, background:'transparent', color:T.text2, fontSize:12, cursor:'pointer' }}>Just move today</button>
+              </div>
             </div>
           )}
 
@@ -1191,7 +1251,7 @@ function ProgramDetail({ program, lastWorkoutId, sessions, onBack, onEdit, onSta
 }
 
 // ─── Root Lift screen ─────────────────────────────────────────────────────────
-export default function LiftScreen({ userId, userProfile, onGoEat }) {
+export default function LiftScreen({ userId, userProfile, onGoEat, onGoMove }) {
   const [view, setView] = useState('home')
   const [selectedProgram, setSelectedProgram] = useState(null)
   const [editingProgram, setEditingProgram] = useState(null)
@@ -1282,6 +1342,7 @@ export default function LiftScreen({ userId, userProfile, onGoEat }) {
           activeProgramId={activeProgramId} lastWorkoutId={lastWorkoutId}
           loading={programsLoading}
           onViewExercise={(name,id)=>{ setProgressExercise({name,id,from:'home'}); setView('progress') }}
+          onGoMove={onGoMove}
           onSelectProgram={(prog, workout, phaseId) => {
             setSelectedProgram(prog)
             if (workout && phaseId) handleStartWorkout(workout, prog.id, phaseId)
