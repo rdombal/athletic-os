@@ -280,8 +280,7 @@ function DailyCard({ userId, cacheKey, category, cardLabel, promptFn, fallback }
   const barColor = item ? (CAT_TEXT[item.category]||'var(--green)') : T.text3
   return (
     <div style={{ background:T.surface, borderRadius:rr('md'), overflow:'hidden', marginBottom:12 }}>
-      <div style={{ height:3, background:barColor }} />
-      <div style={{ padding:'10px 14px 4px' }}>
+      <div style={{ padding:'12px 14px 4px' }}>
         <div style={{ fontSize:10, fontWeight:600, letterSpacing:.6, textTransform:'uppercase', color:barColor }}>
           {cardLabel}{item ? ` · ${item.category}` : ''}
         </div>
@@ -570,9 +569,7 @@ function PillarsScreen({ onDeepDive }) {
   return (
     <div style={{ padding:'20px 20px' }}>
       {PILLARS.map(p=>{ const c=PILLAR_COLORS[p.color]; return (
-        <div key={p.num} style={{ background:T.surface, borderRadius:rr('md'), marginBottom:10, overflow:'hidden' }}>
-          <div style={{ height:3, background:c.accent }} />
-          <div style={{ padding:'14px 16px' }}>
+        <Card key={p.num}>
           <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:12 }}>
             <div style={{ width:34, height:34, borderRadius:9, background:c.bg, flexShrink:0 }} />
             <div><div style={{ fontSize:10, fontWeight:500, color:c.accent, letterSpacing:.5, textTransform:'uppercase' }}>Pillar {p.num}</div><div style={{ fontSize:16, fontWeight:500, color:T.text, marginTop:1 }}>{p.title}</div></div>
@@ -584,8 +581,7 @@ function PillarsScreen({ onDeepDive }) {
             <div style={{ flex:1 }}><div style={{ fontSize:10, fontWeight:500, color:'var(--coral)', letterSpacing:.5, textTransform:'uppercase', marginBottom:4 }}>Ignore this</div><div style={{ fontSize:12, color:T.text2, lineHeight:1.55 }}>{p.skip}</div></div>
           </div>
           <button onClick={()=>onDeepDive(p.prompt)} style={{ width:'100%', padding:'9px 12px', borderRadius:rr('sm'), border:`0.5px solid ${T.border}`, background:'transparent', color:T.text2, fontSize:13, textAlign:'left' }}>Go deeper</button>
-          </div>
-        </div>
+        </Card>
       )})}
     </div>
   )
@@ -689,6 +685,41 @@ function MoreScreen({ onNav }) {
   )
 }
 
+const NAV_ICONS = {
+  home: (active) => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active?2:1.5} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z"/>
+      <path d="M9 21V12h6v9"/>
+    </svg>
+  ),
+  move: (active) => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active?2:1.5} strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="5" r="2"/>
+      <path d="M12 7v6M9 10l-2 4h10l-2-4"/>
+      <path d="M9 21l1-4h4l1 4"/>
+    </svg>
+  ),
+  eat: (active) => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active?2:1.5} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M18 8h1a4 4 0 010 8h-1"/>
+      <path d="M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8z"/>
+      <line x1="6" y1="1" x2="6" y2="4"/>
+      <line x1="10" y1="1" x2="10" y2="4"/>
+      <line x1="14" y1="1" x2="14" y2="4"/>
+    </svg>
+  ),
+  lift: (active) => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active?2:1.5} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M6 4v16M18 4v16M2 9h4M18 9h4M2 15h4M18 15h4M6 12h12"/>
+    </svg>
+  ),
+  more: (active) => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active?2:1.5} strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>
+    </svg>
+  ),
+}
+
 const NAV = [
   { tab:'home',  label:'Home'  },
   { tab:'move',  label:'Move'  },
@@ -778,11 +809,11 @@ export default function App() {
         {tab==='stack'   && <StackScreen items={savedItems} onDelete={handleDelete} />}
         {tab==='profile' && <ProfileScreen userId={userId} onSaved={setProfile} />}
       </div>
-      <nav style={{ position:'fixed', bottom:0, left:'50%', transform:'translateX(-50%)', width:'100%', maxWidth:430, background:T.bg, borderTop:`0.5px solid ${T.border}`, display:'flex', padding:'10px 0 max(14px, env(safe-area-inset-bottom))', zIndex:100 }}>
+      <nav style={{ position:'fixed', bottom:0, left:'50%', transform:'translateX(-50%)', width:'100%', maxWidth:430, background:T.surface2, borderTop:`0.5px solid ${T.border}`, display:'flex', padding:'8px 0 max(16px, env(safe-area-inset-bottom))', zIndex:100 }}>
         {NAV.map(n=>{ const active=tab===n.tab; return (
-          <button key={n.tab} onClick={()=>{ setDeepDive(null); setTab(n.tab) }} style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', gap:4, padding:'4px 0', border:'none', background:'none' }}>
-            <div style={{ width:4, height:4, borderRadius:'50%', background:active?T.text:'transparent', transition:'background .2s' }} />
-            <span style={{ fontSize:10, color:active?T.text:T.text3, fontWeight:active?500:400, letterSpacing:.2 }}>{n.label}</span>
+          <button key={n.tab} onClick={()=>{ setDeepDive(null); setTab(n.tab) }} style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', gap:3, padding:'4px 0', border:'none', background:'none', color:active?T.text:T.text3, transition:'color .15s' }}>
+            {NAV_ICONS[n.tab]?.(active)}
+            <span style={{ fontSize:9, fontWeight:active?600:400, letterSpacing:.3 }}>{n.label}</span>
           </button>
         )})}
       </nav>
