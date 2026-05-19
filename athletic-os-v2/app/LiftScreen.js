@@ -19,6 +19,8 @@ function buildNutritionNudge(profile, workoutType) {
   return 'Fuel recovery with a protein-rich meal within the next hour or two.'
 }
 
+function addVote() { try { const v=parseInt(localStorage.getItem('identity_votes')||'0'); localStorage.setItem('identity_votes',String(v+1)) } catch {} }
+
 function uid() { return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { const r = Math.random()*16|0; return (c==='x'?r:(r&0x3|0x8)).toString(16) }) }
 
 const T = {
@@ -226,7 +228,8 @@ Give 2-3 sentences max. Mention any PRs. Note one small win. No fluff, no exclam
           {stats.returningAfterGap ? 'Good to have you back.' : 'You showed up.'}
         </div>
         {stats.returningAfterGap && <div style={{ fontSize:13, color:T.text2, marginBottom:4, lineHeight:1.5 }}>That is the one that counted.</div>}
-        <div style={{ fontSize:13, color:T.text3, marginBottom:16 }}>{stats.workoutName}</div>
+        <div style={{ fontSize:13, color:T.text3, marginBottom:4 }}>{stats.workoutName}</div>
+        <div style={{ fontSize:12, color:T.text3, fontStyle:'italic', marginBottom:16 }}>Strength is built gradually, session by session.</div>
 
         <div style={{ display:'flex', gap:8, marginBottom:14 }}>
           <div style={{ flex:1, background:T.surface2, borderRadius:rr('sm'), padding:'10px 8px', textAlign:'center' }}>
@@ -607,6 +610,7 @@ function SessionLogger({ workout, programId, phaseId, userId, profile, onGoEat, 
   const finishSession = async () => {
     const stats=buildStats()
     await saveSession(userId,{ programId, phaseId, workoutId:workout.id, workoutName:workout.name, exercises:loggedSets }).catch(()=>{})
+    addVote()
     setSessionStats(stats)
     setSessionComplete(true)
   }
