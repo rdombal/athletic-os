@@ -809,8 +809,133 @@ function ExerciseProgress({ userId, programId, exerciseName, exerciseId, onBack 
   )
 }
 
+
+// ─── Progress summary (home screen) ──────────────────────────────────────────
+function ProgressSummary({ sessions, onViewExercise }) {
+  if (!sessions.length) return null
+
+  const epley = (w, r) => r===1 ? w : Math.round(w*(1+r/30))
+
+  // Build per-exercise best sets across all sessions
+  const exerciseMap = {}
+  const sessionsByDate = [...sessions].sort((a,b) => new Date(a.logged_at||a.date) - new Date(b.logged_at||b.date))
+
+  sessionsByDate.forEach(sess => {
+    (sess.exercises||[]).forEach(ex => {
+      if (!ex.name || !ex.sets?.length) return
+      const bestSet = ex.sets.reduce((b,s) => (s.weight||0)>(b.weight||0)?s:b, {weight:0,reps:0})
+      if (!bestSet.weight) return
+      if (!exerciseMap[ex.name]) {
+        exerciseMap[ex.name] = { name:ex.name, exerciseId:ex.exerciseId, history:[] }
+      }
+      exerciseMap[ex.name].history.push({ weight:bestSet.weight, reps:bestSet.reps, date:sess.logged_at||sess.date })
+    })
+  })
+
+  // Get top exercises by frequency (most logged = most important to user)
+  const exercises = Object.values(exerciseMap)
+    .filter(e => e.history.length >= 2)
+    .sort((a,b) => b.history.length - a.history.length)
+    .slice(0, 5)
+
+  if (!exercises.length) return null
+
+  return (
+    <div style={{ marginTop:20 }}>
+      <div style={{ fontSize:11, color:T.text3, letterSpacing:.5, textTransform:'uppercase', marginBottom:10 }}>Your progress</div>
+      {exercises.map((ex, i) => {
+        const last = ex.history[ex.history.length-1]
+        const prev = ex.history[ex.history.length-2]
+        const trend = last.weight > prev.weight ? '↑' : last.weight < prev.weight ? '↓' : '→'
+        const trendColor = trend==='↑' ? 'var(--green)' : trend==='↓' ? 'var(--coral)' : T.text3
+        const e1rm = epley(last.weight, last.reps)
+        const diff = last.weight - prev.weight
+        return (
+          <div key={i} onClick={()=>onViewExercise(ex.name, ex.exerciseId)}
+            style={{ background:T.surface, borderRadius:rr('md'), padding:'12px 14px', marginBottom:8,
+              cursor:'pointer', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+            <div style={{ flex:1, minWidth:0 }}>
+              <div style={{ fontSize:13, fontWeight:500, color:T.text }}>{ex.name}</div>
+              <div style={{ fontSize:11, color:T.text3, marginTop:2 }}>
+                {last.weight} lb × {last.reps} · Est. 1RM: {e1rm} lb
+              </div>
+            </div>
+            <div style={{ display:'flex', alignItems:'center', gap:8, flexShrink:0 }}>
+              {diff !== 0 && (
+                <div style={{ fontSize:11, fontWeight:500, color:trendColor }}>
+                  {diff > 0 ? `+${diff}` : diff} lb
+                </div>
+              )}
+              <div style={{ fontSize:16, color:trendColor }}>{trend}</div>
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+// ─── Program progress (inside program detail) ─────────────────────────────────
+function ProgramProgress({ program, sessions, onViewExercise }) {
+  const epley = (w, r) => r===1 ? w : Math.round(w*(1+r/30))
+
+  // Get all unique exercises across this program's workouts
+  const programExercises = []
+  const seen = new Set()
+  program.phases.forEach(ph => ph.workouts.forEach(w => w.exercises.forEach(ex => {
+    if (!seen.has(ex.name)) { seen.add(ex.name); programExercises.push(ex) }
+  })))
+
+  // Build history per exercise from sessions
+  const programSessions = sessions.filter(s => s.program_id===program.id||s.programId===program.id)
+    .sort((a,b) => new Date(a.logged_at||a.date) - new Date(b.logged_at||b.date))
+
+  const exerciseData = programExercises.map(ex => {
+    const history = []
+    programSessions.forEach(sess => {
+      const found = (sess.exercises||[]).find(e => e.exerciseId===ex.exerciseId||e.name===ex.name)
+      if (found?.sets?.length) {
+        const best = found.sets.reduce((b,s)=>(s.weight||0)>(b.weight||0)?s:b,{weight:0,reps:0})
+        if (best.weight) history.push({ weight:best.weight, reps:best.reps })
+      }
+    })
+    return { ...ex, history }
+  }).filter(e => e.history.length > 0)
+
+  if (!exerciseData.length) return null
+
+  return (
+    <div style={{ marginTop:20, marginBottom:12 }}>
+      <div style={{ height:'0.5px', background:T.border, marginBottom:16 }} />
+      <div style={{ fontSize:11, color:T.text3, letterSpacing:.5, textTransform:'uppercase', marginBottom:10 }}>Progress this program</div>
+      {exerciseData.map((ex, i) => {
+        const first = ex.history[0]
+        const last = ex.history[ex.history.length-1]
+        const trend = last.weight > first.weight ? '↑' : last.weight < first.weight ? '↓' : '→'
+        const trendColor = trend==='↑' ? 'var(--green)' : trend==='↓' ? 'var(--coral)' : T.text3
+        const gain = last.weight - first.weight
+        const e1rm = epley(last.weight, last.reps)
+        return (
+          <div key={i} onClick={()=>onViewExercise(ex.name, ex.exerciseId||ex.id)}
+            style={{ background:T.surface2, borderRadius:rr('sm'), padding:'10px 12px', marginBottom:6,
+              cursor:'pointer', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+            <div style={{ flex:1 }}>
+              <div style={{ fontSize:12, fontWeight:500, color:T.text }}>{ex.name}</div>
+              <div style={{ fontSize:11, color:T.text3, marginTop:2 }}>
+                {last.weight} lb · 1RM ~{e1rm} lb
+                {gain !== 0 && <span style={{ color:trendColor, marginLeft:6 }}>{gain>0?`+${gain}`:gain} lb from start</span>}
+              </div>
+            </div>
+            <div style={{ fontSize:14, color:trendColor, marginLeft:8 }}>{trend}</div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 // ─── Weekly overview ──────────────────────────────────────────────────────────
-function WeeklyOverview({ programs, sessions, activeProgramId, lastWorkoutId, onSelectProgram, onNewProgram, loading }) {
+function WeeklyOverview({ programs, sessions, activeProgramId, lastWorkoutId, onSelectProgram, onNewProgram, onViewExercise, loading }) {
   const activeProgram = programs.find(p => p.id === activeProgramId) || programs[0]
 
   const getNextWorkout = (program) => {
@@ -904,6 +1029,8 @@ function WeeklyOverview({ programs, sessions, activeProgramId, lastWorkoutId, on
             </button>
           </div>
 
+          <ProgressSummary sessions={sessions} onViewExercise={onViewExercise} />
+
           {programs.length > 0 && (
             <div style={{ marginTop:24 }}>
               <div style={{ fontSize:11, color:T.text3, letterSpacing:.5, textTransform:'uppercase', marginBottom:10 }}>All programs</div>
@@ -981,7 +1108,7 @@ function ProgramsList({ programs, loading, activeProgramId, onSelectProgram, onN
 }
 
 // ─── Program detail ───────────────────────────────────────────────────────────
-function ProgramDetail({ program, lastWorkoutId, onBack, onEdit, onStartWorkout, onViewHistory, onViewProgress }) {
+function ProgramDetail({ program, lastWorkoutId, sessions, onBack, onEdit, onStartWorkout, onViewHistory, onViewProgress }) {
   const getNextWorkout = (phase) => {
     if (!phase || phase.workouts.length === 0) return null
     if (!lastWorkoutId) return phase.workouts[0]
@@ -1033,6 +1160,7 @@ function ProgramDetail({ program, lastWorkoutId, onBack, onEdit, onStartWorkout,
           </div>
         )
       })}
+      <ProgramProgress program={program} sessions={sessions||[]} onViewExercise={onViewProgress||((n,id)=>{})} />
     </div>
   )
 }
@@ -1128,6 +1256,7 @@ export default function LiftScreen({ userId, userProfile, onGoEat }) {
           programs={programs} sessions={sessions}
           activeProgramId={activeProgramId} lastWorkoutId={lastWorkoutId}
           loading={programsLoading}
+          onViewExercise={(name,id)=>{ setProgressExercise({name,id,from:'home'}); setView('progress') }}
           onSelectProgram={(prog, workout, phaseId) => {
             setSelectedProgram(prog)
             if (workout && phaseId) handleStartWorkout(workout, prog.id, phaseId)
@@ -1142,6 +1271,7 @@ export default function LiftScreen({ userId, userProfile, onGoEat }) {
       )}
       {view==='detail' && selectedProgram && (
         <ProgramDetail program={selectedProgram} lastWorkoutId={lastWorkoutId}
+          sessions={sessions}
           onBack={()=>setView('home')}
           onEdit={()=>{ setEditingProgram(selectedProgram); setView('builder') }}
           onStartWorkout={handleStartWorkout}
@@ -1164,10 +1294,10 @@ export default function LiftScreen({ userId, userProfile, onGoEat }) {
           onBack={()=>setView('detail')}
           onViewProgress={(name,id)=>{ setProgressExercise({ name, id }); setView('progress') }} />
       )}
-      {view==='progress' && progressExercise && selectedProgram && (
-        <ExerciseProgress userId={userId} programId={selectedProgram.id}
+      {view==='progress' && progressExercise && (
+        <ExerciseProgress userId={userId} programId={selectedProgram?.id}
           exerciseName={progressExercise.name} exerciseId={progressExercise.id}
-          onBack={()=>setView(view==='progress'?'history':'detail')} />
+          onBack={()=>setView(progressExercise.from||'detail')} />
       )}
     </div>
   )
