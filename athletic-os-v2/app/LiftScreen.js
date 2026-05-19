@@ -4,6 +4,21 @@ import { EXERCISE_LIBRARY, EXERCISE_GROUPS } from './exercises'
 import { getPrograms, saveProgram, deleteProgram, getSessions, saveSession } from './db'
 import { PostLiftRecovery } from './MoveScreen'
 
+function buildNutritionNudge(profile, workoutType) {
+  if (!profile?.goal) return ''
+  const isMuscle = profile.goal?.toLowerCase().includes('muscle')
+  const isFat = profile.goal?.toLowerCase().includes('fat')
+  const isLower = /lower|leg|squat|deadlift|hip|glute/i.test(workoutType||'')
+  const isUpper = /upper|push|pull|press|chest|back|shoulder/i.test(workoutType||'')
+  if (isMuscle) {
+    if (isLower) return 'Heavy lower body session — prioritize high carb and high protein in your next meal to replenish glycogen and drive muscle repair.'
+    if (isUpper) return 'Upper body session done — aim for 40-50g protein in your next meal to maximize muscle protein synthesis.'
+    return 'Prioritize protein and carbs in your next meal to support muscle growth and recovery.'
+  }
+  if (isFat) return 'Good session. Keep your next meal high protein, moderate carb to stay in a deficit while preserving muscle.'
+  return 'Fuel recovery with a protein-rich meal within the next hour or two.'
+}
+
 function uid() { return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { const r = Math.random()*16|0; return (c==='x'?r:(r&0x3|0x8)).toString(16) }) }
 
 const T = {
@@ -183,7 +198,7 @@ function SetLogger({ set, lastSet, onSave, onClose }) {
 }
 
 // ─── Session complete modal ────────────────────────────────────────────────────
-function SessionCompleteModal({ stats, onDone }) {
+function SessionCompleteModal({ stats, profile, onDone, onGoEat }) {
   const [analysis, setAnalysis] = useState('')
   const [loading, setLoading] = useState(true)
 
@@ -197,41 +212,77 @@ Total volume: ${stats.volume.toLocaleString()} lbs
 Exercises: ${stats.exerciseNames.join(', ')}
 ${prText}
 
-Give 2-3 sentences max. Mention any PRs if there are any. Note one small win or positive observation. If they hit a milestone (e.g. first time over a certain volume) call it out. No fluff, no exclamation point spam. Just be real.`
+Give 2-3 sentences max. Mention any PRs. Note one small win. No fluff, no exclamation point spam. Be real.`
     callAI(prompt).then(text => { setAnalysis(text); setLoading(false) })
   }, [])
 
-  return (
-    <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.8)', zIndex:300, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}>
-      <div style={{ background:T.surface, border:`0.5px solid ${T.border}`, borderRadius:rr('lg'), width:'100%', maxWidth:360, padding:24 }}>
-        <div style={{ fontSize:22, fontWeight:500, color:T.text, marginBottom:4 }}>Session done.</div>
-        <div style={{ fontSize:13, color:T.text3, marginBottom:20 }}>{stats.workoutName}</div>
+  const nutritionNudge = buildNutritionNudge(profile, stats.workoutName)
 
-        <div style={{ display:'flex', gap:8, marginBottom:16 }}>
+  return (
+    <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.85)', zIndex:300, display:'flex', alignItems:'center', justifyContent:'center', padding:16, overflowY:'auto' }}>
+      <div style={{ background:T.surface, borderRadius:rr('lg'), width:'100%', maxWidth:360, padding:20, maxHeight:'90vh', overflowY:'auto' }}>
+        <div style={{ fontSize:22, fontWeight:500, color:T.text, marginBottom:2 }}>Session done.</div>
+        <div style={{ fontSize:13, color:T.text3, marginBottom:16 }}>{stats.workoutName}</div>
+
+        <div style={{ display:'flex', gap:8, marginBottom:14 }}>
           <div style={{ flex:1, background:T.surface2, borderRadius:rr('sm'), padding:'10px 8px', textAlign:'center' }}>
-            <div style={{ fontSize:18, fontWeight:500, color:T.text }}>{stats.duration}</div>
+            <div style={{ fontSize:16, fontWeight:500, color:T.text }}>{stats.duration}</div>
             <div style={{ fontSize:10, color:T.text3, marginTop:2 }}>duration</div>
           </div>
           <div style={{ flex:1, background:T.surface2, borderRadius:rr('sm'), padding:'10px 8px', textAlign:'center' }}>
-            <div style={{ fontSize:18, fontWeight:500, color:T.text }}>{stats.volume.toLocaleString()}</div>
+            <div style={{ fontSize:16, fontWeight:500, color:T.text }}>{stats.volume.toLocaleString()}</div>
             <div style={{ fontSize:10, color:T.text3, marginTop:2 }}>total lbs</div>
           </div>
           <div style={{ flex:1, background:T.surface2, borderRadius:rr('sm'), padding:'10px 8px', textAlign:'center' }}>
-            <div style={{ fontSize:18, fontWeight:500, color:T.text }}>{stats.totalSets}</div>
-            <div style={{ fontSize:10, color:T.text3, marginTop:2 }}>sets logged</div>
+            <div style={{ fontSize:16, fontWeight:500, color:T.text }}>{stats.totalSets}</div>
+            <div style={{ fontSize:10, color:T.text3, marginTop:2 }}>sets</div>
           </div>
         </div>
 
         {stats.prs.length > 0 && (
-          <div style={{ background:'var(--green-bg)', border:'0.5px solid var(--green-dim)', borderRadius:rr('sm'), padding:'10px 12px', marginBottom:14 }}>
+          <div style={{ background:'var(--green-bg)', border:'0.5px solid var(--green-dim)', borderRadius:rr('sm'), padding:'10px 12px', marginBottom:12 }}>
             <div style={{ fontSize:11, fontWeight:500, color:'var(--green)', letterSpacing:.5, textTransform:'uppercase', marginBottom:4 }}>PR{stats.prs.length>1?'s':''} hit</div>
             {stats.prs.map((pr,i) => <div key={i} style={{ fontSize:13, color:'var(--green)', marginTop:2 }}>{pr}</div>)}
           </div>
         )}
 
-        <div style={{ fontSize:13, color:T.text2, lineHeight:1.7, marginBottom:16 }}>
+        {stats.nextTargets?.length > 0 && (
+          <div style={{ background:T.surface2, borderRadius:rr('sm'), padding:'10px 12px', marginBottom:12 }}>
+            <div style={{ fontSize:11, fontWeight:500, color:T.text2, letterSpacing:.5, textTransform:'uppercase', marginBottom:8 }}>Next session targets</div>
+            {stats.nextTargets.map((t,i) => (
+              <div key={i} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', paddingBottom:6, marginBottom:6, borderBottom: i < stats.nextTargets.length-1 ? `0.5px solid ${T.border}` : 'none' }}>
+                <div style={{ fontSize:12, color:T.text2 }}>{t.name}</div>
+                <div style={{ fontSize:12, fontWeight:500, color: t.next > t.current ? 'var(--green)' : T.text3 }}>
+                  {t.next > t.current ? `${t.next} lb ↑` : `${t.current} lb — hit all reps first`}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {stats.oneRMs?.length > 0 && (
+          <div style={{ background:T.surface2, borderRadius:rr('sm'), padding:'10px 12px', marginBottom:12 }}>
+            <div style={{ fontSize:11, fontWeight:500, color:T.text2, letterSpacing:.5, textTransform:'uppercase', marginBottom:8 }}>Estimated 1RM</div>
+            {stats.oneRMs.map((e,i) => (
+              <div key={i} style={{ display:'flex', justifyContent:'space-between', paddingBottom:4 }}>
+                <div style={{ fontSize:12, color:T.text2 }}>{e.name}</div>
+                <div style={{ fontSize:12, fontWeight:500, color:T.text }}>{e.e1rm} lb</div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div style={{ fontSize:13, color:T.text2, lineHeight:1.7, marginBottom:12 }}>
           {loading ? <LoadingDots /> : analysis}
         </div>
+
+        {nutritionNudge && (
+          <div style={{ background:'var(--amber-bg)', border:'0.5px solid var(--amber-dim)', borderRadius:rr('sm'), padding:'10px 12px', marginBottom:12 }}>
+            <div style={{ fontSize:11, fontWeight:500, color:'var(--amber)', letterSpacing:.5, textTransform:'uppercase', marginBottom:4 }}>Fuel your recovery</div>
+            <div style={{ fontSize:12, color:T.text2, lineHeight:1.6, marginBottom:8 }}>{nutritionNudge}</div>
+            {onGoEat && <button onClick={onGoEat} style={{ fontSize:12, color:'var(--amber)', border:'none', background:'none', padding:0, cursor:'pointer' }}>Get a meal idea →</button>}
+          </div>
+        )}
 
         <PostLiftRecovery
           workoutName={stats.workoutName}
@@ -463,7 +514,7 @@ Format each as: [Movement] — [duration or reps]` })
 }
 
 // ─── Session logger ────────────────────────────────────────────────────────────
-function SessionLogger({ workout, programId, phaseId, userId, onFinish, onBack }) {
+function SessionLogger({ workout, programId, phaseId, userId, profile, onGoEat, onFinish, onBack }) {
   const [sessions, setSessions] = useState([])
   const [loggedSets, setLoggedSets] = useState(
     workout.exercises.map(ex => ({ exerciseId:ex.exerciseId||ex.id, name:ex.name, sets:[] }))
@@ -504,17 +555,34 @@ function SessionLogger({ workout, programId, phaseId, userId, onFinish, onBack }
     }
   }
 
+  const epley1RM = (weight, reps) => reps === 1 ? weight : Math.round(weight * (1 + reps/30))
+
   const buildStats = () => {
-    let totalVolume=0; let totalSets=0; const prs=[]
+    let totalVolume=0; let totalSets=0; const prs=[]; const nextTargets=[]; const oneRMs=[]
     loggedSets.forEach(ex => {
       ex.sets.forEach(s=>{ totalVolume+=(s.weight||0)*(s.reps||0); totalSets++ })
       const lastEx=getLastSession(ex.exerciseId)
+      const bestSet=ex.sets.reduce((b,s)=>(s.weight||0)*(s.reps||0)>(b.weight||0)*(b.reps||0)?s:b, {weight:0,reps:0})
       const myMax=ex.sets.reduce((b,s)=>Math.max(b,s.weight||0),0)
       const lastMax=lastEx?lastEx.sets.reduce((b,s)=>Math.max(b,s.weight||0),0):0
       if(myMax>lastMax&&myMax>0) prs.push(`${ex.name}: ${myMax} lb`)
+      // Progressive overload target: if hit all sets clean, suggest +5lb next time
+      const targetSets = workout.exercises.find(e=>(e.exerciseId||e.id)===ex.exerciseId)?.sets || 3
+      const allSetsHit = ex.sets.filter(Boolean).length >= targetSets
+      const targetReps = workout.exercises.find(e=>(e.exerciseId||e.id)===ex.exerciseId)?.targetReps || 8
+      const avgReps = ex.sets.length ? ex.sets.reduce((a,s)=>a+(s.reps||0),0)/ex.sets.length : 0
+      if (allSetsHit && myMax > 0) {
+        const increment = avgReps >= targetReps ? 5 : 0
+        if (increment > 0) nextTargets.push({ name:ex.name, current:myMax, next:myMax+increment, note:'Hit target reps — add weight next session' })
+        else nextTargets.push({ name:ex.name, current:myMax, next:myMax, note:'Work on hitting all reps before adding weight' })
+      }
+      // Estimated 1RM
+      if (bestSet.weight > 0 && bestSet.reps > 0) {
+        oneRMs.push({ name:ex.name, e1rm:epley1RM(bestSet.weight, bestSet.reps), bestSet })
+      }
     })
     const mins=Math.floor(elapsed/60); const secs=elapsed%60
-    return { workoutName:workout.name, duration:`${mins}:${secs.toString().padStart(2,'0')}`, volume:totalVolume, totalSets, prs, exerciseNames:loggedSets.map(e=>e.name) }
+    return { workoutName:workout.name, duration:`${mins}m ${secs}s`, volume:totalVolume, totalSets, prs, nextTargets, oneRMs, exerciseNames:loggedSets.map(e=>e.name) }
   }
 
   const finishSession = async () => {
@@ -530,7 +598,7 @@ function SessionLogger({ workout, programId, phaseId, userId, onFinish, onBack }
     <div style={{ padding:'0 20px', paddingBottom:80 }}>
 
       {sessionComplete && sessionStats && (
-        <SessionCompleteModal stats={sessionStats} onDone={()=>onFinish(sessionStats)} />
+        <SessionCompleteModal stats={sessionStats} profile={profile} onGoEat={onGoEat} onDone={()=>onFinish(sessionStats)} />
       )}
 
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:18, paddingTop:4 }}>
@@ -684,6 +752,7 @@ function ExerciseProgress({ userId, programId, exerciseName, exerciseId, onBack 
   if (loading) return <div style={{ padding:20 }}><LoadingDots /></div>
 
   const getExData = (sess) => (sess.exercises||[]).find(e => e.exerciseId === exerciseId || e.name === exerciseName)
+  const epley = (w, r) => r===1 ? w : Math.round(w*(1+r/30))
   const getBestSet = (ex) => ex?.sets?.reduce((best, s) => (s.weight||0) > (best.weight||0) ? s : best, {weight:0,reps:0})
   const allBest = sessions.map(s => getBestSet(getExData(s))).filter(s => s?.weight > 0)
   const overallBest = allBest.reduce((b, s) => (s.weight||0) > (b.weight||0) ? s : b, {weight:0,reps:0})
@@ -699,6 +768,7 @@ function ExerciseProgress({ userId, programId, exerciseName, exerciseId, onBack 
         <div style={{ background:'var(--green-bg)', border:'0.5px solid var(--green-dim)', borderRadius:rr('md'), padding:'14px 16px', marginBottom:16 }}>
           <div style={{ fontSize:11, fontWeight:500, color:'var(--green)', letterSpacing:.5, textTransform:'uppercase', marginBottom:4 }}>Best set</div>
           <div style={{ fontSize:24, fontWeight:500, color:T.text }}>{overallBest.weight} lb <span style={{ fontSize:14, color:T.text2, fontWeight:400 }}>× {overallBest.reps} reps</span></div>
+          <div style={{ fontSize:12, color:'var(--green)', marginTop:4 }}>Est. 1RM: {epley(overallBest.weight, overallBest.reps)} lb</div>
         </div>
       )}
 
@@ -720,6 +790,11 @@ function ExerciseProgress({ userId, programId, exerciseName, exerciseId, onBack 
               {best?.weight} lb × {best?.reps} reps
               <span style={{ fontSize:11, color:T.text3, fontWeight:400, marginLeft:8 }}>best set</span>
             </div>
+            {best?.weight > 0 && best?.reps > 0 && (
+              <div style={{ fontSize:11, color:T.text3, marginTop:2 }}>
+                Est. 1RM: <span style={{ color:T.text2, fontWeight:500 }}>{epley(best.weight, best.reps)} lb</span>
+              </div>
+            )}
             <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginTop:6 }}>
               {(ex?.sets||[]).map((s,j) => (
                 <div key={j} style={{ fontSize:11, color:T.text2, background:T.surface2, borderRadius:rr('sm'), padding:'3px 8px' }}>
@@ -963,7 +1038,7 @@ function ProgramDetail({ program, lastWorkoutId, onBack, onEdit, onStartWorkout,
 }
 
 // ─── Root Lift screen ─────────────────────────────────────────────────────────
-export default function LiftScreen({ userId }) {
+export default function LiftScreen({ userId, userProfile, onGoEat }) {
   const [view, setView] = useState('home')
   const [selectedProgram, setSelectedProgram] = useState(null)
   const [editingProgram, setEditingProgram] = useState(null)
@@ -1080,7 +1155,7 @@ export default function LiftScreen({ userId }) {
       )}
       {view==='session' && activeSession && (
         <SessionLogger workout={activeSession.workout} programId={activeSession.programId}
-          phaseId={activeSession.phaseId} userId={userId}
+          phaseId={activeSession.phaseId} userId={userId} profile={userProfile} onGoEat={onGoEat}
           onFinish={handleFinishSession}
           onBack={()=>{ setActiveSession(null); setView('detail') }} />
       )}
