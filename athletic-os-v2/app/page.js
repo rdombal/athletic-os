@@ -831,7 +831,6 @@ function StackScreen({ items, onDelete }) {
           {tab==='routines' ? (
             <div style={{ padding:'0 14px 12px' }}>
               <SavedRoutineCard item={item} />
-              {!SavedRoutineCard({ item }) && <div style={{ fontSize:12, color:T.text2, lineHeight:1.5 }}>{item.text.substring(0,130)}...</div>}
             </div>
           ) : (
             <div style={{ fontSize:12, color:T.text2, marginTop:4, lineHeight:1.5, overflow:'hidden', maxHeight:44 }}>{item.text.substring(0,130)}...</div>
