@@ -404,8 +404,7 @@ function QuickRelief({ onSave }) {
   const routine = selected ? QUICK_RELIEF[selected] : null
 
   const save = () => {
-    const text = routine.map(e => `${e.name}\n${e.cue}\n${e.reps}`).join('\n\n')
-    onSave({ label: `${selected} relief`, text, type: 'routine' })
+    onSave({ label: `${selected} relief`, text: JSON.stringify({ exercises: routine, title: `${selected} relief`, duration: '~5 min' }), type: 'routine' })
     setSaved(true)
   }
 
@@ -454,8 +453,7 @@ function SportLibrary({ onSave }) {
 
   const save = () => {
     if (!routine) return
-    const text = routine.exercises.map(e => `${e.name}\n${e.cue}\n${e.reps}`).join('\n\n')
-    onSave({ label: routine.title, text, type: 'routine' })
+    onSave({ label: routine.title, text: JSON.stringify({ exercises: routine.exercises, title: routine.title, duration: routine.duration, source: routine.source }), type: 'routine' })
     setSaved(true)
   }
 
