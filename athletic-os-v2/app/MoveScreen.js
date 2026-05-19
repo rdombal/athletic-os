@@ -1,6 +1,8 @@
 'use client'
 import { useState } from 'react'
 
+function addVote() { try { const v=parseInt(localStorage.getItem('identity_votes')||'0'); localStorage.setItem('identity_votes',String(v+1)) } catch {} }
+
 const T = {
   bg:'var(--bg)', surface:'var(--surface)', surface2:'var(--surface2)',
   border:'var(--border)', text:'var(--text)', text2:'var(--text2)', text3:'var(--text3)',
@@ -405,6 +407,7 @@ function QuickRelief({ onSave }) {
 
   const save = () => {
     onSave({ label: `${selected} relief`, text: JSON.stringify({ exercises: routine, title: `${selected} relief`, duration: '~5 min' }), type: 'routine' })
+    addVote()
     setSaved(true)
   }
 
@@ -425,8 +428,8 @@ function QuickRelief({ onSave }) {
         <RoutineCard exercises={routine} title={`${selected} relief`} duration="~5 min" onSave={save} saved={saved} />
       )}
       {saved && (
-        <div style={{ fontSize:12, color:'var(--green)', textAlign:'center', padding:'6px 0', fontStyle:'italic' }}>
-          Saved. Come back to this whenever you need it.
+        <div style={{ fontSize:12, color:T.text3, textAlign:'center', padding:'6px 0', fontStyle:'italic' }}>
+          Taking care of your body today matters. Added to your rotation.
         </div>
       )}
     </div>
@@ -454,6 +457,7 @@ function SportLibrary({ onSave }) {
   const save = () => {
     if (!routine) return
     onSave({ label: routine.title, text: JSON.stringify({ exercises: routine.exercises, title: routine.title, duration: routine.duration, source: routine.source }), type: 'routine' })
+    addVote()
     setSaved(true)
   }
 
@@ -495,8 +499,8 @@ function SportLibrary({ onSave }) {
       )}
       {routine && <RoutineCard exercises={routine.exercises} title={routine.title} duration={routine.duration} source={routine.source} onSave={save} saved={saved} />}
       {saved && (
-        <div style={{ fontSize:12, color:'var(--green)', textAlign:'center', padding:'6px 0', fontStyle:'italic' }}>
-          Saved to your library. Your hips (or shoulders, or legs) will thank you.
+        <div style={{ fontSize:12, color:T.text3, textAlign:'center', padding:'6px 0', fontStyle:'italic' }}>
+          Added to your rotation. This is what consistent people do.
         </div>
       )}
     </div>
