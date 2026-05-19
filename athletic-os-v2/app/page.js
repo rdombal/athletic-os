@@ -806,15 +806,50 @@ function ProfileScreen({ userId, onSaved, onNav }) {
   )
 }
 
+function SavedItemDetail({ item }) {
+  // Try JSON routine format
+  if (item.type === 'routine') {
+    try {
+      const parsed = JSON.parse(item.text)
+      if (parsed.exercises?.length) {
+        return (
+          <div style={{ padding:'8px 16px 16px' }}>
+            {parsed.duration && <div style={{ fontSize:11, color:T.text3, marginBottom:10 }}>{parsed.duration}{parsed.source ? ` · ${parsed.source}` : ''}</div>}
+            {parsed.exercises.map((ex, i) => (
+              <div key={i} style={{ padding:'12px 0', borderBottom: i < parsed.exercises.length-1 ? `0.5px solid ${T.border}` : 'none' }}>
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:4 }}>
+                  <div style={{ fontSize:13, fontWeight:500, color:T.text, flex:1 }}>{ex.name}</div>
+                  <div style={{ fontSize:11, color:'var(--green)', marginLeft:8, flexShrink:0, fontWeight:500 }}>{ex.reps}</div>
+                </div>
+                {ex.cue && <div style={{ fontSize:12, color:T.text2, lineHeight:1.55 }}>{ex.cue}</div>}
+              </div>
+            ))}
+          </div>
+        )
+      }
+    } catch(e) {}
+    // Plain text fallback
+    return <div style={{ padding:'8px 16px 16px', fontSize:13, color:T.text2, lineHeight:1.7, whiteSpace:'pre-wrap' }}>{item.text}</div>
+  }
+  // Recipe
+  return <div style={{ padding:'0 16px 16px' }}><RecipeCard text={item.text} /></div>
+}
+
 function StackScreen({ items, onDelete }) {
   const [tab, setTab] = useState('routines')
-  const [expanded, setExpanded] = useState(null)
+  const [expandedId, setExpandedId] = useState(null)
   const filtered = items.filter(i=>tab==='routines'?i.type==='routine':i.type==='recipe')
 
   return (
     <div style={{ padding:'20px 20px' }}>
       <div style={{ display:'flex', gap:6, marginBottom:20 }}>
-        {['routines','recipes'].map(t=><button key={t} onClick={()=>{ setTab(t); setExpanded(null) }} style={{ flex:1, padding:'8px', borderRadius:rr('sm'), fontSize:13, border:'none', background:tab===t?T.text:T.surface2, color:tab===t?T.bg:T.text2, textTransform:'capitalize' }}>{t}</button>)}
+        {['routines','recipes'].map(t=>(
+          <button key={t} onClick={()=>{ setTab(t); setExpandedId(null) }}
+            style={{ flex:1, padding:'8px', borderRadius:rr('sm'), fontSize:13, border:'none',
+              background:tab===t?T.text:T.surface2, color:tab===t?T.bg:T.text2, textTransform:'capitalize' }}>
+            {t}
+          </button>
+        ))}
       </div>
 
       {filtered.length===0 ? (
@@ -824,30 +859,27 @@ function StackScreen({ items, onDelete }) {
             {tab==='routines' ? 'Save any mobility or sport routine from the Move tab and it will live here.' : 'Save any recipe from the Eat tab and it will live here — easy to find next time.'}
           </div>
         </div>
-      ) : filtered.map((item, i) => {
-        const isOpen = expanded === i
+      ) : filtered.map((item) => {
+        const isOpen = expandedId === item.id
         return (
-          <div key={i} style={{ background:T.surface, borderRadius:rr('md'), marginBottom:10, overflow:'hidden' }}>
-            <div onClick={()=>setExpanded(isOpen?null:i)}
-              style={{ padding:'14px 16px', display:'flex', justifyContent:'space-between', alignItems:'flex-start', cursor:'pointer' }}>
+          <div key={item.id} style={{ background:T.surface, borderRadius:rr('md'), marginBottom:10, overflow:'hidden' }}>
+            <div onClick={()=>setExpandedId(isOpen ? null : item.id)}
+              style={{ padding:'14px 16px', display:'flex', justifyContent:'space-between', alignItems:'center', cursor:'pointer' }}>
               <div style={{ flex:1, minWidth:0 }}>
                 <div style={{ fontSize:10, color:T.text3, letterSpacing:.5, textTransform:'uppercase', marginBottom:3 }}>
                   {tab==='routines'?'Routine':'Recipe'} · {new Date(item.created_at||Date.now()).toLocaleDateString()}
                 </div>
                 <div style={{ fontSize:14, fontWeight:500, color:T.text }}>{item.label}</div>
-                {!isOpen && <div style={{ fontSize:12, color:T.text3, marginTop:3 }}>Tap to view</div>}
               </div>
-              <div style={{ display:'flex', alignItems:'center', gap:8, flexShrink:0 }}>
-                <div style={{ fontSize:13, color:T.text3, transition:'transform .2s', transform:isOpen?'rotate(180deg)':'none' }}>∨</div>
-                <button onClick={e=>{ e.stopPropagation(); onDelete(item.id) }} style={{ border:'none', background:'none', color:T.text3, fontSize:14, padding:'0 0 0 4px', cursor:'pointer' }}>×</button>
+              <div style={{ display:'flex', alignItems:'center', gap:10, flexShrink:0 }}>
+                <div style={{ fontSize:12, color:T.text3, transform:isOpen?'rotate(180deg)':'none', transition:'transform .2s' }}>▼</div>
+                <button onClick={e=>{ e.stopPropagation(); onDelete(item.id) }}
+                  style={{ border:'none', background:'none', color:T.text3, fontSize:15, padding:0, cursor:'pointer' }}>×</button>
               </div>
             </div>
             {isOpen && (
               <div style={{ borderTop:`0.5px solid ${T.border}` }}>
-                {tab==='routines'
-                  ? <div style={{ padding:'4px 16px 16px' }}><SavedRoutineCard item={item} /></div>
-                  : <div style={{ padding:'0 16px 16px' }}><RecipeCard text={item.text} /></div>
-                }
+                <SavedItemDetail item={item} />
               </div>
             )}
           </div>
