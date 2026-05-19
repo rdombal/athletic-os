@@ -412,12 +412,13 @@ function QuickRelief({ onSave }) {
   return (
     <div style={{ marginBottom:20 }}>
       <div style={{ fontSize:11, color:T.text3, letterSpacing:.6, textTransform:'uppercase', marginBottom:10 }}>Quick relief — 5 min</div>
-      <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom:routine?12:0 }}>
+      <div style={{ display:'flex', flexWrap:'wrap', gap:8, marginBottom:routine?14:0 }}>
         {areas.map(a => (
           <button key={a} onClick={()=>{ setSelected(selected===a?null:a); setSaved(false) }} style={{
-            padding:'7px 14px', borderRadius:20, fontSize:12, border:`0.5px solid ${T.border}`,
-            background: selected===a ? T.text : T.surface2,
+            padding:'9px 16px', borderRadius:20, fontSize:13, border:`0.5px solid ${T.border}`,
+            background: selected===a ? T.text : T.surface,
             color: selected===a ? T.bg : T.text2,
+            fontWeight: selected===a ? 500 : 400,
           }}>{a}</button>
         ))}
       </div>
@@ -665,10 +666,15 @@ export function SavedRoutineCard({ item }) {
 export default function MoveScreen({ onSave }) {
   return (
     <div style={{ padding:'20px 20px' }}>
+      <div style={{ marginBottom:20 }}>
+        <div style={{ fontSize:13, color:T.text2, lineHeight:1.6 }}>
+          Pick an area and get a 5-minute targeted routine instantly. No setup needed.
+        </div>
+      </div>
       <QuickRelief onSave={onSave} />
-      <div style={{ height:'0.5px', background:T.border, margin:'4px 0 20px' }} />
+      <div style={{ height:'0.5px', background:T.border, margin:'20px 0' }} />
       <SportLibrary onSave={onSave} />
-      <div style={{ height:'0.5px', background:T.border, margin:'4px 0 20px' }} />
+      <div style={{ height:'0.5px', background:T.border, margin:'20px 0' }} />
       <CustomRoutine onSave={onSave} />
     </div>
   )
