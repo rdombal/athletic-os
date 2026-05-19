@@ -385,11 +385,35 @@ function HomeScreen({ onNav, savedItems, profile, userId }) {
   const greeting = hour<12?'Good morning':hour<17?'Good afternoon':'Good evening'
   const name = profile?.name?`, ${profile.name}`:''
   const tiles = [
-    { tab:'move',    label:'Feel better',  desc:'Sport-specific mobility',    color:SECTION_COLORS.feel    },
-    { tab:'eat',     label:'Eat better',   desc:'New ideas, same ingredients', color:SECTION_COLORS.eat    },
-    { tab:'lift',    label:'Lift',         desc:'Programs and sessions',       color:SECTION_COLORS.pillars },
-    { tab:'pillars', label:'The Pillars',  desc:'What actually matters',       color:SECTION_COLORS.pillars},
+    { tab:'move',    label:'Move',         desc:'Mobility & warmups',          iconColor:'var(--green)',   iconBg:'var(--green-bg)'   },
+    { tab:'eat',     label:'Eat',          desc:'Recipes, your ingredients',   iconColor:'var(--amber)',   iconBg:'var(--amber-bg)'   },
+    { tab:'lift',    label:'Lift',         desc:'Programs & sessions',         iconColor:'var(--blue)',    iconBg:'var(--blue-bg)'    },
+    { tab:'pillars', label:'Pillars',      desc:'What actually matters',       iconColor:'var(--purple)',  iconBg:'var(--purple-bg)'  },
   ]
+
+  const TILE_ICONS = {
+    move: (color) => (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="5" r="2"/><path d="M12 7v6M9 10l-2 4h10l-2-4"/><path d="M9 21l1-4h4l1 4"/>
+      </svg>
+    ),
+    eat: (color) => (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M18 8h1a4 4 0 010 8h-1"/><path d="M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8z"/>
+        <line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/>
+      </svg>
+    ),
+    lift: (color) => (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M6 4v16M18 4v16M2 9h4M18 9h4M2 15h4M18 15h4M6 12h12"/>
+      </svg>
+    ),
+    pillars: (color) => (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
+      </svg>
+    ),
+  }
   const day = new Date().getDate()
   return (
     <div style={{ padding:'32px 20px 20px' }}>
@@ -407,13 +431,12 @@ function HomeScreen({ onNav, savedItems, profile, userId }) {
       <Eyebrow>Quick access</Eyebrow>
       <div style={{ display:'grid', gridTemplateColumns:'repeat(2,minmax(0,1fr))', gap:10, marginBottom:28 }}>
         {tiles.map(t=>(
-          <button key={t.tab} onClick={()=>onNav(t.tab)} style={{ background:T.surface, borderRadius:rr('md'), overflow:'hidden', textAlign:'left', border:'none' }}>
-            <div style={{ height:3, background:t.color.dot||t.color.bg }} />
-            <div style={{ padding:14 }}>
-              <div style={{ width:24, height:24, borderRadius:6, background:t.color.bg, marginBottom:10 }} />
-              <div style={{ fontSize:13, fontWeight:500, color:T.text, marginBottom:2 }}>{t.label}</div>
-              <div style={{ fontSize:11, color:T.text2, lineHeight:1.4 }}>{t.desc}</div>
+          <button key={t.tab} onClick={()=>onNav(t.tab)} style={{ background:T.surface, borderRadius:rr('md'), padding:14, textAlign:'left', border:'none', cursor:'pointer' }}>
+            <div style={{ width:38, height:38, borderRadius:10, background:t.iconBg, display:'flex', alignItems:'center', justifyContent:'center', marginBottom:12 }}>
+              {TILE_ICONS[t.tab]?.(t.iconColor)}
             </div>
+            <div style={{ fontSize:13, fontWeight:500, color:T.text, marginBottom:3 }}>{t.label}</div>
+            <div style={{ fontSize:11, color:T.text2, lineHeight:1.4 }}>{t.desc}</div>
           </button>
         ))}
       </div>
