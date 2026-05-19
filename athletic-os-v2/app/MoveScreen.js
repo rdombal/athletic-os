@@ -425,6 +425,11 @@ function QuickRelief({ onSave }) {
       {routine && (
         <RoutineCard exercises={routine} title={`${selected} relief`} duration="~5 min" onSave={save} saved={saved} />
       )}
+      {saved && (
+        <div style={{ fontSize:12, color:'var(--green)', textAlign:'center', padding:'6px 0', fontStyle:'italic' }}>
+          Saved. Come back to this whenever you need it.
+        </div>
+      )}
     </div>
   )
 }
@@ -491,6 +496,11 @@ function SportLibrary({ onSave }) {
         </div>
       )}
       {routine && <RoutineCard exercises={routine.exercises} title={routine.title} duration={routine.duration} source={routine.source} onSave={save} saved={saved} />}
+      {saved && (
+        <div style={{ fontSize:12, color:'var(--green)', textAlign:'center', padding:'6px 0', fontStyle:'italic' }}>
+          Saved to your library. Your hips (or shoulders, or legs) will thank you.
+        </div>
+      )}
     </div>
   )
 }
