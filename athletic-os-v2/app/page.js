@@ -38,44 +38,52 @@ const PILLAR_COLORS = {
 
 const PILLARS = [
   { num:1, color:'purple', title:'Sleep',
-    body:`Your body doesn't get stronger in the gym — it gets stronger while you sleep. Growth hormone releases, muscles repair, motor patterns consolidate. No supplement, no biohack comes close to 7-9 hours of quality sleep.`,
+    identity:'People who prioritize recovery perform better and feel better — consistently.',
+    body:`Your body gets stronger while you sleep, not while you train. Growth hormone releases, muscles repair, movement patterns consolidate. Every hour of quality sleep is an investment in who you are becoming.`,
     good:'Consistent bedtime. Cool dark room. No screens 30 min before bed.',
     skip:'Sleep score obsession. Expensive supplements. Polyphasic sleep.',
     prompt:'Give me 3 practical things I can do tonight to improve my sleep quality. Keep it simple and realistic.' },
   { num:2, color:'green', title:'Protein',
-    body:`If you track one thing, track protein. 0.7-1g per pound of bodyweight, spread across 3-4 meals. It preserves muscle, keeps you full, and drives recovery. Everything else in nutrition is secondary to hitting this consistently.`,
-    good:'Hitting your daily target. Protein at every meal. Whole foods first.',
-    skip:'Protein timing windows. Expensive powders over real food. Tracking every macro daily.',
+    identity:'People who feel strong and energetic fuel themselves consistently — not perfectly.',
+    body:`If you build one nutrition habit, make it protein. 0.7-1g per pound of bodyweight, spread across meals. It preserves muscle, keeps you full, and drives recovery. Everything else is secondary to this one consistent habit.`,
+    good:'Protein at every meal. Whole foods first. Hitting your range most days.',
+    skip:'Timing windows. Expensive powders. Tracking every macro every day.',
     prompt:'How do I hit 150g of protein a day using simple everyday foods without obsessing over it?' },
   { num:3, color:'amber', title:'Movement',
-    body:`Consistency beats intensity every single time. Three 30-minute sessions a week for a year beats one month of daily two-hour workouts followed by burnout. The best workout is the one you actually do — repeatedly, over years.`,
-    good:'Showing up consistently. Walking more. Finding movement you enjoy.',
-    skip:'Optimal training splits. Perfect programming. Guilt about missing a day.',
+    identity:'Healthy people move often — not perfectly. Consistency is the whole game.',
+    body:`Three sessions a week for a year will change your life. One month of daily intense workouts will not. The people who feel athletic long-term are the ones who made movement a system, not an event.`,
+    good:'Showing up consistently. Walking more. Movement you actually enjoy.',
+    skip:'Perfect programming. Optimal splits. Guilt about missing a day.',
     prompt:'What does a realistic, sustainable weekly movement routine look like for a busy person?' },
-  { num:4, color:'blue', title:'Zone 2 cardio',
-    body:`Zone 2 is low-intensity cardio where you can hold a full conversation — brisk walk, easy bike, light jog. 3-4 hours per week builds your aerobic engine, improves fat metabolism, and accelerates recovery from everything else.`,
-    good:'Walking more. Easy bike rides. Any activity you can sustain 30+ min.',
-    skip:'Expensive cardio equipment. Heart rate zone obsession. Going hard every session.',
+  { num:4, color:'blue', title:'Zone 2',
+    identity:'Active people build their aerobic base quietly — walks, easy rides, light jogs.',
+    body:`Zone 2 is low enough intensity that you can hold a full conversation. 3-4 hours per week builds the engine that powers everything else — fat metabolism, recovery, endurance. Most of it can just be walking.`,
+    good:'Walking more. Easy bike rides. Any activity you sustain for 30+ min.',
+    skip:'Heart rate zone obsession. Expensive equipment. Going hard every session.',
     prompt:'What is Zone 2 cardio and how do I know if I am in it without a fancy monitor?' },
   { num:5, color:'coral', title:'Progressive overload',
-    body:`Your body adapts to stress. If you do the same thing every week, you stop improving. Progressive overload means gradually adding more — weight, reps, or difficulty — over time. It's the only proven mechanism for getting stronger.`,
-    good:'Logging your lifts. Adding small increments weekly. Tracking trends over months.',
-    skip:'Switching programs every 3 weeks. Chasing soreness. Complex periodization before mastering basics.',
+    identity:'People who get stronger over time do one simple thing — they add a little more, consistently.',
+    body:`Your body adapts to whatever you ask of it. Add a little more weight, a few more reps, or slightly more difficulty over time — and you will get stronger. This is the only mechanism that matters. Small, consistent additions compound.`,
+    good:'Logging your lifts. Small weekly increments. Tracking over months not days.',
+    skip:'Switching programs every few weeks. Chasing soreness. Complex periodization.',
     prompt:'Explain progressive overload simply — how do I apply it to my workouts week to week?' },
   { num:6, color:'green', title:'Recovery',
-    body:`Training is just the stimulus. Recovery is where adaptation happens. Most people plateau not because they train too little — but because they never fully recover. Rest days are not lazy days. They are when you get better.`,
-    good:'Rest days. Eating enough. Reducing stress. Light movement between sessions.',
+    identity:'People who perform well long-term treat rest as part of the work — not a break from it.',
+    body:`Training is the signal. Recovery is where adaptation happens. Rest days are not lazy days — they are the days you actually improve. The people who plateau are usually under-recovered, not undertrained.`,
+    good:'Rest days. Eating enough. Light movement. Reducing stress.',
     skip:'Ice baths unless you enjoy them. Compression gadgets. Foam rolling for more than 5 min.',
     prompt:'How do I know when I actually need a rest day vs when I am just being lazy?' },
   { num:7, color:'pink', title:'Stress and balance',
-    body:`Chronic stress raises cortisol — it breaks down muscle, disrupts sleep, tanks motivation. Your social life, hobbies, and relationships are not obstacles to being healthy. They are part of it. Health includes enjoying your life.`,
+    identity:'Healthy people protect their energy — they know that life balance is part of health.',
+    body:`Chronic stress breaks down muscle, disrupts sleep, and tanks motivation. Your relationships, hobbies, and social life are not obstacles to being healthy — they are part of it. An app that ignores this is not a health app.`,
     good:'Time away from screens. Doing things you love. Not skipping life for the gym.',
-    skip:'Optimizing every variable. Guilt from missing workouts. All-or-nothing thinking.',
+    skip:'Optimizing every variable. All-or-nothing thinking. Guilt about imperfect weeks.',
     prompt:'How do I stay consistent with fitness without letting it take over my life or create anxiety?' },
   { num:8, color:'blue', title:'Hydration',
-    body:`Even mild dehydration — just 1-2% — impairs strength, cognition, and endurance. Most people are chronically under-hydrated without realizing it. Half your bodyweight in ounces per day is your baseline target.`,
-    good:'Water with every meal. Big glass first thing in the morning. Electrolytes on hard training days.',
-    skip:'Expensive hydration products. Tracking exact oz obsessively.',
+    identity:'People who feel and perform well stay consistently hydrated — it is simpler than most think.',
+    body:`Even mild dehydration impairs strength, focus, and endurance. Most people are chronically under-hydrated without realizing it. The fix is simple: water with every meal, a big glass first thing in the morning.`,
+    good:'Water with every meal. Big glass in the morning. Electrolytes on hard training days.',
+    skip:'Expensive hydration products. Tracking exact ounces obsessively.',
     prompt:'What are the simplest habits to stay consistently hydrated without thinking about it?' },
 ]
 
@@ -95,6 +103,14 @@ const EFFORT_LEVELS = [
   { key:'chef',   label:'Chef up',     desc:'Worth the extra time'  },
 ]
 const CUISINES = ['Mexican','Asian','Mediterranean','Italian','American','Middle Eastern','Indian']
+const IDENTITY_STATEMENTS = [
+  'Someone who moves consistently',
+  'Someone who feels strong and healthy',
+  'Someone who takes care of their body',
+  'Someone with more energy',
+  'Someone who can keep doing the activities they love',
+  'Someone who feels athletic',
+]
 const GOALS = ['Build muscle','Lose body fat','Maintain','Athletic performance','Feel good']
 const ACTIVITY_LEVELS = ['Light (1-2x/week)','Moderate (3-4x/week)','Very active (5+/week)']
 const ADJUST_BUTTONS = [
@@ -406,6 +422,8 @@ function RecipeCard({ text, onAdjust, adjusting }) {
 
 
 
+
+
 // ─── Low energy / real life mode ─────────────────────────────────────────────
 function LowEnergyCard({ onNav }) {
   const [open, setOpen] = useState(false)
@@ -562,7 +580,7 @@ function HomeScreen({ onNav, savedItems, profile, userId }) {
         ))}
       </div>
       {savedItems.length>0&&<>
-        <Eyebrow>Your library</Eyebrow>
+        <Eyebrow>your rotation</Eyebrow>
         {savedItems.slice(0,3).map((item,i)=>(
           <Card key={i} style={{ marginBottom:8 }}>
             <div style={{ fontSize:10, color:T.text3, letterSpacing:.5, textTransform:'uppercase', marginBottom:4 }}>{item.type}</div>
@@ -676,6 +694,7 @@ Variations:
   const save = () => {
     if (userId) updateTasteMemory(userId,{savedIngredients:pantry})
     onSave({ label:`${meal} — ${cuisine||vibe||'recipe'}`, text:resp, type:'recipe' })
+    addVote()
     setSaved(true)
   }
 
@@ -703,8 +722,9 @@ Variations:
       {resp&&!loading&&<RecipeCard text={resp} onAdjust={adjust} adjusting={adjusting} />}
       {resp&&!loading&&<div style={{ marginTop:10 }}>
         <button onClick={save} style={{ width:'100%', padding:'11px', borderRadius:rr('md'), border:'none', background:saved?T.surface2:'var(--green-dim)', color:saved?'var(--green)':'#fff', fontSize:14, fontWeight:500, cursor:'pointer', marginBottom:8 }}>
-          {saved ? '✓ Saved to My Library' : '＋ Save this meal'}
+          {saved ? '✓ Added to your rotation' : '＋ Save this meal'}
         </button>
+        {saved && <div style={{ fontSize:12, color:T.text3, textAlign:'center', fontStyle:'italic', marginBottom:8 }}>Simple meals repeated consistently make a huge difference.</div>}
         <button onClick={()=>go(true)} style={{ width:'100%', padding:'9px', borderRadius:rr('md'), border:`0.5px solid ${T.border}`, background:'transparent', color:T.text2, fontSize:13, cursor:'pointer' }}>Not quite — try something different</button>
       </div>}
     </div>
@@ -714,7 +734,6 @@ Variations:
 function PillarCard({ p, onDeepDive }) {
   const [expanded, setExpanded] = useState(false)
   const col = PILLAR_COLORS[p.color]
-  const firstSentence = p.body.split('.')[0] + '.'
   return (
     <Card>
       <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:10 }}>
@@ -724,8 +743,9 @@ function PillarCard({ p, onDeepDive }) {
           <div style={{ fontSize:16, fontWeight:500, color:T.text, marginTop:1 }}>{p.title}</div>
         </div>
       </div>
+      <div style={{ fontSize:13, color:col.accent, lineHeight:1.6, marginBottom:8, fontStyle:'italic' }}>{p.identity}</div>
       <div style={{ fontSize:13, color:T.text2, lineHeight:1.7, marginBottom:10 }}>
-        {expanded ? p.body : firstSentence}
+        {expanded ? p.body : ''}
       </div>
       {expanded && <>
         <Divider />
@@ -779,7 +799,19 @@ function ProfileScreen({ userId, onSaved, onNav }) {
     <div style={{ padding:'20px 20px' }}>
       <PrefLabel>Your name</PrefLabel>
       <input value={profile.name} onChange={e=>update('name',e.target.value)} placeholder="First name" style={{ width:'100%', padding:'9px 12px', borderRadius:rr('sm'), fontSize:13, border:`0.5px solid ${T.border}`, background:T.surface, color:T.text, outline:'none', marginBottom:10 }} />
-      <PrefLabel>Primary goal</PrefLabel>
+      <PrefLabel>Who are you becoming?</PrefLabel>
+      <div style={{ display:'flex', flexDirection:'column', gap:6, marginBottom:14 }}>
+        {IDENTITY_STATEMENTS.map(s => (
+          <button key={s} onClick={()=>update('identity', profile.identity===s?'':s)} style={{
+            padding:'10px 14px', borderRadius:rr('sm'), fontSize:13, textAlign:'left',
+            border:`0.5px solid ${profile.identity===s?'var(--green-dim)':T.border}`,
+            background: profile.identity===s ? 'var(--green-bg)' : T.surface,
+            color: profile.identity===s ? 'var(--green)' : T.text2,
+            fontWeight: profile.identity===s ? 500 : 400,
+          }}>{s}</button>
+        ))}
+      </div>
+      <PrefLabel>Training focus (optional)</PrefLabel>
       <ChipRow options={GOALS} selected={profile.goal} onSelect={v=>update('goal',v)} />
       <PrefLabel>Activity level</PrefLabel>
       <ChipRow options={ACTIVITY_LEVELS} selected={profile.activity} onSelect={v=>update('activity',v)} />
@@ -854,7 +886,7 @@ function StackScreen({ items, onDelete }) {
 
       {filtered.length===0 ? (
         <div style={{ textAlign:'center', padding:'3rem 1rem' }}>
-          <div style={{ fontSize:15, fontWeight:500, color:T.text, marginBottom:8 }}>Your library is empty for now.</div>
+          <div style={{ fontSize:15, fontWeight:500, color:T.text, marginBottom:8 }}>your rotation is empty for now.</div>
           <div style={{ fontSize:13, color:T.text2, lineHeight:1.7 }}>
             {tab==='routines' ? 'Save any mobility or sport routine from the Move tab and it will live here.' : 'Save any recipe from the Eat tab and it will live here — easy to find next time.'}
           </div>
@@ -892,8 +924,8 @@ function StackScreen({ items, onDelete }) {
 function MoreScreen({ onNav }) {
   const items = [
     { tab:'pillars', label:'The Pillars',  sub:'What actually moves the needle'  },
-    { tab:'stack',   label:'My Library',     sub:'Your saved routines and recipes'  },
-    { tab:'profile', label:'Profile',      sub:'Your goals and preferences'       },
+    { tab:'stack',   label:'Your Rotation',     sub:'Your saved routines and recipes'  },
+    { tab:'profile', label:'Profile',      sub:'Your profile'       },
   ]
   return (
     <div style={{ padding:'20px 20px' }}>
@@ -959,8 +991,8 @@ const TOPBAR = {
   lift:    { title:'Lift',        sub:'Your programs and sessions'                    },
   more:    { title:'More',        sub:''                                              },
   pillars: { title:'The Pillars', sub:'The only things that actually move the needle' },
-  stack:   { title:'My Library',    sub:'Your saved routines and recipes'               },
-  profile: { title:'Profile',     sub:'Your goals and preferences'                    },
+  stack:   { title:'Your Rotation',    sub:'Your saved routines and recipes'               },
+  profile: { title:'Profile',     sub:'Your profile'                    },
 }
 
 export default function App() {
@@ -1001,7 +1033,7 @@ export default function App() {
     const saved = await addSavedItem(session.user.id, item)
     if (saved) {
       setSavedItems(prev=>[saved, ...prev])
-      const msg = item.type === 'recipe' ? '✓ Meal saved to your library' : '✓ Routine saved to your library'
+      const msg = item.type === 'recipe' ? '✓ Meal saved to your rotation' : '✓ Routine saved to your rotation'
       showToast(msg)
     }
   }
