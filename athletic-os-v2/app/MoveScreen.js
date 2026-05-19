@@ -654,7 +654,9 @@ Format EXACTLY like this:
 
 // ─── Saved routine renderer ───────────────────────────────────────────────────
 export function SavedRoutineCard({ item }) {
-  const lines = item.text.split('\n').map(l => l.trim()).filter(Boolean)
+  // Handle both real newlines and escaped \n from JSON storage
+  const rawText = item.text.replace(/\\n/g, '\n')
+  const lines = rawText.split('\n').map(l => l.trim()).filter(Boolean)
   const exercises = []
   let current = null
   for (const line of lines) {
