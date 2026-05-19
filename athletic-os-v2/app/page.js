@@ -95,15 +95,15 @@ const EFFORT_LEVELS = [
   { key:'chef',   label:'Chef up',     desc:'Worth the extra time'  },
 ]
 const CUISINES = ['Mexican','Asian','Mediterranean','Italian','American','Middle Eastern','Indian']
-const GOALS = ['Build muscle','Lose fat','Maintain','Athletic performance','Feel good']
+const GOALS = ['Build muscle','Lose body fat','Maintain','Athletic performance','Feel good']
 const ACTIVITY_LEVELS = ['Light (1-2x/week)','Moderate (3-4x/week)','Very active (5+/week)']
 const ADJUST_BUTTONS = [
-  { key:'calories_up',   label:'Higher calorie'    },
-  { key:'calories_down', label:'Make lighter'      },
+  { key:'calories_up',   label:'More filling'      },
+  { key:'calories_down', label:'Lighter feel'      },
   { key:'protein_up',    label:'More protein'      },
-  { key:'carbs_up',      label:'More carbs'        },
+  { key:'carbs_up',      label:'More energy'       },
   { key:'quicker',       label:'Make it quicker'   },
-  { key:'simpler',       label:'Fewer ingredients' },
+  { key:'simpler',       label:'Keep it simple'    },
 ]
 const TIP_CATEGORIES  = ['sleep','nutrition','movement','recovery','mindset','performance','hydration']
 const FACT_CATEGORIES = ['exercise science','nutrition science','sleep science','the human body','sports performance','longevity','mental health and exercise']
@@ -240,6 +240,24 @@ function Card({ children, style }) {
 }
 function Divider() { return <div style={{ height:'0.5px', background:T.border, margin:'12px 0' }} /> }
 
+
+// ─── Toast notification ───────────────────────────────────────────────────────
+function Toast({ message, visible }) {
+  if (!visible) return null
+  return (
+    <div style={{
+      position:'fixed', bottom:90, left:'50%', transform:'translateX(-50%)',
+      background:'var(--green-dim)', color:'#fff', padding:'10px 20px',
+      borderRadius:20, fontSize:13, fontWeight:500, zIndex:500,
+      animation:'slideUp .2s ease-out',
+      boxShadow:'0 4px 20px rgba(0,0,0,0.3)',
+    }}>
+      {message}
+      <style>{`@keyframes slideUp{from{opacity:0;transform:translateX(-50%) translateY(10px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}`}</style>
+    </div>
+  )
+}
+
 // ─── Daily cards ──────────────────────────────────────────────────────────────
 const CAT_COLORS = {
   sleep:'var(--purple-bg)', nutrition:'var(--green-bg)', movement:'var(--amber-bg)',
@@ -351,6 +369,7 @@ function PantryEditor({ pantry, onAdd, onRemove }) {
 
 // ─── Recipe card ──────────────────────────────────────────────────────────────
 function RecipeCard({ text, onAdjust, adjusting }) {
+  const [showMacros, setShowMacros] = useState(false)
   if (!text) return null
   const lines = text.split('\n').map(l=>l.trim().replace(/^#+\s*/,'')).filter(Boolean)
   const name = lines[0]||''
@@ -372,9 +391,97 @@ function RecipeCard({ text, onAdjust, adjusting }) {
       </div>
       {ingredients.length>0&&<div style={{ padding:'12px 16px', borderBottom:`0.5px solid ${T.border}` }}><div style={{ fontSize:11, fontWeight:500, color:T.text3, letterSpacing:.6, textTransform:'uppercase', marginBottom:8 }}>Ingredients</div>{ingredients.map((ing,i)=><div key={i} style={{ fontSize:13, color:T.text2, paddingBottom:5, lineHeight:1.4 }}>- {ing.replace(/^[-*]\s*/,'')}</div>)}</div>}
       {steps.length>0&&<div style={{ padding:'12px 16px', borderBottom:`0.5px solid ${T.border}` }}><div style={{ fontSize:11, fontWeight:500, color:T.text3, letterSpacing:.6, textTransform:'uppercase', marginBottom:8 }}>Steps</div>{steps.map((step,i)=><div key={i} style={{ display:'flex', gap:10, marginBottom:8, alignItems:'flex-start' }}><div style={{ width:20, height:20, borderRadius:'50%', background:T.surface2, display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:500, color:T.text2, flexShrink:0 }}>{i+1}</div><div style={{ fontSize:13, color:T.text, lineHeight:1.5 }}>{step.replace(/^\d+[\.\)]\s*/,'').replace(/^[-*]\s*/,'')}</div></div>)}</div>}
-      {Object.keys(macros).length>0&&<div style={{ padding:'12px 16px', borderBottom:varLines.length>0||onAdjust?`0.5px solid ${T.border}`:'none' }}><div style={{ fontSize:11, fontWeight:500, color:T.text3, letterSpacing:.6, textTransform:'uppercase', marginBottom:10 }}>Macros per serving</div><div style={{ display:'flex', gap:8 }}>{macros.cal&&<div style={{ flex:1, background:T.surface2, borderRadius:rr('sm'), padding:'8px 6px', textAlign:'center' }}><div style={{ fontSize:15, fontWeight:500, color:T.text }}>{macros.cal}</div><div style={{ fontSize:10, color:T.text3, marginTop:2 }}>cal</div></div>}{macros.protein&&<div style={{ flex:1, background:T.surface2, borderRadius:rr('sm'), padding:'8px 6px', textAlign:'center' }}><div style={{ fontSize:15, fontWeight:500, color:T.text }}>{macros.protein}g</div><div style={{ fontSize:10, color:T.text3, marginTop:2 }}>protein</div></div>}{macros.carbs&&<div style={{ flex:1, background:T.surface2, borderRadius:rr('sm'), padding:'8px 6px', textAlign:'center' }}><div style={{ fontSize:15, fontWeight:500, color:T.text }}>{macros.carbs}g</div><div style={{ fontSize:10, color:T.text3, marginTop:2 }}>carbs</div></div>}{macros.fat&&<div style={{ flex:1, background:T.surface2, borderRadius:rr('sm'), padding:'8px 6px', textAlign:'center' }}><div style={{ fontSize:15, fontWeight:500, color:T.text }}>{macros.fat}g</div><div style={{ fontSize:10, color:T.text3, marginTop:2 }}>fat</div></div>}</div></div>}
+      {Object.keys(macros).length>0&&<div style={{ padding:'10px 16px', borderBottom:varLines.length>0||onAdjust?`0.5px solid ${T.border}`:'none' }}>
+        <button onClick={()=>setShowMacros(v=>!v)} style={{ background:'none', border:'none', color:T.text3, fontSize:12, padding:0, cursor:'pointer', display:'flex', alignItems:'center', gap:6 }}>
+          <span>Nutrition info</span>
+          <span style={{ fontSize:10 }}>{showMacros?'▲':'▼'}</span>
+        </button>
+        {showMacros && <div style={{ display:'flex', gap:8, marginTop:10 }}>{macros.cal&&<div style={{ flex:1, background:T.surface2, borderRadius:rr('sm'), padding:'8px 6px', textAlign:'center' }}><div style={{ fontSize:15, fontWeight:500, color:T.text }}>{macros.cal}</div><div style={{ fontSize:10, color:T.text3, marginTop:2 }}>cal</div></div>}{macros.protein&&<div style={{ flex:1, background:T.surface2, borderRadius:rr('sm'), padding:'8px 6px', textAlign:'center' }}><div style={{ fontSize:15, fontWeight:500, color:T.text }}>{macros.protein}g</div><div style={{ fontSize:10, color:T.text3, marginTop:2 }}>protein</div></div>}{macros.carbs&&<div style={{ flex:1, background:T.surface2, borderRadius:rr('sm'), padding:'8px 6px', textAlign:'center' }}><div style={{ fontSize:15, fontWeight:500, color:T.text }}>{macros.carbs}g</div><div style={{ fontSize:10, color:T.text3, marginTop:2 }}>carbs</div></div>}{macros.fat&&<div style={{ flex:1, background:T.surface2, borderRadius:rr('sm'), padding:'8px 6px', textAlign:'center' }}><div style={{ fontSize:15, fontWeight:500, color:T.text }}>{macros.fat}g</div><div style={{ fontSize:10, color:T.text3, marginTop:2 }}>fat</div></div>}</div>}
+      </div>}
       {varLines.length>0&&<div style={{ padding:'12px 16px', background:T.surface2, borderBottom:onAdjust?`0.5px solid ${T.border}`:'none' }}><div style={{ fontSize:11, fontWeight:500, color:T.text3, letterSpacing:.6, textTransform:'uppercase', marginBottom:8 }}>Quick variations</div>{varLines.map((v,i)=><div key={i} style={{ fontSize:12, color:T.text2, paddingBottom:5, lineHeight:1.5 }}>{v.replace(/^[-*]\s*/,'')}</div>)}</div>}
       {onAdjust&&<div style={{ padding:'12px 16px' }}><div style={{ fontSize:11, fontWeight:500, color:T.text3, letterSpacing:.6, textTransform:'uppercase', marginBottom:8 }}>Adjust this meal</div>{adjusting?<div style={{ padding:'8px 0' }}><LoadingDots /></div>:<div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>{ADJUST_BUTTONS.map(b=><button key={b.key} onClick={()=>onAdjust(b.key,name,text)} style={{ padding:'6px 12px', borderRadius:20, fontSize:12, border:`0.5px solid ${T.border}`, background:T.surface2, color:T.text2, cursor:'pointer' }}>{b.label}</button>)}</div>}</div>}
+    </div>
+  )
+}
+
+
+
+// ─── Low energy / real life mode ─────────────────────────────────────────────
+function LowEnergyCard({ onNav }) {
+  const [open, setOpen] = useState(false)
+  const [dismissed, setDismissed] = useState(false)
+  if (dismissed) return null
+  return (
+    <div style={{ marginBottom:14 }}>
+      {!open ? (
+        <button onClick={()=>setOpen(true)} style={{ background:'none', border:'none', color:T.text3, fontSize:12, padding:0, cursor:'pointer', display:'flex', alignItems:'center', gap:6 }}>
+          <span>Low energy today?</span>
+          <span style={{ fontSize:10 }}>→</span>
+        </button>
+      ) : (
+        <div style={{ background:T.surface, borderRadius:rr('md'), padding:'14px 16px', position:'relative' }}>
+          <button onClick={()=>setDismissed(true)} style={{ position:'absolute', top:10, right:12, border:'none', background:'none', color:T.text3, fontSize:14, cursor:'pointer', padding:0 }}>×</button>
+          <div style={{ fontSize:14, fontWeight:500, color:T.text, marginBottom:4 }}>That is completely fine.</div>
+          <div style={{ fontSize:13, color:T.text2, lineHeight:1.6, marginBottom:14 }}>
+            Low energy days are part of it. Here are things that still count — and still help.
+          </div>
+          {[
+            { label:'5-min mobility flow',   sub:'Your body will feel better after', tab:'move'    },
+            { label:'Easy meal idea',         sub:'Simple, practical, no stress',    tab:'eat'     },
+            { label:'Read a pillar',          sub:'Sometimes just thinking counts',  tab:'pillars' },
+          ].map((item,i) => (
+            <div key={i} onClick={()=>{ onNav(item.tab); setDismissed(true) }}
+              style={{ display:'flex', justifyContent:'space-between', alignItems:'center',
+                padding:'10px 0', borderBottom: i<2 ? `0.5px solid ${T.border}` : 'none', cursor:'pointer' }}>
+              <div>
+                <div style={{ fontSize:13, fontWeight:500, color:T.text }}>{item.label}</div>
+                <div style={{ fontSize:11, color:T.text3, marginTop:2 }}>{item.sub}</div>
+              </div>
+              <div style={{ fontSize:14, color:T.text3 }}>›</div>
+            </div>
+          ))}
+          <div style={{ fontSize:11, color:T.text3, marginTop:12, fontStyle:'italic' }}>
+            10 minutes still counts. A walk still counts. Showing up at all counts.
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Something small card ─────────────────────────────────────────────────────
+function SomethingSmallCard({ onNav }) {
+  const [dismissed, setDismissed] = useState(false)
+  const lastVisit = typeof window !== 'undefined' ? localStorage.getItem('last_home_visit') : null
+  const daysSince = lastVisit ? Math.floor((Date.now() - parseInt(lastVisit)) / (1000*60*60*24)) : 0
+
+  // Update last visit
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('last_home_visit', Date.now().toString())
+  }
+
+  // Only show if it has been 4+ days since last visit and not dismissed
+  if (daysSince < 4 || dismissed) return null
+
+  const suggestions = [
+    { text:'5 minutes of mobility', action:'move',  btn:'Quick relief' },
+    { text:'find something to eat',  action:'eat',   btn:'Get a recipe'  },
+    { text:'a quick stretch',        action:'move',  btn:'Move a little' },
+  ]
+  const suggestion = suggestions[daysSince % suggestions.length]
+
+  return (
+    <div style={{ background:T.surface, borderRadius:rr('md'), padding:'14px 16px', marginBottom:14, position:'relative' }}>
+      <button onClick={()=>setDismissed(true)} style={{ position:'absolute', top:10, right:12, border:'none', background:'none', color:T.text3, fontSize:14, cursor:'pointer', padding:0 }}>×</button>
+      <div style={{ fontSize:14, fontWeight:500, color:T.text, marginBottom:4, paddingRight:20 }}>
+        Five minutes is enough.
+      </div>
+      <div style={{ fontSize:13, color:T.text2, lineHeight:1.6, marginBottom:12 }}>
+        No need to catch up or do everything at once. How about {suggestion.text}?
+      </div>
+      <button onClick={()=>onNav(suggestion.action)} style={{ padding:'8px 18px', borderRadius:20, border:'none', background:'var(--green-dim)', color:'#fff', fontSize:13, fontWeight:500, cursor:'pointer' }}>
+        {suggestion.btn}
+      </button>
     </div>
   )
 }
@@ -440,6 +547,8 @@ function HomeScreen({ onNav, savedItems, profile, userId }) {
       <DailyCard userId={userId} cacheKey="daily_fact" category={FACT_CATEGORIES[day%FACT_CATEGORIES.length]} cardLabel="Daily fact"
         promptFn={cat=>'You are a science communicator. Give ONE surprising fact about '+cat+'. 2-3 sentences. Make it feel worth sharing. No obvious facts. No fluff. Give a 2-4 word title. Format: TITLE: [title] FACT: [fact]'}
         fallback="Your muscles grow during rest, not during the workout itself. The training session is just the signal — sleep and nutrition are where the actual adaptation happens." />
+      <SomethingSmallCard onNav={onNav} />
+      <LowEnergyCard onNav={onNav} />
       <Eyebrow>Quick access</Eyebrow>
       <div style={{ display:'grid', gridTemplateColumns:'repeat(2,minmax(0,1fr))', gap:10, marginBottom:28 }}>
         {tiles.map(t=>(
@@ -453,7 +562,7 @@ function HomeScreen({ onNav, savedItems, profile, userId }) {
         ))}
       </div>
       {savedItems.length>0&&<>
-        <Eyebrow>Recently saved</Eyebrow>
+        <Eyebrow>Your library</Eyebrow>
         {savedItems.slice(0,3).map((item,i)=>(
           <Card key={i} style={{ marginBottom:8 }}>
             <div style={{ fontSize:10, color:T.text3, letterSpacing:.5, textTransform:'uppercase', marginBottom:4 }}>{item.type}</div>
@@ -596,30 +705,47 @@ Variations:
         <button onClick={save} style={{ width:'100%', padding:'11px', borderRadius:rr('md'), border:'none', background:saved?T.surface2:'var(--green-dim)', color:saved?'var(--green)':'#fff', fontSize:14, fontWeight:500, cursor:'pointer', marginBottom:8 }}>
           {saved ? '✓ Saved to My Library' : '＋ Save this meal'}
         </button>
-        <button onClick={()=>go(true)} style={{ width:'100%', padding:'9px', borderRadius:rr('md'), border:`0.5px solid ${T.border}`, background:'transparent', color:T.text2, fontSize:13, cursor:'pointer' }}>Try another</button>
+        <button onClick={()=>go(true)} style={{ width:'100%', padding:'9px', borderRadius:rr('md'), border:`0.5px solid ${T.border}`, background:'transparent', color:T.text2, fontSize:13, cursor:'pointer' }}>Not quite — try something different</button>
       </div>}
     </div>
+  )
+}
+
+function PillarCard({ p, onDeepDive }) {
+  const [expanded, setExpanded] = useState(false)
+  const col = PILLAR_COLORS[p.color]
+  const firstSentence = p.body.split('.')[0] + '.'
+  return (
+    <Card>
+      <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:10 }}>
+        <div style={{ width:32, height:32, borderRadius:8, background:col.bg, flexShrink:0 }} />
+        <div style={{ flex:1 }}>
+          <div style={{ fontSize:10, fontWeight:500, color:col.accent, letterSpacing:.5, textTransform:'uppercase' }}>Pillar {p.num}</div>
+          <div style={{ fontSize:16, fontWeight:500, color:T.text, marginTop:1 }}>{p.title}</div>
+        </div>
+      </div>
+      <div style={{ fontSize:13, color:T.text2, lineHeight:1.7, marginBottom:10 }}>
+        {expanded ? p.body : firstSentence}
+      </div>
+      {expanded && <>
+        <Divider />
+        <div style={{ display:'flex', gap:14, marginBottom:12 }}>
+          <div style={{ flex:1 }}><div style={{ fontSize:10, fontWeight:500, color:'var(--green)', letterSpacing:.5, textTransform:'uppercase', marginBottom:4 }}>Worth your time</div><div style={{ fontSize:12, color:T.text2, lineHeight:1.55 }}>{p.good}</div></div>
+          <div style={{ flex:1 }}><div style={{ fontSize:10, fontWeight:500, color:'var(--coral)', letterSpacing:.5, textTransform:'uppercase', marginBottom:4 }}>Skip this</div><div style={{ fontSize:12, color:T.text2, lineHeight:1.55 }}>{p.skip}</div></div>
+        </div>
+        <button onClick={()=>onDeepDive(p.prompt)} style={{ width:'100%', padding:'9px 12px', borderRadius:rr('sm'), border:`0.5px solid ${T.border}`, background:'transparent', color:T.text2, fontSize:13, textAlign:'left', marginBottom:6 }}>Go deeper →</button>
+      </>}
+      <button onClick={()=>setExpanded(v=>!v)} style={{ background:'none', border:'none', color:T.text3, fontSize:12, padding:'4px 0 0', cursor:'pointer' }}>
+        {expanded ? 'Show less ▲' : 'Read more ▼'}
+      </button>
+    </Card>
   )
 }
 
 function PillarsScreen({ onDeepDive }) {
   return (
     <div style={{ padding:'20px 20px' }}>
-      {PILLARS.map(p=>{ const c=PILLAR_COLORS[p.color]; return (
-        <Card key={p.num}>
-          <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:12 }}>
-            <div style={{ width:34, height:34, borderRadius:9, background:c.bg, flexShrink:0 }} />
-            <div><div style={{ fontSize:10, fontWeight:500, color:c.accent, letterSpacing:.5, textTransform:'uppercase' }}>Pillar {p.num}</div><div style={{ fontSize:16, fontWeight:500, color:T.text, marginTop:1 }}>{p.title}</div></div>
-          </div>
-          <div style={{ fontSize:13, color:T.text2, lineHeight:1.7, marginBottom:12 }}>{p.body}</div>
-          <Divider />
-          <div style={{ display:'flex', gap:14, marginBottom:12 }}>
-            <div style={{ flex:1 }}><div style={{ fontSize:10, fontWeight:500, color:'var(--green)', letterSpacing:.5, textTransform:'uppercase', marginBottom:4 }}>Worth your time</div><div style={{ fontSize:12, color:T.text2, lineHeight:1.55 }}>{p.good}</div></div>
-            <div style={{ flex:1 }}><div style={{ fontSize:10, fontWeight:500, color:'var(--coral)', letterSpacing:.5, textTransform:'uppercase', marginBottom:4 }}>Ignore this</div><div style={{ fontSize:12, color:T.text2, lineHeight:1.55 }}>{p.skip}</div></div>
-          </div>
-          <button onClick={()=>onDeepDive(p.prompt)} style={{ width:'100%', padding:'9px 12px', borderRadius:rr('sm'), border:`0.5px solid ${T.border}`, background:'transparent', color:T.text2, fontSize:13, textAlign:'left' }}>Go deeper</button>
-        </Card>
-      )})}
+      {PILLARS.map(p => <PillarCard key={p.num} p={p} onDeepDive={onDeepDive} />)}
     </div>
   )
 }
@@ -636,7 +762,7 @@ function DeepDiveScreen({ prompt, onBack }) {
   )
 }
 
-function ProfileScreen({ userId, onSaved }) {
+function ProfileScreen({ userId, onSaved, onNav }) {
   const [profile, setProfile] = useState({ name:'', goal:'Athletic performance', activity:'Very active (5+/week)', calories:'', protein:'', notes:'' })
   const [saved, setSaved] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -647,6 +773,7 @@ function ProfileScreen({ userId, onSaved }) {
     setSaved(true); setTimeout(()=>setSaved(false),2000)
     if (onSaved) onSaved(profile)
   }
+  const isFirstSave = !profile.goal && !profile.name
   if (loading) return <div style={{ padding:20 }}><LoadingDots /></div>
   return (
     <div style={{ padding:'20px 20px' }}>
@@ -662,10 +789,19 @@ function ProfileScreen({ userId, onSaved }) {
       <input type="number" value={profile.protein} onChange={e=>update('protein',e.target.value)} placeholder="e.g. 160" style={{ width:'100%', padding:'9px 12px', borderRadius:rr('sm'), fontSize:13, border:`0.5px solid ${T.border}`, background:T.surface, color:T.text, outline:'none', marginBottom:10 }} />
       <PrefLabel>Anything else the app should know?</PrefLabel>
       <textarea value={profile.notes} onChange={e=>update('notes',e.target.value)} placeholder="e.g. I run and lift a lot, need to eat big." rows={3} style={{ width:'100%', background:T.surface, border:`0.5px solid ${T.border}`, borderRadius:rr('md'), padding:'10px 12px', fontSize:14, color:T.text, resize:'none', outline:'none' }} />
-      <PrimaryBtn onClick={handleSave}>{saved?'Saved':'Save profile'}</PrimaryBtn>
-      <div style={{ marginTop:20, padding:'14px 16px', background:T.surface2, borderRadius:rr('md') }}>
-        <div style={{ fontSize:12, color:T.text3, lineHeight:1.7 }}>Your profile is stored securely in your account and used to personalize your experience.</div>
-      </div>
+      <PrimaryBtn onClick={handleSave}>{saved?'Profile saved ✓':'Save profile'}</PrimaryBtn>
+      {saved && (
+        <div style={{ marginTop:12, background:T.surface, borderRadius:rr('md'), padding:'14px 16px' }}>
+          <div style={{ fontSize:13, fontWeight:500, color:T.text, marginBottom:4 }}>Nice. Now let's find your first meal idea.</div>
+          <div style={{ fontSize:12, color:T.text2, marginBottom:10, lineHeight:1.6 }}>Your profile will shape recipe suggestions, portion sizes, and workout nutrition guidance from here on.</div>
+          <button onClick={()=>onNav&&onNav('eat')} style={{ width:'100%', padding:'9px', borderRadius:rr('sm'), border:'none', background:'var(--amber-dim)', color:'#fff', fontSize:13, fontWeight:500, cursor:'pointer' }}>
+            Find a meal →
+          </button>
+        </div>
+      )}
+      {!saved && <div style={{ marginTop:16, padding:'12px 14px', background:T.surface2, borderRadius:rr('md') }}>
+        <div style={{ fontSize:12, color:T.text3, lineHeight:1.7 }}>Your profile personalizes everything — recipes, portions, workout nutrition guidance.</div>
+      </div>}
     </div>
   )
 }
@@ -678,7 +814,12 @@ function StackScreen({ items, onDelete }) {
       <div style={{ display:'flex', gap:6, marginBottom:20 }}>
         {['routines','recipes'].map(t=><button key={t} onClick={()=>setTab(t)} style={{ flex:1, padding:'8px', borderRadius:rr('sm'), fontSize:13, border:'none', background:tab===t?T.text:T.surface2, color:tab===t?T.bg:T.text2, textTransform:'capitalize' }}>{t}</button>)}
       </div>
-      {filtered.length===0?<div style={{ textAlign:'center', padding:'3rem 0', color:T.text3, fontSize:14, lineHeight:1.8 }}>Nothing saved yet.<br/><span style={{ fontSize:12 }}>Generate something and tap Save.</span></div>:filtered.map((item,i)=>(
+      {filtered.length===0?<div style={{ textAlign:'center', padding:'3rem 1rem', color:T.text2, lineHeight:1.8 }}>
+    <div style={{ fontSize:15, fontWeight:500, color:T.text, marginBottom:8 }}>Your library is empty for now.</div>
+    <div style={{ fontSize:13, color:T.text2, lineHeight:1.7 }}>
+      {tab==='routines' ? 'Save any mobility or sport routine from the Move tab and it will live here.' : 'Save any recipe from the Eat tab and it will live here — easy to find next time.'}
+    </div>
+  </div>:filtered.map((item,i)=>(
         <Card key={i} style={{ padding: tab==='routines' ? '0' : '14px 16px' }}>
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', padding: tab==='routines' ? '12px 14px 8px' : '0' }}>
             <div style={{ flex:1, minWidth:0 }}>
@@ -781,6 +922,12 @@ export default function App() {
   const [tab, setTab] = useState('home')
   const [deepDive, setDeepDive] = useState(null)
   const [savedItems, setSavedItems] = useState([])
+  const [toast, setToast] = useState({ visible:false, message:'' })
+
+  const showToast = (message) => {
+    setToast({ visible:true, message })
+    setTimeout(() => setToast({ visible:false, message:'' }), 2200)
+  }
   const [profile, setProfile] = useState(null)
 
   useEffect(() => {
@@ -805,7 +952,11 @@ export default function App() {
   const handleSave = async (item) => {
     if (!session?.user) return
     const saved = await addSavedItem(session.user.id, item)
-    if (saved) setSavedItems(prev=>[saved, ...prev])
+    if (saved) {
+      setSavedItems(prev=>[saved, ...prev])
+      const msg = item.type === 'recipe' ? '✓ Meal saved to your library' : '✓ Routine saved to your library'
+      showToast(msg)
+    }
   }
 
   const handleDelete = async (id) => {
@@ -839,13 +990,14 @@ export default function App() {
         {tab==='home'    && <HomeScreen onNav={setTab} savedItems={savedItems} profile={profile} userId={userId} />}
         {tab==='move'    && <MoveScreen onSave={handleSave} />}
         {tab==='eat'     && <EatScreen onSave={handleSave} userId={userId} />}
-        {tab==='lift'    && <LiftScreen userId={userId} userProfile={profile} onGoEat={()=>setTab('eat')} />}
+        {tab==='lift'    && <LiftScreen userId={userId} userProfile={profile} onGoEat={()=>setTab('eat')} onGoMove={()=>setTab('move')} />}
         {tab==='more'    && <MoreScreen onNav={setTab} />}
         {tab==='pillars' && !deepDive && <PillarsScreen onDeepDive={handleDeepDive} />}
         {tab==='pillars' && deepDive  && <DeepDiveScreen prompt={deepDive} onBack={()=>setDeepDive(null)} />}
         {tab==='stack'   && <StackScreen items={savedItems} onDelete={handleDelete} />}
-        {tab==='profile' && <ProfileScreen userId={userId} onSaved={setProfile} />}
+        {tab==='profile' && <ProfileScreen userId={userId} onSaved={setProfile} onNav={setTab} />}
       </div>
+      <Toast message={toast.message} visible={toast.visible} />
       <nav style={{ position:'fixed', bottom:0, left:'50%', transform:'translateX(-50%)', width:'100%', maxWidth:430, background:T.surface2, borderTop:`0.5px solid ${T.border}`, display:'flex', padding:'8px 0 max(16px, env(safe-area-inset-bottom))', zIndex:100 }}>
         {NAV.map(n=>{ const active=tab===n.tab; return (
           <button key={n.tab} onClick={()=>{ setDeepDive(null); setTab(n.tab) }} style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', gap:3, padding:'4px 0', border:'none', background:'none', color:active?T.text:T.text3, transition:'color .15s' }}>
