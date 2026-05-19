@@ -293,17 +293,7 @@ Give 2-3 sentences max. Mention any PRs. Note one small win. No fluff, no exclam
           </div>
         )}
 
-        {showDetails && stats.oneRMs?.length > 0 && (
-          <div style={{ background:T.surface2, borderRadius:rr('sm'), padding:'10px 12px', marginBottom:12 }}>
-            <div style={{ fontSize:11, fontWeight:500, color:T.text2, letterSpacing:.5, textTransform:'uppercase', marginBottom:8 }}>Estimated 1RM</div>
-            {stats.oneRMs.map((e,i) => (
-              <div key={i} style={{ display:'flex', justifyContent:'space-between', paddingBottom:4 }}>
-                <div style={{ fontSize:12, color:T.text2 }}>{e.name}</div>
-                <div style={{ fontSize:12, fontWeight:500, color:T.text }}>{e.e1rm} lb</div>
-              </div>
-            ))}
-          </div>
-        )}
+
 
         <div style={{ fontSize:13, color:T.text2, lineHeight:1.7, marginBottom:12 }}>
           {loading ? <LoadingDots /> : analysis}
@@ -617,17 +607,14 @@ function SessionLogger({ workout, programId, phaseId, userId, profile, onGoEat, 
         if (increment > 0) nextTargets.push({ name:ex.name, current:myMax, next:myMax+increment, note:'Hit target reps — add weight next session' })
         else nextTargets.push({ name:ex.name, current:myMax, next:myMax, note:'Work on hitting all reps before adding weight' })
       }
-      // Estimated 1RM
-      if (bestSet.weight > 0 && bestSet.reps > 0) {
-        oneRMs.push({ name:ex.name, e1rm:epley1RM(bestSet.weight, bestSet.reps), bestSet })
-      }
+
     })
     const mins=Math.floor(elapsed/60); const secs=elapsed%60
     // Check if returning after a gap
     const lastSess = sessions.sort ? [...sessions].sort((a,b)=>new Date(b.logged_at||b.date)-new Date(a.logged_at||a.date))[0] : null
     const daysSince = lastSess ? Math.floor((Date.now()-new Date(lastSess.logged_at||lastSess.date).getTime())/(1000*60*60*24)) : 0
     const returningAfterGap = daysSince >= 5
-    return { workoutName:workout.name, duration:`${mins}m ${secs}s`, volume:totalVolume, totalSets, prs, nextTargets, oneRMs, exerciseNames:loggedSets.map(e=>e.name), returningAfterGap }
+    return { workoutName:workout.name, duration:`${mins}m ${secs}s`, volume:totalVolume, totalSets, prs, nextTargets, exerciseNames:loggedSets.map(e=>e.name), returningAfterGap }
   }
 
   const finishSession = async () => {
@@ -826,7 +813,6 @@ function ExerciseProgress({ userId, programId, exerciseName, exerciseId, onBack 
         <div style={{ background:'var(--green-bg)', border:'0.5px solid var(--green-dim)', borderRadius:rr('md'), padding:'14px 16px', marginBottom:16 }}>
           <div style={{ fontSize:11, fontWeight:500, color:'var(--green)', letterSpacing:.5, textTransform:'uppercase', marginBottom:4 }}>Best set</div>
           <div style={{ fontSize:24, fontWeight:500, color:T.text }}>{overallBest.weight} lb <span style={{ fontSize:14, color:T.text2, fontWeight:400 }}>× {overallBest.reps} reps</span></div>
-          <div style={{ fontSize:12, color:'var(--green)', marginTop:4 }}>Est. 1RM: {epley(overallBest.weight, overallBest.reps)} lb</div>
         </div>
       )}
 
@@ -848,11 +834,7 @@ function ExerciseProgress({ userId, programId, exerciseName, exerciseId, onBack 
               {best?.weight} lb × {best?.reps} reps
               <span style={{ fontSize:11, color:T.text3, fontWeight:400, marginLeft:8 }}>best set</span>
             </div>
-            {best?.weight > 0 && best?.reps > 0 && (
-              <div style={{ fontSize:11, color:T.text3, marginTop:2 }}>
-                Est. 1RM: <span style={{ color:T.text2, fontWeight:500 }}>{epley(best.weight, best.reps)} lb</span>
-              </div>
-            )}
+
             <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginTop:6 }}>
               {(ex?.sets||[]).map((s,j) => (
                 <div key={j} style={{ fontSize:11, color:T.text2, background:T.surface2, borderRadius:rr('sm'), padding:'3px 8px' }}>
@@ -906,7 +888,6 @@ function ProgressSummary({ sessions, onViewExercise }) {
         const prev = ex.history[ex.history.length-2]
         const trend = last.weight > prev.weight ? '↑' : last.weight < prev.weight ? '↓' : '→'
         const trendColor = trend==='↑' ? 'var(--green)' : trend==='↓' ? 'var(--coral)' : T.text3
-        const e1rm = epley(last.weight, last.reps)
         const diff = last.weight - prev.weight
         return (
           <div key={i} onClick={()=>onViewExercise(ex.name, ex.exerciseId)}
@@ -915,7 +896,7 @@ function ProgressSummary({ sessions, onViewExercise }) {
             <div style={{ flex:1, minWidth:0 }}>
               <div style={{ fontSize:13, fontWeight:500, color:T.text }}>{ex.name}</div>
               <div style={{ fontSize:11, color:T.text3, marginTop:2 }}>
-                {last.weight} lb × {last.reps} · Est. 1RM: {e1rm} lb
+                {last.weight} lb × {last.reps}
               </div>
             </div>
             <div style={{ display:'flex', alignItems:'center', gap:8, flexShrink:0 }}>
@@ -972,7 +953,6 @@ function ProgramProgress({ program, sessions, onViewExercise }) {
         const trend = last.weight > first.weight ? '↑' : '→'
         const trendColor = trend==='↑' ? 'var(--green)' : T.text3
         const gain = last.weight - first.weight
-        const e1rm = epley(last.weight, last.reps)
         return (
           <div key={i} onClick={()=>onViewExercise(ex.name, ex.exerciseId||ex.id)}
             style={{ background:T.surface2, borderRadius:rr('sm'), padding:'10px 12px', marginBottom:6,
@@ -980,7 +960,7 @@ function ProgramProgress({ program, sessions, onViewExercise }) {
             <div style={{ flex:1 }}>
               <div style={{ fontSize:12, fontWeight:500, color:T.text }}>{ex.name}</div>
               <div style={{ fontSize:11, color:T.text3, marginTop:2 }}>
-                {last.weight} lb · 1RM ~{e1rm} lb
+                {last.weight} lb
                 {gain !== 0 && <span style={{ color:trendColor, marginLeft:6 }}>{gain>0?`+${gain}`:gain} lb from start</span>}
               </div>
             </div>
