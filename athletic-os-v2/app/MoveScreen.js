@@ -77,8 +77,58 @@ const SPORT_LIBRARY = {
     }
   },
   Lifting: {
+    upper_warmup: {
+      title: 'Upper Body Warmup',
+      duration: '7 min',
+      source: 'Squat University + Starrett-informed',
+      exercises: [
+        { name: 'Shoulder CARs', cue: 'Slow, full-range shoulder circles in both directions. Controlled articular rotation primes the joint before loading.', reps: '5 each direction each arm' },
+        { name: 'Band pull-apart', cue: 'Arms straight, pull band to chest. Activates rear delts and external rotators before any pressing or pulling.', reps: '15 reps' },
+        { name: 'Thoracic extension over roller', cue: 'Support head, extend over roller at mid-back, work up the spine. Restores t-spine extension for bar position and overhead.', reps: '60 sec, 3 segments' },
+        { name: 'Scapular wall slides', cue: 'Back against wall, arms at 90 degrees, slide up while keeping contact. Primes scapular movement patterns.', reps: '10 reps' },
+        { name: 'Face pull with pause', cue: 'Pull to face level, elbows high, pause and squeeze at end range. Activates the rotator cuff and rear delts.', reps: '15 reps' },
+        { name: 'Arm circles to chest opener', cue: 'Large backward circles then clasp hands behind back, open chest. Final prep before loading the upper body.', reps: '10 circles then 5 holds' },
+      ]
+    },
+    lower_warmup: {
+      title: 'Lower Body Warmup',
+      duration: '8 min',
+      source: 'Squat University + ATG-informed',
+      exercises: [
+        { name: 'Ankle mobility drill', cue: 'Knee over toe, heel flat, drive forward 10 times each side. Ankle restriction kills every lower body pattern — address it first.', reps: '10 each side' },
+        { name: 'Hip 90/90 active rotation', cue: 'Rotate between internal and external hip rotation actively, not passively. Opens the capsule where squatting and hinging happen.', reps: '10 each side' },
+        { name: 'Glute bridge with pause', cue: 'Drive hips up, pause and squeeze at top for 2 seconds. Ensures glutes are firing before they need to produce force.', reps: '12 reps' },
+        { name: 'Cossack squat', cue: 'Wide stance, shift weight to one side, keep other leg straight. Opens the groin and hip capsule through full range.', reps: '8 each side' },
+        { name: 'Goblet squat hold', cue: 'Hold bottom of squat, use elbows to open knees, breathe. Teaches position and warms hip, knee, and ankle simultaneously.', reps: '3 x 30 sec hold' },
+        { name: 'Single leg hip hinge', cue: 'Hinge on one leg, feel hamstring load, return. Activates posterior chain and primes balance before loaded work.', reps: '8 each side' },
+      ]
+    },
+    upper_recovery: {
+      title: 'Upper Body Recovery',
+      duration: '7 min',
+      source: 'Starrett-informed',
+      exercises: [
+        { name: 'Lat stretch on rack', cue: 'Hold rig or doorframe at shoulder height, sit back into hips. Decompresses the lat after pulling work.', reps: '60 sec each side' },
+        { name: 'Pec doorframe stretch', cue: 'Arm at 90 degrees on wall, rotate body away. Counteracts internal rotation from pressing.', reps: '45 sec each side' },
+        { name: 'Cross-body shoulder stretch', cue: 'Pull arm across chest at shoulder height, hold. Releases posterior shoulder after pressing and overhead.', reps: '45 sec each side' },
+        { name: 'Neck side stretch', cue: 'Ear to shoulder, hand gently adds weight. Releases cervical tension from heavy bar positions.', reps: '45 sec each side' },
+        { name: 'Child pose with reach', cue: 'Sit back on heels, reach arms forward, breathe into stretch. Full spinal decompression after loading.', reps: '90 sec' },
+      ]
+    },
+    lower_recovery: {
+      title: 'Lower Body Recovery',
+      duration: '8 min',
+      source: 'Starrett + Squat University-informed',
+      exercises: [
+        { name: 'Couch stretch', cue: 'Rear foot elevated on wall, lunge forward, squeeze glute. Addresses hip flexor compression from squatting and deadlifting.', reps: '90 sec each side' },
+        { name: 'Pigeon pose', cue: 'Front shin parallel, fold forward from hips. Releases glute and piriformis compression from heavy lower body work.', reps: '90 sec each side' },
+        { name: 'Seated hamstring stretch', cue: 'Legs straight, hinge from hips with flat back. Restores hamstring length after deadlift and squat patterns.', reps: '90 sec' },
+        { name: 'Calf stretch on step', cue: 'Heel off step, lower slowly, hold. Addresses calf and Achilles loading from squatting and lunging.', reps: '60 sec each' },
+        { name: 'Deep squat hold', cue: 'Feet shoulder-width, hold bottom passively, breathe. Restores joint space after loaded squatting.', reps: '60 sec' },
+      ]
+    },
     warmup: {
-      title: 'Lifting Pre-Session Warmup',
+      title: 'General Lifting Warmup',
       duration: '8 min',
       source: 'Squat University + Starrett-informed',
       exercises: [
@@ -382,9 +432,19 @@ function QuickRelief({ onSave }) {
 function SportLibrary({ onSave }) {
   const [sport, setSport] = useState(null)
   const [type, setType] = useState('warmup')
+  const [liftType, setLiftType] = useState('lower')
   const [saved, setSaved] = useState(false)
   const sports = Object.keys(SPORT_LIBRARY)
-  const routine = sport ? SPORT_LIBRARY[sport]?.[type] : null
+
+  const getRoutine = () => {
+    if (!sport) return null
+    if (sport === 'Lifting') {
+      const key = `${liftType}_${type}`
+      return SPORT_LIBRARY[sport]?.[key] || SPORT_LIBRARY[sport]?.[type]
+    }
+    return SPORT_LIBRARY[sport]?.[type]
+  }
+  const routine = getRoutine()
 
   const save = () => {
     if (!routine) return
@@ -405,6 +465,18 @@ function SportLibrary({ onSave }) {
           }}>{s}</button>
         ))}
       </div>
+      {sport === 'Lifting' && (
+        <div style={{ display:'flex', gap:6, marginBottom:10 }}>
+          {[['lower','Lower body'],['upper','Upper body']].map(([k,l]) => (
+            <button key={k} onClick={()=>{ setLiftType(k); setSaved(false) }} style={{
+              flex:1, padding:'7px', borderRadius:rr('sm'), fontSize:12,
+              border: liftType===k ? 'none' : `0.5px solid ${T.border}`,
+              background: liftType===k ? T.surface3 : 'transparent',
+              color: liftType===k ? T.text : T.text2,
+            }}>{l}</button>
+          ))}
+        </div>
+      )}
       {sport && (
         <div style={{ display:'flex', gap:6, marginBottom:12 }}>
           {['warmup','recovery'].map(t => (
