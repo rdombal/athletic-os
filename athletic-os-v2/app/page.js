@@ -415,13 +415,25 @@ function HomeScreen({ onNav, savedItems, profile, userId }) {
     ),
   }
   const day = new Date().getDate()
+  const isNewUser = !profile?.goal && !profile?.name
   return (
     <div style={{ padding:'32px 20px 20px' }}>
       <div style={{ marginBottom:24 }}>
         <div style={{ fontSize:13, color:T.text3, marginBottom:6 }}>{greeting}</div>
         <div style={{ fontSize:28, fontWeight:400, color:T.text, letterSpacing:-.5, lineHeight:1.2 }}>Good day{name}.</div>
-        <div style={{ fontSize:14, color:T.text2, marginTop:8 }}>What do you need today?</div>
+        <div style={{ fontSize:14, color:T.text2, marginTop:8 }}>Move better. Eat well. Lift consistently.</div>
       </div>
+
+      {isNewUser && (
+        <div style={{ background:T.surface, borderRadius:rr('md'), padding:'16px', marginBottom:20, borderLeft:`3px solid var(--blue)` }}>
+          <div style={{ fontSize:14, fontWeight:500, color:T.text, marginBottom:4 }}>Welcome to Weekend Athlete</div>
+          <div style={{ fontSize:13, color:T.text2, lineHeight:1.6, marginBottom:12 }}>Your personal health and performance app. Movement, meals, and lifting — all in one place, without the overwhelm.</div>
+          <div style={{ display:'flex', gap:8 }}>
+            <button onClick={()=>onNav('profile')} style={{ flex:1, padding:'9px', borderRadius:rr('sm'), border:'none', background:T.text, color:T.bg, fontSize:13, fontWeight:500, cursor:'pointer' }}>Set up profile</button>
+            <button onClick={()=>onNav('move')} style={{ flex:1, padding:'9px', borderRadius:rr('sm'), border:`0.5px solid ${T.border}`, background:'transparent', color:T.text2, fontSize:13, cursor:'pointer' }}>Explore first</button>
+          </div>
+        </div>
+      )}
       <DailyCard userId={userId} cacheKey="daily_tip" category={TIP_CATEGORIES[day%TIP_CATEGORIES.length]} cardLabel="Daily tip"
         promptFn={cat=>'You are a knowledgeable health advisor. Give ONE practical tip about '+cat+'. 2-3 sentences. Specific and surprising. No fluff, no exclamation marks. Give a 2-4 word title. Format: TITLE: [title] TIP: [tip]'}
         fallback="Consistency over intensity. Showing up three times a week for a year will outperform any extreme program you can only stick to for a month." />
@@ -580,9 +592,11 @@ Variations:
       <PrimaryBtn onClick={()=>go(false)} disabled={loading||pantry.length===0}>{loading?'Finding something good...':'Get recipe ideas'}</PrimaryBtn>
       {loading&&<div style={{ marginTop:12 }}><LoadingDots /></div>}
       {resp&&!loading&&<RecipeCard text={resp} onAdjust={adjust} adjusting={adjusting} />}
-      {resp&&!loading&&<div style={{ display:'flex', gap:8, marginTop:8 }}>
-        <button onClick={()=>go(true)} style={{ flex:1, padding:'9px 16px', borderRadius:rr('md'), border:`0.5px solid ${T.border}`, background:'transparent', color:T.text2, fontSize:13 }}>Try another</button>
-        <button onClick={save} style={{ flex:1, padding:'9px 16px', borderRadius:rr('md'), border:`0.5px solid ${T.border}`, background:'transparent', color:T.text2, fontSize:13 }}>{saved?'Saved':'+ Save'}</button>
+      {resp&&!loading&&<div style={{ marginTop:10 }}>
+        <button onClick={save} style={{ width:'100%', padding:'11px', borderRadius:rr('md'), border:'none', background:saved?T.surface2:'var(--green-dim)', color:saved?'var(--green)':'#fff', fontSize:14, fontWeight:500, cursor:'pointer', marginBottom:8 }}>
+          {saved ? '✓ Saved to My Library' : '＋ Save this meal'}
+        </button>
+        <button onClick={()=>go(true)} style={{ width:'100%', padding:'9px', borderRadius:rr('md'), border:`0.5px solid ${T.border}`, background:'transparent', color:T.text2, fontSize:13, cursor:'pointer' }}>Try another</button>
       </div>}
     </div>
   )
@@ -690,7 +704,7 @@ function StackScreen({ items, onDelete }) {
 function MoreScreen({ onNav }) {
   const items = [
     { tab:'pillars', label:'The Pillars',  sub:'What actually moves the needle'  },
-    { tab:'stack',   label:'My Stack',     sub:'Your saved routines and recipes'  },
+    { tab:'stack',   label:'My Library',     sub:'Your saved routines and recipes'  },
     { tab:'profile', label:'Profile',      sub:'Your goals and preferences'       },
   ]
   return (
@@ -748,7 +762,7 @@ const NAV = [
   { tab:'move',  label:'Move'  },
   { tab:'eat',   label:'Eat'   },
   { tab:'lift',  label:'Lift'  },
-  { tab:'more',  label:'More'  },
+  { tab:'more',  label:'Saved' },
 ]
 
 const TOPBAR = {
@@ -757,7 +771,7 @@ const TOPBAR = {
   lift:    { title:'Lift',        sub:'Your programs and sessions'                    },
   more:    { title:'More',        sub:''                                              },
   pillars: { title:'The Pillars', sub:'The only things that actually move the needle' },
-  stack:   { title:'My Stack',    sub:'Your saved routines and recipes'               },
+  stack:   { title:'My Library',    sub:'Your saved routines and recipes'               },
   profile: { title:'Profile',     sub:'Your goals and preferences'                    },
 }
 
