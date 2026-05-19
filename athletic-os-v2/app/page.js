@@ -153,6 +153,21 @@ function buildProfileContext(profile) {
   return parts.length ? `\nUser profile (use to inform recipe portions and macros):\n${parts.join('\n')}\n` : ''
 }
 
+function buildNutritionNudge(profile, workoutType) {
+  if (!profile?.goal) return ''
+  const isMuscle = profile.goal?.toLowerCase().includes('muscle')
+  const isFat = profile.goal?.toLowerCase().includes('fat')
+  const isLower = workoutType?.toLowerCase().includes('lower') || workoutType?.toLowerCase().includes('leg') || workoutType?.toLowerCase().includes('squat') || workoutType?.toLowerCase().includes('deadlift')
+  const isUpper = workoutType?.toLowerCase().includes('upper') || workoutType?.toLowerCase().includes('push') || workoutType?.toLowerCase().includes('pull') || workoutType?.toLowerCase().includes('press')
+  if (isMuscle) {
+    if (isLower) return 'High carb + high protein recovery meal. Lower body sessions deplete glycogen heavily — prioritize replenishment.'
+    if (isUpper) return 'High protein focus. Upper body sessions demand muscle protein synthesis — aim for 40-50g protein in this meal.'
+    return 'Prioritize protein and carbs in your next meal to support muscle growth.'
+  }
+  if (isFat) return 'Moderate protein, lower carb. Keep total calories in check while hitting your protein target.'
+  return 'Prioritize protein in your next meal to support recovery.'
+}
+
 // ─── UI primitives ────────────────────────────────────────────────────────────
 function rr(s) { return s==='sm'?'8px':s==='lg'?'16px':'12px' }
 function Eyebrow({ children, style }) {
@@ -428,6 +443,7 @@ function EatScreen({ onSave, userId }) {
   const [adjusting, setAdjusting] = useState(false)
   const [saved, setSaved] = useState(false)
   const [attempts, setAttempts] = useState(0)
+  const [suggestedNames, setSuggestedNames] = useState([])
 
   const ASSUMED_STAPLES = 'olive oil, butter, garlic, onion, salt, pepper, cumin, paprika, chili flakes, Italian seasoning, soy sauce, hot sauce, lemon, lime, vinegar, chicken broth, mustard, honey, Worcestershire sauce'
   const TECHNIQUES = ['pan sear and sauce', 'sheet pan roast', 'stir fry', 'skillet scramble', 'soup or stew', 'marinate and grill', 'stuffed or wrapped', 'rice bowl with sauce', 'fried rice', 'frittata or egg bake']
@@ -447,7 +463,9 @@ function EatScreen({ onSave, userId }) {
     const profile = userId ? await getProfile(userId) : {}
     const tasteCtx = buildTasteContext(mem)
     const profileCtx = buildProfileContext(profile)
-    const avoidNote = attempt>0?'\nGive a COMPLETELY DIFFERENT recipe — different protein, different technique, different flavor profile.':''
+    const avoidNote = suggestedNames.length > 0
+      ? `\nAVOID these exact recipes already suggested: ${suggestedNames.join(', ')}. Give something genuinely different — different main protein, different cuisine style, different cooking method. Do not recycle the same base dish with minor tweaks.`
+      : ''
     const cuisineNote = cuisine ? `Cuisine direction: ${cuisine}\n` : ''
     const techNote = TECHNIQUES[Math.floor(Math.random()*TECHNIQUES.length)]
     return `You are a skilled home cook helping someone eat well and actually enjoy their food. Sound like a knowledgeable friend giving a real recipe — not a meal prep slop bowl.
@@ -495,7 +513,14 @@ Variations:
     setAttempts(attempt)
     if (vibe&&userId) updateTasteMemory(userId,{vibes:[vibe]})
     if (userId) updateTasteMemory(userId,{efforts:[effort],meals:[meal]})
-    try { const prompt = await buildPrompt(attempt); const text = await callAI(prompt); setResp(text) } catch(e) { setResp('Something went wrong. Try again.') }
+    try {
+      const prompt = await buildPrompt(attempt)
+      const text = await callAI(prompt)
+      setResp(text)
+      // Extract recipe name (first non-empty line) and track it
+      const firstName = text.split('\n').map(l=>l.trim()).find(l=>l.length>0)
+      if (firstName) setSuggestedNames(prev => [...prev.slice(-4), firstName])
+    } catch(e) { setResp('Something went wrong. Try again.') }
     setLoading(false)
   }
 
@@ -746,7 +771,7 @@ export default function App() {
         {tab==='home'    && <HomeScreen onNav={setTab} savedItems={savedItems} profile={profile} userId={userId} />}
         {tab==='move'    && <MoveScreen onSave={handleSave} />}
         {tab==='eat'     && <EatScreen onSave={handleSave} userId={userId} />}
-        {tab==='lift'    && <LiftScreen userId={userId} />}
+        {tab==='lift'    && <LiftScreen userId={userId} userProfile={profile} onGoEat={()=>setTab('eat')} />}
         {tab==='more'    && <MoreScreen onNav={setTab} />}
         {tab==='pillars' && !deepDive && <PillarsScreen onDeepDive={handleDeepDive} />}
         {tab==='pillars' && deepDive  && <DeepDiveScreen prompt={deepDive} onBack={()=>setDeepDive(null)} />}
