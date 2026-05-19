@@ -34,18 +34,29 @@ function rr(s) { return s==='sm'?'8px':s==='lg'?'16px':'12px' }
 function Btn({ children, onClick, disabled, outline, small, danger, style }) {
   return (
     <button onClick={onClick} disabled={disabled} style={{
-      padding: small?'6px 12px':'10px 16px', borderRadius:rr('sm'),
-      fontSize:small?12:13, fontWeight:500,
-      border: outline||danger?`0.5px solid ${danger?'var(--coral)':T.border}`:'none',
-      background: danger?'transparent':outline?'transparent':disabled?T.surface2:T.text,
+      padding: small?'7px 14px':'11px 18px', borderRadius:rr('md'),
+      fontSize:small?12:13, fontWeight:600, letterSpacing:.1,
+      border: outline||danger?`1px solid ${danger?'var(--coral)':T.border2}`:'none',
+      background: danger?'transparent':outline?T.surface2:disabled?T.surface2:T.text,
       color: danger?'var(--coral)':outline?T.text2:disabled?T.text3:T.bg,
-      cursor:disabled?'not-allowed':'pointer', ...style,
+      cursor:disabled?'not-allowed':'pointer',
+      boxShadow: (!outline&&!danger&&!disabled) ? '0 1px 3px rgba(0,0,0,0.2)' : 'none',
+      ...style,
     }}>{children}</button>
   )
 }
 function FullBtn({ children, onClick, disabled, outline, color }) {
-  return <Btn children={children} onClick={onClick} disabled={disabled} outline={outline}
-    style={{ width:'100%', marginTop:10, padding:'12px 16px', fontSize:14, ...(color?{background:color,color:'#fff',border:'none'}:{}) }} />
+  return (
+    <button onClick={onClick} disabled={disabled} style={{
+      width:'100%', marginTop:12, padding:'13px 16px', borderRadius:rr('md'),
+      fontSize:14, fontWeight:600, letterSpacing:.1,
+      border: outline ? `1px solid ${T.border2}` : 'none',
+      background: color ? color : outline ? T.surface2 : disabled ? T.surface2 : T.text,
+      color: color ? '#fff' : outline ? T.text2 : disabled ? T.text3 : T.bg,
+      cursor: disabled ? 'not-allowed' : 'pointer',
+      boxShadow: (!outline && !disabled) ? '0 1px 3px rgba(0,0,0,0.2)' : 'none',
+    }}>{children}</button>
+  )
 }
 function TextInput({ value, onChange, placeholder, style }) {
   return (
@@ -68,7 +79,15 @@ function Card({ children, style, onClick }) {
 }
 function Divider() { return <div style={{ height:'0.5px', background:T.border, margin:'10px 0' }} /> }
 function BackBtn({ label, onClick }) {
-  return <button onClick={onClick} style={{ border:'none', background:'none', color:T.text3, fontSize:12, padding:'0 0 12px', cursor:'pointer', display:'block' }}>← {label}</button>
+  return (
+    <button onClick={onClick} style={{
+      border:`1px solid ${T.border}`, background:T.surface2, color:T.text2,
+      fontSize:12, fontWeight:500, padding:'6px 12px', borderRadius:rr('sm'),
+      cursor:'pointer', display:'inline-flex', alignItems:'center', gap:5, marginBottom:16,
+    }}>
+      ← {label}
+    </button>
+  )
 }
 function SectionHeader({ title, sub }) {
   return (
@@ -304,7 +323,11 @@ Give 2-3 sentences max. Mention any PRs. Note one small win. No fluff, no exclam
           onSave={()=>{}}
         />
 
-        <Btn onClick={onDone} style={{ width:'100%', padding:'12px', marginTop:12 }}>Done</Btn>
+        <button onClick={onDone} style={{
+          width:'100%', padding:'13px', borderRadius:rr('md'), border:'none',
+          background:T.text, color:T.bg, fontSize:14, fontWeight:600,
+          cursor:'pointer', marginTop:12, boxShadow:'0 1px 3px rgba(0,0,0,0.2)',
+        }}>Done</button>
       </div>
     </div>
   )
@@ -699,9 +722,13 @@ function SessionLogger({ workout, programId, phaseId, userId, profile, onGoEat, 
       })}
 
       <div style={{ marginTop:16 }}>
-        <Btn onClick={finishSession} style={{ width:'100%', padding:'12px', background:'var(--green-dim)', color:'#fff', border:'none', fontSize:14 }}>
-          Finish session
-        </Btn>
+        <button onClick={finishSession} style={{
+          width:'100%', padding:'14px', borderRadius:rr('md'), border:'none',
+          background:'var(--green-dim)', color:'#fff', fontSize:15, fontWeight:600,
+          cursor:'pointer', boxShadow:'0 2px 6px rgba(0,0,0,0.3)', letterSpacing:.1,
+        }}>
+          Finish session ✓
+        </button>
       </div>
     </div>
   )
@@ -1067,9 +1094,10 @@ function WeeklyOverview({ programs, sessions, activeProgramId, lastWorkoutId, on
                 {nextUp.phase.name} · {nextUp.workout.exercises.length} exercise{nextUp.workout.exercises.length!==1?'s':''}
               </div>
               <button onClick={()=>onSelectProgram(activeProgram, nextUp.workout, nextUp.phase.id)}
-                style={{ marginTop:12, width:'100%', padding:'10px', borderRadius:rr('sm'), border:'none',
-                  background:T.text, color:T.bg, fontSize:13, fontWeight:500, cursor:'pointer' }}>
-                Start session
+                style={{ marginTop:14, width:'100%', padding:'13px', borderRadius:rr('md'), border:'none',
+                  background:'var(--green-dim)', color:'#fff', fontSize:14, fontWeight:600, cursor:'pointer',
+                  boxShadow:'0 1px 4px rgba(0,0,0,0.25)', letterSpacing:.1 }}>
+                Start session →
               </button>
             </div>
           )}
@@ -1095,11 +1123,11 @@ function WeeklyOverview({ programs, sessions, activeProgramId, lastWorkoutId, on
 
           <div style={{ marginTop:16, display:'flex', gap:8 }}>
             <button onClick={()=>onSelectProgram(activeProgram)}
-              style={{ flex:1, padding:'9px', borderRadius:rr('sm'), border:`0.5px solid ${T.border}`, background:'transparent', color:T.text2, fontSize:12, cursor:'pointer' }}>
+              style={{ flex:1, padding:'10px', borderRadius:rr('md'), border:`1px solid ${T.border2}`, background:T.surface2, color:T.text2, fontSize:13, fontWeight:500, cursor:'pointer' }}>
               View program
             </button>
             <button onClick={onNewProgram}
-              style={{ flex:1, padding:'9px', borderRadius:rr('sm'), border:`0.5px solid ${T.border}`, background:'transparent', color:T.text2, fontSize:12, cursor:'pointer' }}>
+              style={{ flex:1, padding:'10px', borderRadius:rr('md'), border:`1px solid ${T.border2}`, background:T.surface2, color:T.text2, fontSize:13, fontWeight:500, cursor:'pointer' }}>
               + New program
             </button>
           </div>
@@ -1239,8 +1267,15 @@ function ProgramDetail({ program, lastWorkoutId, sessions, onBack, onEdit, onSta
                       </div>
                       <div style={{ fontSize:11, color:T.text3 }}>{w.exercises.length} exercise{w.exercises.length!==1?'s':''}</div>
                     </div>
-                    <button onClick={()=>onStartWorkout(w, program.id, ph.id)} style={{ padding:'7px 16px', borderRadius:20, border:'none', background:isNext?'var(--green-dim)':T.surface2, color:isNext?'#fff':T.text2, fontSize:12, fontWeight:500, cursor:'pointer' }}>
-                      {isNext ? 'Start ↗' : 'Start'}
+                    <button onClick={()=>onStartWorkout(w, program.id, ph.id)} style={{
+                      padding:'8px 18px', borderRadius:rr('md'), border:'none',
+                      background:isNext?'var(--green-dim)':T.surface,
+                      color:isNext?'#fff':T.text2,
+                      fontSize:13, fontWeight:600, cursor:'pointer',
+                      border: isNext?'none':`1px solid ${T.border2}`,
+                      boxShadow: isNext?'0 1px 4px rgba(0,0,0,0.25)':'none',
+                    }}>
+                      {isNext ? 'Start' : 'Start'}
                     </button>
                   </div>
                 )
