@@ -299,12 +299,15 @@ Give 2-3 sentences max. Mention any PRs. Note one small win. No fluff, no exclam
 // ─── Exercise editor ──────────────────────────────────────────────────────────
 function ExerciseEditor({ exercise, onChange, onRemove }) {
   return (
-    <div style={{ background:T.surface2, borderRadius:rr('sm'), padding:'10px 12px', marginBottom:8 }}>
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:8 }}>
-        <div><div style={{ fontSize:13, fontWeight:500, color:T.text }}>{exercise.name}</div><div style={{ fontSize:11, color:T.text3 }}>{exercise.group}</div></div>
-        <button onClick={onRemove} style={{ border:'none', background:'none', color:T.text3, fontSize:13, padding:0, cursor:'pointer' }}>×</button>
+    <div style={{ background:T.surface, borderRadius:rr('md'), overflow:'hidden', marginBottom:8 }}>
+      <div style={{ padding:'12px 14px', borderBottom:`0.5px solid ${T.border}`, display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+        <div>
+          <div style={{ fontSize:14, fontWeight:500, color:T.text }}>{exercise.name}</div>
+          <div style={{ fontSize:11, color:T.text3, marginTop:2 }}>{exercise.group}</div>
+        </div>
+        <button onClick={onRemove} style={{ border:'none', background:'none', color:T.text3, fontSize:16, padding:'0 0 0 12px', cursor:'pointer' }}>×</button>
       </div>
-      <div style={{ display:'flex', gap:8 }}>
+      <div style={{ padding:'10px 14px', display:'flex', gap:8 }}>
         <Stepper label="Sets" value={exercise.sets||3} onChange={v=>onChange({ ...exercise, sets:v })} min={1} max={10} />
         <Stepper label="Target reps" value={exercise.targetReps||8} onChange={v=>onChange({ ...exercise, targetReps:v })} min={1} max={100} />
       </div>
@@ -621,46 +624,54 @@ function SessionLogger({ workout, programId, phaseId, userId, profile, onGoEat, 
           <div key={ex.id||exIdx} style={{ marginBottom:8 }}>
             <div
               onClick={()=>setExpandedEx(isExpanded ? null : exIdx)}
-              style={{ background:T.surface, border:`0.5px solid ${allDone ? 'var(--green-dim)' : isExpanded ? T.text : T.border}`,
+              style={{ background:T.surface, border:`0.5px solid ${allDone ? 'var(--green-dim)' : isExpanded ? T.border2 : T.border}`,
                 borderRadius: isExpanded ? `${rr('md')} ${rr('md')} 0 0` : rr('md'),
-                padding:'12px 14px', cursor:'pointer', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-              <div>
-                <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                  <div style={{ fontSize:14, fontWeight:500, color: allDone ? 'var(--green)' : T.text }}>{ex.name}</div>
-                  {allDone && <div style={{ fontSize:10, color:'var(--green)', border:'0.5px solid var(--green-dim)', borderRadius:20, padding:'1px 7px' }}>done</div>}
+                padding:'14px 16px', cursor:'pointer', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+              <div style={{ flex:1 }}>
+                <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:3 }}>
+                  <div style={{ fontSize:15, fontWeight:500, color: allDone ? 'var(--green)' : T.text }}>{ex.name}</div>
+                  {allDone && <div style={{ fontSize:10, color:'var(--green)', border:'0.5px solid var(--green-dim)', borderRadius:20, padding:'2px 8px', fontWeight:500 }}>✓ done</div>}
                 </div>
-                <div style={{ fontSize:11, color:T.text3, marginTop:2 }}>
-                  {targetSets} sets × {ex.targetReps} reps
-                  {setsLogged > 0 && !allDone && <span style={{ color:T.text2, marginLeft:6 }}>{setsLogged}/{targetSets} logged</span>}
+                <div style={{ fontSize:11, color:T.text3 }}>
+                  {targetSets} sets · {ex.targetReps} reps
+                  {setsLogged > 0 && !allDone && <span style={{ color:'var(--blue)', marginLeft:6 }}>{setsLogged}/{targetSets} logged</span>}
                 </div>
               </div>
-              <div style={{ fontSize:14, color:T.text3, transition:'transform .2s', transform: isExpanded ? 'rotate(180deg)' : 'none' }}>∨</div>
+              <div style={{ fontSize:13, color:T.text3, transition:'transform .2s', transform: isExpanded ? 'rotate(180deg)' : 'none', marginLeft:8 }}>∨</div>
             </div>
 
             {isExpanded && (
-              <div style={{ background:T.surface, border:`0.5px solid ${isExpanded ? T.text : T.border}`, borderTop:'none',
-                borderRadius:`0 0 ${rr('md')} ${rr('md')}`, padding:'12px 14px' }}>
+              <div style={{ background:T.surface, border:`0.5px solid ${T.border2}`, borderTop:'none',
+                borderRadius:`0 0 ${rr('md')} ${rr('md')}`, overflow:'hidden' }}>
                 {lastSess && (
-                  <div style={{ background:T.surface2, borderRadius:rr('sm'), padding:'8px 12px', marginBottom:12 }}>
-                    <div style={{ fontSize:10, color:T.text3, marginBottom:4 }}>Last session</div>
-                    <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
-                      {lastSess.sets.map((s,i)=><div key={i} style={{ fontSize:12, color:T.text2 }}>{s.weight}×{s.reps}</div>)}
-                    </div>
+                  <div style={{ padding:'8px 14px', borderBottom:`0.5px solid ${T.border}`, display:'flex', gap:6, flexWrap:'wrap', alignItems:'center' }}>
+                    <div style={{ fontSize:10, color:T.text3, marginRight:4 }}>Last</div>
+                    {lastSess.sets.map((s,i)=>(
+                      <div key={i} style={{ fontSize:11, color:T.text2, background:T.surface2, borderRadius:6, padding:'2px 8px' }}>{s.weight}×{s.reps}</div>
+                    ))}
                   </div>
                 )}
-                {Array.from({ length:targetSets }).map((_,i) => {
-                  const done = logged.sets[i]
-                  const lastSet = lastSess?.sets?.[i]
-                  return (
-                    <InlineSetRow
-                      key={i}
-                      setNum={i+1}
-                      initial={done}
-                      lastSet={lastSess?.sets?.[i]}
-                      onSave={data => logSet(exIdx, i, data)}
-                    />
-                  )
-                })}
+                <div style={{ padding:'8px 14px' }}>
+                  <div style={{ display:'flex', paddingBottom:6, marginBottom:4 }}>
+                    <div style={{ fontSize:10, color:T.text3, letterSpacing:.4, flex:1 }}>SET</div>
+                    <div style={{ fontSize:10, color:T.text3, letterSpacing:.4, flex:1, textAlign:'center' }}>WEIGHT (LB)</div>
+                    <div style={{ fontSize:10, color:T.text3, letterSpacing:.4, flex:1, textAlign:'center' }}>REPS</div>
+                    <div style={{ width:32 }}></div>
+                  </div>
+                  {Array.from({ length:targetSets }).map((_,i) => {
+                    const done = logged.sets[i]
+                    const lastSet = lastSess?.sets?.[i]
+                    return (
+                      <InlineSetRow
+                        key={i}
+                        setNum={i+1}
+                        initial={done}
+                        lastSet={lastSet}
+                        onSave={data => logSet(exIdx, i, data)}
+                      />
+                    )
+                  })}
+                </div>
               </div>
             )}
           </div>
@@ -781,7 +792,7 @@ function ExerciseProgress({ userId, programId, exerciseName, exerciseId, onBack 
         const trend = prev ? (best?.weight > prev?.weight ? '↑' : best?.weight < prev?.weight ? '↓' : '→') : null
         const date = new Date(sess.logged_at||sess.date).toLocaleDateString('en-US', { month:'short', day:'numeric' })
         return (
-          <div key={i} style={{ background:T.surface, border:`0.5px solid ${T.border}`, borderRadius:rr('md'), padding:'12px 14px', marginBottom:8 }}>
+          <div key={i} style={{ background:T.surface, borderRadius:rr('md'), padding:'12px 16px', marginBottom:8, overflow:'hidden' }}>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
               <div style={{ fontSize:12, color:T.text3 }}>{date}</div>
               {trend && <div style={{ fontSize:14, color: trend==='↑'?'var(--green)':trend==='↓'?'var(--coral)':T.text3 }}>{trend}</div>}
@@ -1136,23 +1147,25 @@ function ProgramDetail({ program, lastWorkoutId, sessions, onBack, onEdit, onSta
         return (
           <div key={ph.id} style={{ marginBottom:12 }}>
             <div style={{ background:T.surface, border:`0.5px solid ${T.border}`, borderRadius:rr('md'), overflow:'hidden' }}>
-              <div style={{ padding:'10px 14px', background:T.surface2, borderBottom:`0.5px solid ${T.border}`, display:'flex', justifyContent:'space-between' }}>
-                <div style={{ fontSize:13, fontWeight:500, color:T.text }}>{ph.name}</div>
-                <div style={{ fontSize:11, color:T.text3 }}>{ph.weeks} weeks</div>
+              <div style={{ padding:'12px 16px', background:T.surface2, borderBottom:`0.5px solid ${T.border}`, display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                <div style={{ fontSize:14, fontWeight:500, color:T.text }}>{ph.name}</div>
+                <div style={{ fontSize:11, color:T.text3, background:T.surface, borderRadius:20, padding:'3px 10px' }}>{ph.weeks} wks</div>
               </div>
               {ph.workouts.length===0 && <div style={{ padding:'12px 14px', fontSize:12, color:T.text3 }}>No workouts in this phase.</div>}
               {ph.workouts.map((w) => {
                 const isNext = nextW?.id === w.id
                 return (
-                  <div key={w.id} style={{ padding:'10px 14px', borderBottom:`0.5px solid ${T.border}`, display:'flex', justifyContent:'space-between', alignItems:'center', background: isNext ? 'rgba(29,158,117,0.05)' : 'transparent' }}>
+                  <div key={w.id} style={{ padding:'12px 16px', borderBottom:`0.5px solid ${T.border}`, display:'flex', justifyContent:'space-between', alignItems:'center', background: isNext ? 'rgba(58,138,88,0.06)' : 'transparent' }}>
                     <div>
-                      <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-                        <div style={{ fontSize:13, fontWeight:500, color:T.text }}>{w.name}</div>
-                        {isNext && <div style={{ fontSize:10, padding:'2px 7px', borderRadius:20, background:'var(--green-bg)', color:'var(--green)', border:'0.5px solid var(--green-dim)' }}>up next</div>}
+                      <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:3 }}>
+                        <div style={{ fontSize:14, fontWeight:500, color:T.text }}>{w.name}</div>
+                        {isNext && <div style={{ fontSize:10, padding:'2px 8px', borderRadius:20, background:'var(--green-bg)', color:'var(--green)', fontWeight:500 }}>up next</div>}
                       </div>
-                      <div style={{ fontSize:11, color:T.text3, marginTop:1 }}>{w.exercises.length} exercise{w.exercises.length!==1?'s':''}</div>
+                      <div style={{ fontSize:11, color:T.text3 }}>{w.exercises.length} exercise{w.exercises.length!==1?'s':''}</div>
                     </div>
-                    <Btn small onClick={()=>onStartWorkout(w, program.id, ph.id)}>Start</Btn>
+                    <button onClick={()=>onStartWorkout(w, program.id, ph.id)} style={{ padding:'7px 16px', borderRadius:20, border:'none', background:isNext?'var(--green-dim)':T.surface2, color:isNext?'#fff':T.text2, fontSize:12, fontWeight:500, cursor:'pointer' }}>
+                      {isNext ? 'Start ↗' : 'Start'}
+                    </button>
                   </div>
                 )
               })}
