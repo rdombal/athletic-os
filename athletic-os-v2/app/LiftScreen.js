@@ -1064,19 +1064,31 @@ function WeeklyOverview({ programs, sessions, activeProgramId, lastWorkoutId, on
           )}
         </>
       ) : (
-        <>
-          <div style={{ textAlign:'center', padding:'3rem 0' }}>
-            <div style={{ fontSize:14, color:T.text2, marginBottom:8 }}>No program yet.</div>
-            <div style={{ fontSize:12, color:T.text3 }}>Build your first one to get started.</div>
+<>
+          <div style={{ marginBottom:24 }}>
+            <div style={{ fontSize:22, fontWeight:500, color:T.text, letterSpacing:-.3, marginBottom:6 }}>Start lifting.</div>
+            <div style={{ fontSize:13, color:T.text2, lineHeight:1.6 }}>Build a program once. Log your sessions. Watch yourself get stronger over time.</div>
           </div>
-          <button onClick={onNewProgram} style={{ width:'100%', marginTop:10, padding:'12px 16px', borderRadius:rr('md'), border:'none', background:T.text, color:T.bg, fontSize:14, fontWeight:500, cursor:'pointer' }}>
-            + New program
+
+          <button onClick={onNewProgram} style={{ width:'100%', padding:'13px', borderRadius:rr('md'), border:'none', background:T.text, color:T.bg, fontSize:14, fontWeight:500, cursor:'pointer', marginBottom:20 }}>
+            + Build my program
           </button>
-          {programs.length > 0 && (
-            <button onClick={()=>onSelectProgram(programs[0])} style={{ width:'100%', marginTop:8, padding:'10px', borderRadius:rr('sm'), border:`0.5px solid ${T.border}`, background:'transparent', color:T.text2, fontSize:13, cursor:'pointer' }}>
-              View all programs
-            </button>
-          )}
+
+          <div style={{ fontSize:11, color:T.text3, letterSpacing:.5, textTransform:'uppercase', marginBottom:10 }}>Common structures</div>
+          {[
+            { name:'Push / Pull / Legs',     desc:'3 or 6 days · Classic split for muscle building', phases:'1 phase · 3 workouts' },
+            { name:'Upper / Lower',           desc:'4 days · Balanced strength and size',             phases:'1 phase · 2 workouts' },
+            { name:'Full Body 3x',            desc:'3 days · Great for beginners and busy schedules', phases:'1 phase · 1 workout'  },
+            { name:'Hybrid Strength + Cardio',desc:'5 days · Lift and run combined',                  phases:'2 phases · 4 workouts'},
+          ].map((s,i) => (
+            <div key={i} onClick={onNewProgram} style={{ background:T.surface, borderRadius:rr('md'), padding:'12px 14px', marginBottom:8, cursor:'pointer', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+              <div>
+                <div style={{ fontSize:13, fontWeight:500, color:T.text }}>{s.name}</div>
+                <div style={{ fontSize:11, color:T.text3, marginTop:2 }}>{s.desc}</div>
+              </div>
+              <div style={{ fontSize:12, color:T.text3, flexShrink:0, marginLeft:8 }}>Use →</div>
+            </div>
+          ))}
         </>
       )}
     </div>
