@@ -425,40 +425,47 @@ function RecipeCard({ text, onAdjust, adjusting }) {
 
 
 // ─── Low energy / real life mode ─────────────────────────────────────────────
-function LowEnergyCard({ onNav }) {
+function LowEnergyCard({ onNav, onNavMove, onNavEat }) {
   const [open, setOpen] = useState(false)
   const [dismissed, setDismissed] = useState(false)
   if (dismissed) return null
   return (
-    <div style={{ marginBottom:14 }}>
+    <div style={{ marginBottom:16 }}>
       {!open ? (
-        <button onClick={()=>setOpen(true)} style={{ background:'none', border:'none', color:T.text3, fontSize:12, padding:0, cursor:'pointer', display:'flex', alignItems:'center', gap:6 }}>
-          <span>Low energy today?</span>
-          <span style={{ fontSize:10 }}>→</span>
+        <button onClick={()=>setOpen(true)} style={{
+          width:'100%', background:T.surface, border:`0.5px solid ${T.border}`,
+          borderRadius:rr('md'), padding:'12px 16px', cursor:'pointer',
+          display:'flex', justifyContent:'space-between', alignItems:'center',
+        }}>
+          <div style={{ textAlign:'left' }}>
+            <div style={{ fontSize:14, fontWeight:500, color:T.text }}>Low energy today?</div>
+            <div style={{ fontSize:12, color:T.text3, marginTop:2 }}>That is fine. Here are easy wins.</div>
+          </div>
+          <div style={{ fontSize:14, color:T.text3 }}>›</div>
         </button>
       ) : (
-        <div style={{ background:T.surface, borderRadius:rr('md'), padding:'14px 16px', position:'relative' }}>
-          <button onClick={()=>setDismissed(true)} style={{ position:'absolute', top:10, right:12, border:'none', background:'none', color:T.text3, fontSize:14, cursor:'pointer', padding:0 }}>×</button>
-          <div style={{ fontSize:14, fontWeight:500, color:T.text, marginBottom:4 }}>That is completely fine.</div>
+        <div style={{ background:T.surface, borderRadius:rr('md'), padding:'16px', position:'relative' }}>
+          <button onClick={()=>setDismissed(true)} style={{ position:'absolute', top:12, right:14, border:'none', background:'none', color:T.text3, fontSize:16, cursor:'pointer', padding:0 }}>×</button>
+          <div style={{ fontSize:15, fontWeight:500, color:T.text, marginBottom:4 }}>That is completely fine.</div>
           <div style={{ fontSize:13, color:T.text2, lineHeight:1.6, marginBottom:14 }}>
-            Low energy days are part of it. Here are things that still count — and still help.
+            Low energy days are part of it. Small actions still count.
           </div>
           {[
-            { label:'5-min mobility flow',   sub:'Your body will feel better after', tab:'move'    },
-            { label:'Easy meal idea',         sub:'Simple, practical, no stress',    tab:'eat'     },
-            { label:'Read a pillar',          sub:'Sometimes just thinking counts',  tab:'pillars' },
+            { label:'5-min mobility flow',   sub:'Tap an area, get moving in seconds', action: ()=>{ onNavMove?.() || onNav('move'); setDismissed(true) } },
+            { label:'Easy meal idea',         sub:'Low effort, simple, no stress',      action: ()=>{ onNavEat?.() || onNav('eat'); setDismissed(true) } },
+            { label:'Read a pillar',          sub:'Sometimes just learning counts',     action: ()=>{ onNav('pillars'); setDismissed(true) } },
           ].map((item,i) => (
-            <div key={i} onClick={()=>{ onNav(item.tab); setDismissed(true) }}
+            <div key={i} onClick={item.action}
               style={{ display:'flex', justifyContent:'space-between', alignItems:'center',
-                padding:'10px 0', borderBottom: i<2 ? `0.5px solid ${T.border}` : 'none', cursor:'pointer' }}>
+                padding:'12px 0', borderBottom: i<2 ? `0.5px solid ${T.border}` : 'none', cursor:'pointer' }}>
               <div>
-                <div style={{ fontSize:13, fontWeight:500, color:T.text }}>{item.label}</div>
-                <div style={{ fontSize:11, color:T.text3, marginTop:2 }}>{item.sub}</div>
+                <div style={{ fontSize:14, fontWeight:500, color:T.text }}>{item.label}</div>
+                <div style={{ fontSize:12, color:T.text3, marginTop:2 }}>{item.sub}</div>
               </div>
-              <div style={{ fontSize:14, color:T.text3 }}>›</div>
+              <div style={{ fontSize:16, color:T.text3 }}>›</div>
             </div>
           ))}
-          <div style={{ fontSize:11, color:T.text3, marginTop:12, fontStyle:'italic' }}>
+          <div style={{ fontSize:12, color:T.text3, marginTop:14, fontStyle:'italic' }}>
             10 minutes still counts. A walk still counts. Showing up at all counts.
           </div>
         </div>
@@ -513,7 +520,7 @@ function HomeScreen({ onNav, savedItems, profile, userId }) {
     { tab:'move',    label:'Move',         desc:'Mobility & warmups',          iconColor:'var(--green)',   iconBg:'var(--green-bg)'   },
     { tab:'eat',     label:'Eat',          desc:'Recipes, your ingredients',   iconColor:'var(--amber)',   iconBg:'var(--amber-bg)'   },
     { tab:'lift',    label:'Lift',         desc:'Programs & sessions',         iconColor:'var(--blue)',    iconBg:'var(--blue-bg)'    },
-    { tab:'pillars', label:'Pillars',      desc:'What actually matters',       iconColor:'var(--purple)',  iconBg:'var(--purple-bg)'  },
+    { tab:'stack',   label:'Your Rotation',desc:'Saved meals & routines',      iconColor:'var(--purple)',  iconBg:'var(--purple-bg)'  },
   ]
 
   const TILE_ICONS = {
@@ -536,6 +543,11 @@ function HomeScreen({ onNav, savedItems, profile, userId }) {
     pillars: (color) => (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
         <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
+      </svg>
+    ),
+    stack: (color) => (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M19 11H5M19 6H5M19 16H5"/><circle cx="3" cy="6" r="1" fill={color}/><circle cx="3" cy="11" r="1" fill={color}/><circle cx="3" cy="16" r="1" fill={color}/>
       </svg>
     ),
   }
@@ -566,9 +578,8 @@ function HomeScreen({ onNav, savedItems, profile, userId }) {
         promptFn={cat=>'You are a science communicator. Give ONE surprising fact about '+cat+'. 2-3 sentences. Make it feel worth sharing. No obvious facts. No fluff. Give a 2-4 word title. Format: TITLE: [title] FACT: [fact]'}
         fallback="Your muscles grow during rest, not during the workout itself. The training session is just the signal — sleep and nutrition are where the actual adaptation happens." />
       <SomethingSmallCard onNav={onNav} />
-      <LowEnergyCard onNav={onNav} />
       <Eyebrow>Quick access</Eyebrow>
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(2,minmax(0,1fr))', gap:10, marginBottom:28 }}>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(2,minmax(0,1fr))', gap:10, marginBottom:16 }}>
         {tiles.map(t=>(
           <button key={t.tab} onClick={()=>onNav(t.tab)} style={{ background:T.surface, borderRadius:rr('md'), padding:14, textAlign:'left', border:'none', cursor:'pointer' }}>
             <div style={{ width:38, height:38, borderRadius:10, background:t.iconBg, display:'flex', alignItems:'center', justifyContent:'center', marginBottom:12 }}>
@@ -579,16 +590,7 @@ function HomeScreen({ onNav, savedItems, profile, userId }) {
           </button>
         ))}
       </div>
-      {savedItems.length>0&&<>
-        <Eyebrow>your rotation</Eyebrow>
-        {savedItems.slice(0,3).map((item,i)=>(
-          <Card key={i} style={{ marginBottom:8 }}>
-            <div style={{ fontSize:10, color:T.text3, letterSpacing:.5, textTransform:'uppercase', marginBottom:4 }}>{item.type}</div>
-            <div style={{ fontSize:14, fontWeight:500, color:T.text }}>{item.label}</div>
-            <div style={{ fontSize:12, color:T.text2, marginTop:3, lineHeight:1.5, overflow:'hidden', maxHeight:36 }}>{item.text.substring(0,100)}...</div>
-          </Card>
-        ))}
-      </>}
+      <LowEnergyCard onNav={onNav} />
     </div>
   )
 }
