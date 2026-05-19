@@ -95,7 +95,7 @@ const EFFORT_LEVELS = [
   { key:'chef',   label:'Chef up',     desc:'Worth the extra time'  },
 ]
 const CUISINES = ['Mexican','Asian','Mediterranean','Italian','American','Middle Eastern','Indian']
-const GOALS = ['Build muscle','Lose fat','Maintain','Athletic performance']
+const GOALS = ['Build muscle','Lose fat','Maintain','Athletic performance','Feel good']
 const ACTIVITY_LEVELS = ['Light (1-2x/week)','Moderate (3-4x/week)','Very active (5+/week)']
 const ADJUST_BUTTONS = [
   { key:'calories_up',   label:'Higher calorie'    },
