@@ -904,7 +904,7 @@ function StackScreen({ items, onDelete, onRename }) {
         return (
           <div key={item.id} style={{ background:T.surface, borderRadius:rr('md'), marginBottom:10, overflow:'hidden' }}>
             {/* Header row — name + actions */}
-            <div style={{ padding:'14px 16px' }}>
+            <div style={{ padding:'14px 16px', cursor:'pointer' }} onClick={()=>{ if(editingId!==item.id) setExpandedId(isOpen?null:item.id) }}>
               <div style={{ fontSize:10, color:T.text3, letterSpacing:.5, textTransform:'uppercase', marginBottom:6 }}>
                 {tab==='routines'?'Routine':'Recipe'} · {new Date(item.created_at||Date.now()).toLocaleDateString()}
               </div>
@@ -926,13 +926,9 @@ function StackScreen({ items, onDelete, onRename }) {
                 <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                   <div style={{ fontSize:14, fontWeight:500, color:T.text, flex:1 }}>{item.label}</div>
                   <div style={{ display:'flex', alignItems:'center', gap:8, flexShrink:0 }}>
-                    <button onClick={()=>{ setEditingId(item.id); setEditingLabel(item.label) }}
+                    <button onClick={e=>{ e.stopPropagation(); setEditingId(item.id); setEditingLabel(item.label) }}
                       style={{ border:`0.5px solid ${T.border}`, background:T.surface2, color:T.text3, borderRadius:rr('sm'), padding:'4px 10px', fontSize:11, cursor:'pointer' }}>Rename</button>
-                    <button onClick={()=>setExpandedId(isOpen?null:item.id)}
-                      style={{ border:`0.5px solid ${T.border}`, background:T.surface2, color:T.text3, borderRadius:rr('sm'), padding:'4px 10px', fontSize:11, cursor:'pointer' }}>
-                      {isOpen?'Close':'View'}
-                    </button>
-                    <button onClick={()=>onDelete(item.id)}
+                    <button onClick={e=>{ e.stopPropagation(); onDelete(item.id) }}
                       style={{ border:'none', background:'none', color:T.text3, fontSize:15, padding:0, cursor:'pointer' }}>×</button>
                   </div>
                 </div>
