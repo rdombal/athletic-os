@@ -696,9 +696,9 @@ Variations:
   const save = () => {
     if (userId) updateTasteMemory(userId,{savedIngredients:pantry})
     // Use the actual recipe name (first non-empty line of response)
-    // Grab the first real line — the AI always puts recipe name first
-    const firstLine = resp.split('\n').map(l=>l.trim().replace(/^[#*]+\s*/,'')).find(l=>l.length>2) || ''
-    const recipeName = firstLine || `${meal} — ${cuisine||vibe||'recipe'}`
+    // Extract name exactly like RecipeCard does — first non-empty line after stripping markdown
+    const recipeLines = resp.split('\n').map(l=>l.trim().replace(/^#+\s*/,'')).filter(Boolean)
+    const recipeName = recipeLines[0] || `${meal} — ${cuisine||vibe||'recipe'}`
     onSave({ label:recipeName, text:resp, type:'recipe' })
     addVote()
     setSaved(true)
