@@ -497,8 +497,8 @@ function InlineSetRow({ setNum, initial, lastSet, prevSet, isCurrent, onSave, on
   }
 
   // Border color: green = done, blue = current, default = pending
-  const borderColor = saved ? 'var(--green-dim)' : isCurrent ? 'var(--blue-dim)' : T.border
-  const bgColor     = saved ? 'rgba(58,138,88,0.08)' : isCurrent ? 'rgba(58,114,200,0.08)' : T.surface2
+  const borderColor = saved ? 'var(--green-dim)' : isCurrent ? 'var(--amber-dim)' : T.border
+  const bgColor     = saved ? 'rgba(58,138,88,0.08)' : isCurrent ? 'rgba(176,120,32,0.1)' : T.surface2
 
   const inputStyle = {
     width:'100%', padding:'10px 6px', borderRadius:rr('sm'), fontSize:17, fontWeight:500,
@@ -511,7 +511,7 @@ function InlineSetRow({ setNum, initial, lastSet, prevSet, isCurrent, onSave, on
     <div style={{ marginBottom:10 }}>
       <div style={{ display:'flex', gap:6, marginBottom:6, alignItems:'center' }}>
         <div style={{ fontSize:13, fontWeight:600,
-          color: saved ? 'var(--green)' : isCurrent ? 'var(--blue)' : T.text3,
+          color: saved ? 'var(--green)' : isCurrent ? 'var(--amber)' : T.text3,
           width:20, textAlign:'center', flexShrink:0 }}>{setNum}</div>
         {/* Copy prev set button */}
         {prevSet && !saved && (
@@ -736,6 +736,8 @@ function SessionLogger({ workout, programId, phaseId, userId, profile, onGoEat, 
 
 
   return (
+    <>
+    {restActive && <RestTimer key={restKey} onDismiss={()=>setRestActive(false)} />}
     <div style={{ padding:'0 20px', paddingBottom:80 }}>
       {sessionComplete && sessionStats && (
         <SessionCompleteModal stats={sessionStats} profile={profile} onGoEat={onGoEat} onDone={()=>onFinish(sessionStats)} />
@@ -804,7 +806,11 @@ function SessionLogger({ workout, programId, phaseId, userId, profile, onGoEat, 
                         setNum={i+1}
                         initial={done}
                         lastSet={lastSet}
+                        prevSet={i > 0 ? (logged.sets[i-1] || lastSess?.sets?.[i-1] || null) : null}
+                        isCurrent={!done && logged.sets.filter(Boolean).length === i}
                         onSave={data => logSet(exIdx, i, data)}
+                        onUndo={()=>{ setLoggedSets(prev => { const next=[...prev]; const sets=[...next[exIdx].sets]; sets[i]=undefined; next[exIdx]={...next[exIdx],sets}; return next }) }}
+                        onRestStart={()=>{ setRestActive(true); setRestKey(k=>k+1) }}
                       />
                     )
                   })}
@@ -814,8 +820,6 @@ function SessionLogger({ workout, programId, phaseId, userId, profile, onGoEat, 
           </div>
         )
       })}
-
-      {restActive && <RestTimer key={restKey} onDismiss={()=>setRestActive(false)} />}
 
       <div style={{ marginTop:16 }}>
         <button onClick={finishSession} style={{
@@ -827,6 +831,7 @@ function SessionLogger({ workout, programId, phaseId, userId, profile, onGoEat, 
         </button>
       </div>
     </div>
+    </>
   )
 }
 
