@@ -695,7 +695,12 @@ Variations:
 
   const save = () => {
     if (userId) updateTasteMemory(userId,{savedIngredients:pantry})
-    onSave({ label:`${meal} — ${cuisine||vibe||'recipe'}`, text:resp, type:'recipe' })
+    // Use the actual recipe name (first non-empty line of response)
+    const recipeName = resp.split('\n')
+      .map(l => l.trim().replace(/^[#*_\-•>]+\s*/, '').trim())
+      .find(l => l.length > 3 && !/^(ingredient|step|macro|direction|variation|nutrition)/i.test(l))
+      || `${meal} — ${cuisine||vibe||'recipe'}`
+    onSave({ label:recipeName, text:resp, type:'recipe' })
     addVote()
     setSaved(true)
   }
@@ -869,9 +874,11 @@ function SavedItemDetail({ item }) {
   return <div style={{ padding:'0 16px 16px' }}><RecipeCard text={item.text} /></div>
 }
 
-function StackScreen({ items, onDelete }) {
+function StackScreen({ items, onDelete, onRename }) {
   const [tab, setTab] = useState('routines')
   const [expandedId, setExpandedId] = useState(null)
+  const [editingId, setEditingId] = useState(null)
+  const [editingLabel, setEditingLabel] = useState('')
   const filtered = items.filter(i=>tab==='routines'?i.type==='routine':i.type==='recipe')
 
   return (
@@ -897,13 +904,33 @@ function StackScreen({ items, onDelete }) {
         const isOpen = expandedId === item.id
         return (
           <div key={item.id} style={{ background:T.surface, borderRadius:rr('md'), marginBottom:10, overflow:'hidden' }}>
-            <div onClick={()=>setExpandedId(isOpen ? null : item.id)}
+            <div onClick={()=>{ if(editingId!==item.id) setExpandedId(isOpen ? null : item.id) }}
               style={{ padding:'14px 16px', display:'flex', justifyContent:'space-between', alignItems:'center', cursor:'pointer' }}>
               <div style={{ flex:1, minWidth:0 }}>
                 <div style={{ fontSize:10, color:T.text3, letterSpacing:.5, textTransform:'uppercase', marginBottom:3 }}>
                   {tab==='routines'?'Routine':'Recipe'} · {new Date(item.created_at||Date.now()).toLocaleDateString()}
                 </div>
-                <div style={{ fontSize:14, fontWeight:500, color:T.text }}>{item.label}</div>
+                {editingId === item.id ? (
+                  <div style={{ display:'flex', gap:6, alignItems:'center' }} onClick={e=>e.stopPropagation()}>
+                    <input
+                      autoFocus
+                      value={editingLabel}
+                      onChange={e=>setEditingLabel(e.target.value)}
+                      onKeyDown={e=>{ if(e.key==='Enter'){ onRename(item.id, editingLabel); setEditingId(null) } if(e.key==='Escape') setEditingId(null) }}
+                      style={{ flex:1, padding:'4px 8px', borderRadius:rr('sm'), border:`0.5px solid ${T.border}`, background:T.surface2, color:T.text, fontSize:13, outline:'none' }}
+                    />
+                    <button onClick={()=>{ onRename(item.id, editingLabel); setEditingId(null) }}
+                      style={{ border:'none', background:'var(--green-dim)', color:'#fff', borderRadius:rr('sm'), padding:'4px 10px', fontSize:12, cursor:'pointer' }}>Save</button>
+                    <button onClick={()=>setEditingId(null)}
+                      style={{ border:'none', background:'none', color:T.text3, fontSize:12, cursor:'pointer' }}>Cancel</button>
+                  </div>
+                ) : (
+                  <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                    <div style={{ fontSize:14, fontWeight:500, color:T.text }}>{item.label}</div>
+                    <button onClick={e=>{ e.stopPropagation(); setEditingId(item.id); setEditingLabel(item.label) }}
+                      style={{ border:'none', background:'none', color:T.text3, fontSize:11, padding:0, cursor:'pointer' }}>✎</button>
+                  </div>
+                )}
               </div>
               <div style={{ display:'flex', alignItems:'center', gap:10, flexShrink:0 }}>
                 <div style={{ fontSize:12, color:T.text3, transform:isOpen?'rotate(180deg)':'none', transition:'transform .2s' }}>▼</div>
@@ -1045,6 +1072,12 @@ export default function App() {
     setSavedItems(prev=>prev.filter(i=>i.id!==id))
   }
 
+  const handleRename = async (id, newLabel) => {
+    if (!newLabel.trim()) return
+    await supabase.from('saved_items').update({ label: newLabel.trim() }).eq('id', id)
+    setSavedItems(prev => prev.map(i => i.id===id ? { ...i, label:newLabel.trim() } : i))
+  }
+
   const handleDeepDive = prompt => { setDeepDive(prompt); setTab('pillars') }
 
   if (authLoading) {
@@ -1075,7 +1108,7 @@ export default function App() {
         {tab==='more'    && <MoreScreen onNav={setTab} />}
         {tab==='pillars' && !deepDive && <PillarsScreen onDeepDive={handleDeepDive} />}
         {tab==='pillars' && deepDive  && <DeepDiveScreen prompt={deepDive} onBack={()=>setDeepDive(null)} />}
-        {tab==='stack'   && <StackScreen items={savedItems} onDelete={handleDelete} />}
+        {tab==='stack'   && <StackScreen items={savedItems} onDelete={handleDelete} onRename={handleRename} />}
         {tab==='profile' && <ProfileScreen userId={userId} onSaved={setProfile} onNav={setTab} />}
       </div>
       <Toast message={toast.message} visible={toast.visible} />
