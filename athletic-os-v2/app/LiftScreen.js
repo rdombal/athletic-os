@@ -131,10 +131,11 @@ function Stepper({ value, onChange, min=1, max=999, label }) {
 // ─── Stopwatch ────────────────────────────────────────────────────────────────
 function useStopwatch() {
   const [elapsed, setElapsed] = useState(0)
-  const startRef = useRef(Date.now())
+  const startRef = useRef(null)
   const frameRef = useRef(null)
   useEffect(() => {
-    startRef.current = Date.now()
+    // Only set start time once, never reset it
+    if (!startRef.current) startRef.current = Date.now()
     const tick = () => {
       setElapsed(Math.floor((Date.now() - startRef.current) / 1000))
       frameRef.current = requestAnimationFrame(tick)
@@ -142,7 +143,14 @@ function useStopwatch() {
     frameRef.current = requestAnimationFrame(tick)
     return () => { if (frameRef.current) cancelAnimationFrame(frameRef.current) }
   }, [])
-  const fmt = (s) => { const m = Math.floor(s/60); const sec = s%60; return `${m}m ${sec}s` }
+  const fmt = (s) => {
+    const h = Math.floor(s / 3600)
+    const m = Math.floor((s % 3600) / 60)
+    const sec = s % 60
+    if (h > 0) return `${h}h ${m}m`
+    if (m > 0) return `${m}m ${sec}s`
+    return `${sec}s`
+  }
   return { elapsed, formatted: fmt(elapsed) }
 }
 
@@ -683,12 +691,16 @@ function SessionLogger({ workout, programId, phaseId, userId, profile, onGoEat, 
       }
 
     })
-    const mins=Math.floor(elapsed/60); const secs=elapsed%60
+    // Format duration properly
+    const h = Math.floor(elapsed/3600)
+    const m = Math.floor((elapsed%3600)/60)
+    const s = elapsed%60
+    const duration = h>0 ? `${h}h ${m}m` : m>0 ? `${m}m ${s}s` : `${s}s`
     // Check if returning after a gap
     const lastSess = sessions.sort ? [...sessions].sort((a,b)=>new Date(b.logged_at||b.date)-new Date(a.logged_at||a.date))[0] : null
     const daysSince = lastSess ? Math.floor((Date.now()-new Date(lastSess.logged_at||lastSess.date).getTime())/(1000*60*60*24)) : 0
     const returningAfterGap = daysSince >= 5
-    return { workoutName:workout.name, duration:`${mins}m ${secs}s`, volume:totalVolume, totalSets, prs, nextTargets, exerciseNames:loggedSets.map(e=>e.name), returningAfterGap }
+    return { workoutName:workout.name, duration, volume:totalVolume, totalSets, prs, nextTargets, exerciseNames:loggedSets.map(e=>e.name), returningAfterGap }
   }
 
   const finishSession = async () => {
@@ -703,12 +715,8 @@ function SessionLogger({ workout, programId, phaseId, userId, profile, onGoEat, 
 
   return (
     <div style={{ padding:'0 20px', paddingBottom:80 }}>
-
       {sessionComplete && sessionStats && (
         <SessionCompleteModal stats={sessionStats} profile={profile} onGoEat={onGoEat} onDone={()=>onFinish(sessionStats)} />
-      )}
-      {restActive && (
-        <RestTimer key={restKey} onDismiss={()=>setRestActive(false)} />
       )}
 
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:18, paddingTop:4 }}>
@@ -784,6 +792,8 @@ function SessionLogger({ workout, programId, phaseId, userId, profile, onGoEat, 
           </div>
         )
       })}
+
+      {restActive && <RestTimer key={restKey} onDismiss={()=>setRestActive(false)} />}
 
       <div style={{ marginTop:16 }}>
         <button onClick={finishSession} style={{
