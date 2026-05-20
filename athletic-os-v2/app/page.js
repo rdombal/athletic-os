@@ -696,10 +696,9 @@ Variations:
   const save = () => {
     if (userId) updateTasteMemory(userId,{savedIngredients:pantry})
     // Use the actual recipe name (first non-empty line of response)
-    const recipeName = resp.split('\n')
-      .map(l => l.trim().replace(/^[#*_\-•>]+\s*/, '').trim())
-      .find(l => l.length > 3 && !/^(ingredient|step|macro|direction|variation|nutrition)/i.test(l))
-      || `${meal} — ${cuisine||vibe||'recipe'}`
+    // Grab the first real line — the AI always puts recipe name first
+    const firstLine = resp.split('\n').map(l=>l.trim().replace(/^[#*]+\s*/,'')).find(l=>l.length>2) || ''
+    const recipeName = firstLine || `${meal} — ${cuisine||vibe||'recipe'}`
     onSave({ label:recipeName, text:resp, type:'recipe' })
     addVote()
     setSaved(true)
@@ -904,39 +903,40 @@ function StackScreen({ items, onDelete, onRename }) {
         const isOpen = expandedId === item.id
         return (
           <div key={item.id} style={{ background:T.surface, borderRadius:rr('md'), marginBottom:10, overflow:'hidden' }}>
-            <div onClick={()=>{ if(editingId!==item.id) setExpandedId(isOpen ? null : item.id) }}
-              style={{ padding:'14px 16px', display:'flex', justifyContent:'space-between', alignItems:'center', cursor:'pointer' }}>
-              <div style={{ flex:1, minWidth:0 }}>
-                <div style={{ fontSize:10, color:T.text3, letterSpacing:.5, textTransform:'uppercase', marginBottom:3 }}>
-                  {tab==='routines'?'Routine':'Recipe'} · {new Date(item.created_at||Date.now()).toLocaleDateString()}
+            {/* Header row — name + actions */}
+            <div style={{ padding:'14px 16px' }}>
+              <div style={{ fontSize:10, color:T.text3, letterSpacing:.5, textTransform:'uppercase', marginBottom:6 }}>
+                {tab==='routines'?'Routine':'Recipe'} · {new Date(item.created_at||Date.now()).toLocaleDateString()}
+              </div>
+              {editingId === item.id ? (
+                <div style={{ display:'flex', gap:6, alignItems:'center', marginBottom:4 }}>
+                  <input
+                    autoFocus
+                    value={editingLabel}
+                    onChange={e=>setEditingLabel(e.target.value)}
+                    onKeyDown={e=>{ if(e.key==='Enter'){ onRename(item.id,editingLabel); setEditingId(null) } if(e.key==='Escape') setEditingId(null) }}
+                    style={{ flex:1, padding:'6px 10px', borderRadius:rr('sm'), border:`1px solid ${T.border2}`, background:T.surface2, color:T.text, fontSize:14, outline:'none' }}
+                  />
+                  <button onClick={()=>{ onRename(item.id,editingLabel); setEditingId(null) }}
+                    style={{ border:'none', background:'var(--green-dim)', color:'#fff', borderRadius:rr('sm'), padding:'6px 12px', fontSize:12, fontWeight:500, cursor:'pointer', flexShrink:0 }}>Save</button>
+                  <button onClick={()=>setEditingId(null)}
+                    style={{ border:'none', background:'none', color:T.text3, fontSize:12, cursor:'pointer', flexShrink:0 }}>✕</button>
                 </div>
-                {editingId === item.id ? (
-                  <div style={{ display:'flex', gap:6, alignItems:'center' }} onClick={e=>e.stopPropagation()}>
-                    <input
-                      autoFocus
-                      value={editingLabel}
-                      onChange={e=>setEditingLabel(e.target.value)}
-                      onKeyDown={e=>{ if(e.key==='Enter'){ onRename(item.id, editingLabel); setEditingId(null) } if(e.key==='Escape') setEditingId(null) }}
-                      style={{ flex:1, padding:'4px 8px', borderRadius:rr('sm'), border:`0.5px solid ${T.border}`, background:T.surface2, color:T.text, fontSize:13, outline:'none' }}
-                    />
-                    <button onClick={()=>{ onRename(item.id, editingLabel); setEditingId(null) }}
-                      style={{ border:'none', background:'var(--green-dim)', color:'#fff', borderRadius:rr('sm'), padding:'4px 10px', fontSize:12, cursor:'pointer' }}>Save</button>
-                    <button onClick={()=>setEditingId(null)}
-                      style={{ border:'none', background:'none', color:T.text3, fontSize:12, cursor:'pointer' }}>Cancel</button>
+              ) : (
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                  <div style={{ fontSize:14, fontWeight:500, color:T.text, flex:1 }}>{item.label}</div>
+                  <div style={{ display:'flex', alignItems:'center', gap:8, flexShrink:0 }}>
+                    <button onClick={()=>{ setEditingId(item.id); setEditingLabel(item.label) }}
+                      style={{ border:`0.5px solid ${T.border}`, background:T.surface2, color:T.text3, borderRadius:rr('sm'), padding:'4px 10px', fontSize:11, cursor:'pointer' }}>Rename</button>
+                    <button onClick={()=>setExpandedId(isOpen?null:item.id)}
+                      style={{ border:`0.5px solid ${T.border}`, background:T.surface2, color:T.text3, borderRadius:rr('sm'), padding:'4px 10px', fontSize:11, cursor:'pointer' }}>
+                      {isOpen?'Close':'View'}
+                    </button>
+                    <button onClick={()=>onDelete(item.id)}
+                      style={{ border:'none', background:'none', color:T.text3, fontSize:15, padding:0, cursor:'pointer' }}>×</button>
                   </div>
-                ) : (
-                  <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                    <div style={{ fontSize:14, fontWeight:500, color:T.text }}>{item.label}</div>
-                    <button onClick={e=>{ e.stopPropagation(); setEditingId(item.id); setEditingLabel(item.label) }}
-                      style={{ border:'none', background:'none', color:T.text3, fontSize:11, padding:0, cursor:'pointer' }}>✎</button>
-                  </div>
-                )}
-              </div>
-              <div style={{ display:'flex', alignItems:'center', gap:10, flexShrink:0 }}>
-                <div style={{ fontSize:12, color:T.text3, transform:isOpen?'rotate(180deg)':'none', transition:'transform .2s' }}>▼</div>
-                <button onClick={e=>{ e.stopPropagation(); onDelete(item.id) }}
-                  style={{ border:'none', background:'none', color:T.text3, fontSize:15, padding:0, cursor:'pointer' }}>×</button>
-              </div>
+                </div>
+              )}
             </div>
             {isOpen && (
               <div style={{ borderTop:`0.5px solid ${T.border}` }}>
