@@ -459,10 +459,13 @@ function ProgramBuilder({ program, onSave, onBack, onDelete }) {
 
 
 // ─── Inline set row ───────────────────────────────────────────────────────────
-function InlineSetRow({ setNum, initial, lastSet, prevSet, onSave, onRestStart }) {
-  const [weight, setWeight] = useState(initial?.weight?.toString() || lastSet?.weight?.toString() || '')
-  const [reps, setReps] = useState(initial?.reps?.toString() || lastSet?.reps?.toString() || '')
-  const [saved, setSaved] = useState(!!initial)
+function InlineSetRow({ setNum, initial, lastSet, prevSet, isCurrent, onSave, onUndo, onRestStart }) {
+  // Pre-fill from last session on mount — so +5 buttons work immediately
+  const defaultWeight = initial?.weight?.toString() || lastSet?.weight?.toString() || ''
+  const defaultReps   = initial?.reps?.toString()   || lastSet?.reps?.toString()   || ''
+  const [weight, setWeight] = useState(defaultWeight)
+  const [reps,   setReps]   = useState(defaultReps)
+  const [saved,  setSaved]  = useState(!!initial)
 
   const handleSave = () => {
     if (!weight || !reps) return
@@ -471,8 +474,16 @@ function InlineSetRow({ setNum, initial, lastSet, prevSet, onSave, onRestStart }
     if (onRestStart) onRestStart()
   }
 
+  const handleUndo = (e) => {
+    e.stopPropagation()
+    setSaved(false)
+    setWeight(lastSet?.weight?.toString() || '')
+    setReps(lastSet?.reps?.toString() || '')
+    if (onUndo) onUndo()
+  }
+
   const adjustWeight = (delta) => {
-    const current = parseFloat(weight) || 0
+    const current = parseFloat(weight) || parseFloat(lastSet?.weight) || 0
     const next = Math.max(0, current + delta)
     setWeight(next % 1 === 0 ? next.toString() : next.toFixed(1))
     setSaved(false)
@@ -485,50 +496,61 @@ function InlineSetRow({ setNum, initial, lastSet, prevSet, onSave, onRestStart }
     setSaved(false)
   }
 
-  const inputStyle = (active) => ({
+  // Border color: green = done, blue = current, default = pending
+  const borderColor = saved ? 'var(--green-dim)' : isCurrent ? 'var(--blue-dim)' : T.border
+  const bgColor     = saved ? 'rgba(58,138,88,0.08)' : isCurrent ? 'rgba(58,114,200,0.08)' : T.surface2
+
+  const inputStyle = {
     width:'100%', padding:'10px 6px', borderRadius:rr('sm'), fontSize:17, fontWeight:500,
-    border: `0.5px solid ${saved && active ? 'var(--green-dim)' : T.border}`,
-    background: saved && active ? 'rgba(58,138,88,0.1)' : T.surface2,
+    border: `0.5px solid ${borderColor}`,
+    background: bgColor,
     color: T.text, outline:'none', textAlign:'center',
-  })
+  }
 
   return (
     <div style={{ marginBottom:10 }}>
-      {/* Quick increment + copy row */}
       <div style={{ display:'flex', gap:6, marginBottom:6, alignItems:'center' }}>
-        <div style={{ fontSize:13, fontWeight:600, color:saved?'var(--green)':T.text3, width:20, textAlign:'center', flexShrink:0 }}>{setNum}</div>
+        <div style={{ fontSize:13, fontWeight:600,
+          color: saved ? 'var(--green)' : isCurrent ? 'var(--blue)' : T.text3,
+          width:20, textAlign:'center', flexShrink:0 }}>{setNum}</div>
+        {/* Copy prev set button */}
         {prevSet && !saved && (
           <button onClick={copyPrev} style={{ fontSize:11, color:T.text3, border:`0.5px solid ${T.border}`, borderRadius:20, padding:'3px 10px', background:T.surface2, cursor:'pointer', flexShrink:0 }}>
             Copy last
           </button>
         )}
         <div style={{ flex:1 }} />
-        {[2.5, 5, 10].map(d => (
+        {/* Weight increment buttons */}
+        {!saved && [2.5, 5, 10].map(d => (
           <button key={d} onClick={()=>adjustWeight(d)} style={{ fontSize:11, color:T.text2, border:`0.5px solid ${T.border}`, borderRadius:20, padding:'3px 10px', background:T.surface2, cursor:'pointer', flexShrink:0 }}>
             +{d}
           </button>
         ))}
+        {/* Undo button for completed sets */}
+        {saved && (
+          <button onClick={handleUndo} style={{ fontSize:11, color:T.text3, border:`0.5px solid ${T.border}`, borderRadius:20, padding:'3px 10px', background:T.surface2, cursor:'pointer', flexShrink:0 }}>
+            Undo
+          </button>
+        )}
       </div>
-      {/* Weight × Reps inputs */}
       <div style={{ display:'flex', gap:8, alignItems:'center' }}>
         <input type="number" inputMode="decimal" value={weight}
           onChange={e=>{ setWeight(e.target.value); setSaved(false) }}
-          onBlur={()=>{ if(weight&&reps) handleSave() }}
           placeholder={lastSet?.weight?.toString() || 'lb'}
-          style={inputStyle(!!weight)} />
+          style={inputStyle} />
         <div style={{ fontSize:13, color:T.text3, flexShrink:0 }}>×</div>
         <input type="number" inputMode="numeric" value={reps}
           onChange={e=>{ setReps(e.target.value); setSaved(false) }}
-          onBlur={()=>{ if(weight&&reps) handleSave() }}
           placeholder={lastSet?.reps?.toString() || 'reps'}
-          style={inputStyle(!!reps)} />
-        <button onClick={handleSave} disabled={!weight||!reps} style={{
-          width:34, height:34, borderRadius:'50%', flexShrink:0, border:'none',
-          background: (!weight||!reps) ? T.surface2 : saved ? 'var(--green-dim)' : T.text,
-          color: (!weight||!reps) ? T.text3 : '#fff', fontSize:14,
-          cursor: (!weight||!reps) ? 'not-allowed' : 'pointer',
+          style={inputStyle} />
+        <button onClick={saved ? handleUndo : handleSave} style={{
+          width:38, height:38, borderRadius:'50%', flexShrink:0,
+          background: saved ? T.surface2 : (!weight||!reps) ? T.surface2 : 'var(--green-dim)',
+          color: saved ? 'var(--green)' : (!weight||!reps) ? T.text3 : '#fff',
+          fontSize:saved?16:15, cursor:'pointer',
           display:'flex', alignItems:'center', justifyContent:'center',
-          boxShadow: (!weight||!reps||saved) ? 'none' : '0 1px 3px rgba(0,0,0,0.2)',
+          boxShadow: (!saved&&weight&&reps) ? '0 2px 6px rgba(58,138,88,0.4)' : 'none',
+          border: saved ? `1px solid ${T.border2}` : 'none',
         }}>{saved ? '✓' : '→'}</button>
       </div>
     </div>
