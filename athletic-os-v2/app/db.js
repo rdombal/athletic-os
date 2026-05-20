@@ -82,10 +82,58 @@ export async function setDailyCache(userId, cacheKey, cacheData) {
 }
 
 // ─── Lift programs ────────────────────────────────────────────────────────────
+
+// Normalize a program to ensure all fields exist regardless of when it was created
+function normalizeProgram(p) {
+  return {
+    ...p,
+    name: p.name || 'Untitled program',
+    phases: (p.phases || []).map(ph => ({
+      ...ph,
+      id: ph.id || Math.random().toString(36).slice(2,9),
+      name: ph.name || 'Phase',
+      weeks: ph.weeks || 4,
+      workouts: (ph.workouts || []).map(w => ({
+        ...w,
+        id: w.id || Math.random().toString(36).slice(2,9),
+        name: w.name || 'Workout',
+        exercises: (w.exercises || []).map(ex => ({
+          ...ex,
+          id: ex.id || Math.random().toString(36).slice(2,9),
+          // exerciseId falls back to id for older records
+          exerciseId: ex.exerciseId || ex.id,
+          name: ex.name || 'Exercise',
+          sets: ex.sets || 3,
+          targetReps: ex.targetReps || 8,
+          group: ex.group || 'Other',
+        }))
+      }))
+    }))
+  }
+}
+
+// Normalize a session to ensure exercises and sets always exist
+function normalizeSession(s) {
+  return {
+    ...s,
+    date: s.logged_at || s.date,
+    workout_name: s.workout_name || s.workoutName || 'Session',
+    exercises: (s.exercises || []).map(ex => ({
+      ...ex,
+      exerciseId: ex.exerciseId || ex.id || ex.name,
+      name: ex.name || 'Exercise',
+      sets: (ex.sets || []).filter(Boolean).map(set => ({
+        weight: parseFloat(set.weight) || 0,
+        reps: parseInt(set.reps) || 0,
+      }))
+    }))
+  }
+}
+
 export async function getPrograms(userId) {
   const { data, error } = await supabase.from('lift_programs').select('*').eq('user_id', userId).order('created_at', { ascending: false })
   if (error) console.error('getPrograms error:', error)
-  return (data || []).map(p => ({ ...p, phases: p.phases || [] }))
+  return (data || []).map(normalizeProgram)
 }
 
 export async function saveProgram(userId, program) {
@@ -109,7 +157,7 @@ export async function getSessions(userId, programId) {
   if (programId) query = query.eq('program_id', programId)
   const { data, error } = await query
   if (error) console.error('getSessions error:', error)
-  return (data || []).map(s => ({ ...s, date: s.logged_at }))
+  return (data || []).map(normalizeSession)
 }
 
 export async function saveSession(userId, session) {
