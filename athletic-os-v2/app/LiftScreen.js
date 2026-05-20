@@ -626,10 +626,10 @@ function SessionLogger({ workout, programId, phaseId, userId, profile, onGoEat, 
     workout.exercises.map(ex => ({ exerciseId:ex.exerciseId||ex.id, name:ex.name, sets:[] }))
   )
   const [expandedEx, setExpandedEx] = useState(0)
-  const [_unused1, _setUnused1] = useState(null)
-  const [_unused2, _setUnused2] = useState(null)
   const [sessionComplete, setSessionComplete] = useState(false)
   const [sessionStats, setSessionStats] = useState(null)
+  const [restActive, setRestActive] = useState(false)
+  const [restKey, setRestKey] = useState(0)
   const { elapsed, formatted } = useStopwatch()
 
   useEffect(() => {
@@ -661,10 +661,8 @@ function SessionLogger({ workout, programId, phaseId, userId, profile, onGoEat, 
     }
   }
 
-  const epley1RM = (weight, reps) => reps === 1 ? weight : Math.round(weight * (1 + reps/30))
-
   const buildStats = () => {
-    let totalVolume=0; let totalSets=0; const prs=[]; const nextTargets=[]; const oneRMs=[]
+    let totalVolume=0; let totalSets=0; const prs=[]; const nextTargets=[]
     loggedSets.forEach(ex => {
       ex.sets.forEach(s=>{ totalVolume+=(s.weight||0)*(s.reps||0); totalSets++ })
       const lastEx=getLastSession(ex.exerciseId)
