@@ -451,7 +451,7 @@ function ProgramBuilder({ program, onSave, onBack, onDelete }) {
 
 
 // ─── Inline set row ───────────────────────────────────────────────────────────
-function InlineSetRow({ setNum, initial, lastSet, onSave }) {
+function InlineSetRow({ setNum, initial, lastSet, prevSet, onSave, onRestStart }) {
   const [weight, setWeight] = useState(initial?.weight?.toString() || lastSet?.weight?.toString() || '')
   const [reps, setReps] = useState(initial?.reps?.toString() || lastSet?.reps?.toString() || '')
   const [saved, setSaved] = useState(!!initial)
@@ -460,40 +460,69 @@ function InlineSetRow({ setNum, initial, lastSet, onSave }) {
     if (!weight || !reps) return
     onSave({ weight: parseFloat(weight)||0, reps: parseInt(reps)||0 })
     setSaved(true)
+    if (onRestStart) onRestStart()
   }
 
-  const inputStyle = (val) => ({
-    flex:1, padding:'10px 8px', borderRadius:rr('sm'), fontSize:16, fontWeight:500,
-    border: `0.5px solid ${saved && val ? 'var(--green-dim)' : T.border}`,
-    background: saved && val ? 'rgba(29,158,117,0.08)' : T.surface2,
-    color: T.text, outline:'none', textAlign:'center', width:'100%',
+  const adjustWeight = (delta) => {
+    const current = parseFloat(weight) || 0
+    const next = Math.max(0, current + delta)
+    setWeight(next % 1 === 0 ? next.toString() : next.toFixed(1))
+    setSaved(false)
+  }
+
+  const copyPrev = () => {
+    if (!prevSet) return
+    setWeight(prevSet.weight.toString())
+    setReps(prevSet.reps.toString())
+    setSaved(false)
+  }
+
+  const inputStyle = (active) => ({
+    width:'100%', padding:'10px 6px', borderRadius:rr('sm'), fontSize:17, fontWeight:500,
+    border: `0.5px solid ${saved && active ? 'var(--green-dim)' : T.border}`,
+    background: saved && active ? 'rgba(58,138,88,0.1)' : T.surface2,
+    color: T.text, outline:'none', textAlign:'center',
   })
 
   return (
-    <div style={{ display:'flex', gap:8, marginBottom:8, alignItems:'center' }}>
-      <div style={{ width:24, height:24, borderRadius:'50%', flexShrink:0,
-        background: saved ? T.text : T.surface2, display:'flex', alignItems:'center',
-        justifyContent:'center', fontSize:11, fontWeight:500,
-        color: saved ? T.bg : T.text2 }}>{setNum}</div>
-      <input
-        type="number" inputMode="decimal" value={weight}
-        onChange={e=>{ setWeight(e.target.value); setSaved(false) }}
-        onBlur={()=>{ if(weight&&reps) handleSave() }}
-        placeholder={lastSet?.weight?.toString() || 'lb'}
-        style={inputStyle(weight)} />
-      <div style={{ fontSize:12, color:T.text3, flexShrink:0 }}>×</div>
-      <input
-        type="number" inputMode="numeric" value={reps}
-        onChange={e=>{ setReps(e.target.value); setSaved(false) }}
-        onBlur={()=>{ if(weight&&reps) handleSave() }}
-        placeholder={lastSet?.reps?.toString() || 'reps'}
-        style={inputStyle(reps)} />
-      <button onClick={handleSave} disabled={!weight||!reps} style={{
-        width:32, height:32, borderRadius:'50%', flexShrink:0,
-        border:'none', background: (!weight||!reps) ? T.surface2 : saved ? 'var(--green-dim)' : T.text,
-        color: (!weight||!reps) ? T.text3 : '#fff', fontSize:14, cursor: (!weight||!reps) ? 'not-allowed' : 'pointer',
-        display:'flex', alignItems:'center', justifyContent:'center'
-      }}>{saved ? '✓' : '→'}</button>
+    <div style={{ marginBottom:10 }}>
+      {/* Quick increment + copy row */}
+      <div style={{ display:'flex', gap:6, marginBottom:6, alignItems:'center' }}>
+        <div style={{ fontSize:13, fontWeight:600, color:saved?'var(--green)':T.text3, width:20, textAlign:'center', flexShrink:0 }}>{setNum}</div>
+        {prevSet && !saved && (
+          <button onClick={copyPrev} style={{ fontSize:11, color:T.text3, border:`0.5px solid ${T.border}`, borderRadius:20, padding:'3px 10px', background:T.surface2, cursor:'pointer', flexShrink:0 }}>
+            Copy last
+          </button>
+        )}
+        <div style={{ flex:1 }} />
+        {[2.5, 5, 10].map(d => (
+          <button key={d} onClick={()=>adjustWeight(d)} style={{ fontSize:11, color:T.text2, border:`0.5px solid ${T.border}`, borderRadius:20, padding:'3px 10px', background:T.surface2, cursor:'pointer', flexShrink:0 }}>
+            +{d}
+          </button>
+        ))}
+      </div>
+      {/* Weight × Reps inputs */}
+      <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+        <input type="number" inputMode="decimal" value={weight}
+          onChange={e=>{ setWeight(e.target.value); setSaved(false) }}
+          onBlur={()=>{ if(weight&&reps) handleSave() }}
+          placeholder={lastSet?.weight?.toString() || 'lb'}
+          style={inputStyle(!!weight)} />
+        <div style={{ fontSize:13, color:T.text3, flexShrink:0 }}>×</div>
+        <input type="number" inputMode="numeric" value={reps}
+          onChange={e=>{ setReps(e.target.value); setSaved(false) }}
+          onBlur={()=>{ if(weight&&reps) handleSave() }}
+          placeholder={lastSet?.reps?.toString() || 'reps'}
+          style={inputStyle(!!reps)} />
+        <button onClick={handleSave} disabled={!weight||!reps} style={{
+          width:34, height:34, borderRadius:'50%', flexShrink:0, border:'none',
+          background: (!weight||!reps) ? T.surface2 : saved ? 'var(--green-dim)' : T.text,
+          color: (!weight||!reps) ? T.text3 : '#fff', fontSize:14,
+          cursor: (!weight||!reps) ? 'not-allowed' : 'pointer',
+          display:'flex', alignItems:'center', justifyContent:'center',
+          boxShadow: (!weight||!reps||saved) ? 'none' : '0 1px 3px rgba(0,0,0,0.2)',
+        }}>{saved ? '✓' : '→'}</button>
+      </div>
     </div>
   )
 }
@@ -539,6 +568,53 @@ Format each as: [Movement] — [duration or reps]` })
           {loading ? <LoadingDots /> : <div style={{ fontSize:13, color:T.text2, lineHeight:1.7, whiteSpace:'pre-wrap' }}>{suggestion}</div>}
         </div>
       )}
+    </div>
+  )
+}
+
+
+// ─── Rest timer ───────────────────────────────────────────────────────────────
+function RestTimer({ onDismiss }) {
+  const [seconds, setSeconds] = useState(0)
+  const [dismissed, setDismissed] = useState(false)
+  const ref = useRef(null)
+
+  useEffect(() => {
+    ref.current = setInterval(() => setSeconds(s => s+1), 1000)
+    return () => clearInterval(ref.current)
+  }, [])
+
+  const fmt = (s) => `${Math.floor(s/60)}:${(s%60).toString().padStart(2,'0')}`
+
+  const dismiss = () => {
+    setDismissed(true)
+    clearInterval(ref.current)
+    if (onDismiss) onDismiss()
+  }
+
+  if (dismissed) return null
+
+  const isLong = seconds >= 90
+  const isVeryLong = seconds >= 180
+
+  return (
+    <div style={{
+      position:'fixed', bottom:90, left:'50%', transform:'translateX(-50%)',
+      background: isVeryLong ? 'var(--amber-dim)' : isLong ? T.surface3 : T.surface,
+      border:`1px solid ${isVeryLong ? 'var(--amber)' : T.border2}`,
+      borderRadius:rr('lg'), padding:'10px 20px', zIndex:400,
+      display:'flex', alignItems:'center', gap:16,
+      boxShadow:'0 4px 20px rgba(0,0,0,0.4)',
+      animation:'slideUp .2s ease-out',
+    }}>
+      <div>
+        <div style={{ fontSize:11, color:T.text3, letterSpacing:.4, textTransform:'uppercase', marginBottom:2 }}>Rest</div>
+        <div style={{ fontSize:22, fontWeight:600, color: isVeryLong ? 'var(--amber)' : T.text, fontVariantNumeric:'tabular-nums' }}>{fmt(seconds)}</div>
+      </div>
+      <button onClick={dismiss} style={{ border:'none', background:T.text, color:T.bg, borderRadius:rr('sm'), padding:'7px 14px', fontSize:12, fontWeight:600, cursor:'pointer', flexShrink:0 }}>
+        Done resting
+      </button>
+      <style>{`@keyframes slideUp{from{opacity:0;transform:translateX(-50%) translateY(12px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}`}</style>
     </div>
   )
 }
@@ -632,6 +708,9 @@ function SessionLogger({ workout, programId, phaseId, userId, profile, onGoEat, 
 
       {sessionComplete && sessionStats && (
         <SessionCompleteModal stats={sessionStats} profile={profile} onGoEat={onGoEat} onDone={()=>onFinish(sessionStats)} />
+      )}
+      {restActive && (
+        <RestTimer key={restKey} onDismiss={()=>setRestActive(false)} />
       )}
 
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:18, paddingTop:4 }}>
