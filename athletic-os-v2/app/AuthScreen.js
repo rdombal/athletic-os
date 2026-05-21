@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from './supabase'
 
 const T = {
@@ -12,49 +12,72 @@ function Input({ value, onChange, placeholder, type='text' }) {
   return (
     <input type={type} value={value} onChange={e=>onChange(e.target.value)}
       placeholder={placeholder} style={{
-        width:'100%', padding:'12px', borderRadius:rr('sm'), fontSize:14,
-        border:`0.5px solid ${T.border}`, background:T.surface,
-        color:T.text, outline:'none', marginBottom:10,
+        width:'100%', padding:'13px', borderRadius:rr('sm'), fontSize:15,
+        border:`1px solid ${T.border}`, background:T.surface,
+        color:T.text, outline:'none', marginBottom:12,
       }} />
   )
 }
 
-export default function AuthScreen({ onAuth }) {
-  const [mode, setMode] = useState('signin')
+export default function AuthScreen() {
+  const [mode, setMode] = useState('signin') // signin | setpassword | forgot
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [name, setName] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
 
+  // Detect invite / password reset link on load
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const setPasswordParam = params.get('setPassword')
+    const tokenHash = params.get('token_hash')
+    const type = params.get('type')
+
+    if (setPasswordParam === 'true') {
+      setMode('setpassword')
+      return
+    }
+
+    // Handle token hash from email link directly
+    if (tokenHash && type) {
+      supabase.auth.verifyOtp({ token_hash: tokenHash, type }).then(({ error }) => {
+        if (!error) setMode('setpassword')
+        else setError('This link has expired. Please request a new one.')
+      })
+    }
+  }, [])
+
   const handleSignIn = async () => {
-    if (!email || !password) return
+    if (!email || !password) { setError('Please enter your email and password.'); return }
     setLoading(true); setError('')
     const { error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) setError(error.message)
+    if (error) setError('Incorrect email or password.')
     setLoading(false)
   }
 
-  const handleSignUp = async () => {
-    if (!email || !password) return
+  const handleSetPassword = async () => {
+    if (!password) { setError('Please enter a password.'); return }
+    if (password.length < 6) { setError('Password must be at least 6 characters.'); return }
+    if (password !== confirmPassword) { setError('Passwords do not match.'); return }
     setLoading(true); setError('')
-    const { data, error } = await supabase.auth.signUp({ email, password })
+    const { error } = await supabase.auth.updateUser({ password })
     if (error) { setError(error.message); setLoading(false); return }
-    if (data.user && name) {
-      await supabase.from('profiles').upsert({ id: data.user.id, name })
-    }
-    setMessage('Account created. Check your email to confirm, then sign in.')
-    setMode('signin')
+    setMessage('Password set. You are now signed in.')
+    // Clean up URL
+    window.history.replaceState({}, '', '/')
     setLoading(false)
   }
 
   const handleForgotPassword = async () => {
     if (!email) { setError('Enter your email above first.'); return }
     setLoading(true); setError('')
-    const { error } = await supabase.auth.resetPasswordForEmail(email)
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/auth/callback?type=recovery`
+    })
     if (error) setError(error.message)
-    else setMessage('Password reset email sent.')
+    else setMessage('Check your email for a password reset link.')
     setLoading(false)
   }
 
@@ -63,11 +86,15 @@ export default function AuthScreen({ onAuth }) {
       display:'flex', flexDirection:'column', justifyContent:'center', padding:'40px 24px' }}>
 
       <div style={{ marginBottom:40 }}>
-        <div style={{ fontSize:28, fontWeight:400, color:T.text, letterSpacing:-.5, marginBottom:6 }}>
-          Athletic OS
+        <div style={{ fontSize:28, fontWeight:500, color:T.text, letterSpacing:-.5, marginBottom:6 }}>
+          {mode === 'setpassword' ? 'Set your password' : 'Welcome back.'}
         </div>
         <div style={{ fontSize:14, color:T.text2 }}>
-          {mode==='signin' ? 'Sign in to your account' : 'Create your account'}
+          {mode === 'setpassword'
+            ? 'Choose a password to secure your account.'
+            : mode === 'forgot'
+            ? 'Enter your email and we will send a reset link.'
+            : 'Sign in to continue.'}
         </div>
       </div>
 
@@ -85,34 +112,51 @@ export default function AuthScreen({ onAuth }) {
         </div>
       )}
 
-      {mode==='signup' && (
-        <Input value={name} onChange={setName} placeholder="First name (optional)" />
-      )}
-      <Input value={email} onChange={setEmail} placeholder="Email" type="email" />
-      <Input value={password} onChange={setPassword} placeholder="Password" type="password" />
-
-      <button onClick={mode==='signin'?handleSignIn:handleSignUp} disabled={loading} style={{
-        width:'100%', padding:'12px', borderRadius:rr('md'), border:'none',
-        background:loading?T.surface2:T.text, color:loading?T.text3:T.bg,
-        fontSize:14, fontWeight:500, marginBottom:12,
-      }}>
-        {loading ? 'Please wait...' : mode==='signin' ? 'Sign in' : 'Create account'}
-      </button>
-
-      {mode==='signin' && (
-        <button onClick={handleForgotPassword} style={{ background:'none', border:'none',
-          color:T.text3, fontSize:13, marginBottom:16, cursor:'pointer' }}>
+      {/* Sign in */}
+      {mode === 'signin' && <>
+        <Input value={email} onChange={setEmail} placeholder="Email" type="email" />
+        <Input value={password} onChange={setPassword} placeholder="Password" type="password" />
+        <button onClick={handleSignIn} disabled={loading} style={{
+          width:'100%', padding:'13px', borderRadius:rr('md'), border:'none',
+          background:loading?T.surface2:T.text, color:loading?T.text3:T.bg,
+          fontSize:14, fontWeight:600, marginBottom:12, cursor:'pointer',
+        }}>
+          {loading ? 'Signing in...' : 'Sign in'}
+        </button>
+        <button onClick={()=>{ setMode('forgot'); setError(''); setMessage('') }}
+          style={{ background:'none', border:'none', color:T.text3, fontSize:13, cursor:'pointer', padding:0 }}>
           Forgot password?
         </button>
-      )}
+      </>}
 
-      <div style={{ textAlign:'center', fontSize:13, color:T.text2 }}>
-        {mode==='signin' ? "Don't have an account? " : 'Already have an account? '}
-        <button onClick={()=>{ setMode(mode==='signin'?'signup':'signin'); setError(''); setMessage('') }}
-          style={{ background:'none', border:'none', color:T.text, fontWeight:500, cursor:'pointer', fontSize:13 }}>
-          {mode==='signin' ? 'Sign up' : 'Sign in'}
+      {/* Set password (invited users) */}
+      {mode === 'setpassword' && <>
+        <Input value={password} onChange={setPassword} placeholder="Choose a password" type="password" />
+        <Input value={confirmPassword} onChange={setConfirmPassword} placeholder="Confirm password" type="password" />
+        <button onClick={handleSetPassword} disabled={loading} style={{
+          width:'100%', padding:'13px', borderRadius:rr('md'), border:'none',
+          background:loading?T.surface2:'var(--green-dim)', color:'#fff',
+          fontSize:14, fontWeight:600, cursor:'pointer',
+        }}>
+          {loading ? 'Setting password...' : 'Set password and get started'}
         </button>
-      </div>
+      </>}
+
+      {/* Forgot password */}
+      {mode === 'forgot' && <>
+        <Input value={email} onChange={setEmail} placeholder="Email" type="email" />
+        <button onClick={handleForgotPassword} disabled={loading} style={{
+          width:'100%', padding:'13px', borderRadius:rr('md'), border:'none',
+          background:loading?T.surface2:T.text, color:loading?T.text3:T.bg,
+          fontSize:14, fontWeight:600, marginBottom:12, cursor:'pointer',
+        }}>
+          {loading ? 'Sending...' : 'Send reset link'}
+        </button>
+        <button onClick={()=>{ setMode('signin'); setError(''); setMessage('') }}
+          style={{ background:'none', border:'none', color:T.text3, fontSize:13, cursor:'pointer', padding:0 }}>
+          Back to sign in
+        </button>
+      </>}
     </div>
   )
 }
