@@ -502,7 +502,7 @@ function InlineSetRow({ setNum, initial, lastSet, prevSet, isCurrent, onSave, on
   const inputBorder = saved ? 'var(--green-dim)' : isCurrent ? 'var(--amber-dim)' : T.border
 
   const bigInput = {
-    flex:1, padding:'14px 8px', borderRadius:rr('md'), fontSize:22, fontWeight:600,
+    flex:1, minWidth:0, width:0, padding:'12px 4px', borderRadius:rr('md'), fontSize:20, fontWeight:600,
     border: `1px solid ${inputBorder}`, background:inputBg,
     color:T.text, outline:'none', textAlign:'center',
   }
