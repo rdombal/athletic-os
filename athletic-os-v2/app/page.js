@@ -563,7 +563,7 @@ function HomeScreen({ onNav, savedItems, profile, userId }) {
 
       {isNewUser && (
         <div style={{ background:T.surface, borderRadius:rr('md'), padding:'16px', marginBottom:20, borderLeft:`3px solid var(--blue)` }}>
-          <div style={{ fontSize:14, fontWeight:500, color:T.text, marginBottom:4 }}>Welcome to Weekend Athlete</div>
+          <div style={{ fontSize:14, fontWeight:500, color:T.text, marginBottom:4 }}>Welcome.</div>
           <div style={{ fontSize:13, color:T.text2, lineHeight:1.6, marginBottom:12 }}>Your personal health and performance app. Movement, meals, and lifting — all in one place, without the overwhelm.</div>
           <div style={{ display:'flex', gap:8 }}>
             <button onClick={()=>onNav('profile')} style={{ flex:1, padding:'9px', borderRadius:rr('sm'), border:'none', background:T.text, color:T.bg, fontSize:13, fontWeight:500, cursor:'pointer' }}>Set up profile</button>
