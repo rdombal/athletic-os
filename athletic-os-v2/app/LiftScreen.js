@@ -970,62 +970,119 @@ function ExerciseProgress({ userId, programId, exerciseName, exerciseId, onBack 
   const getBestSet = (ex) => ex?.sets?.reduce((best, s) => (s.weight||0) > (best.weight||0) ? s : best, {weight:0,reps:0})
   const allBest = sessions.map(s => getBestSet(getExData(s))).filter(s => s?.weight > 0)
   const overallBest = allBest.reduce((b, s) => (s.weight||0) > (b.weight||0) ? s : b, {weight:0,reps:0})
-  const last5 = sessions.slice(-5)
+  // Group sessions by rep band for history display
+  const allHistory = sessions.map(s => {
+    const ex = getExData(s)
+    const best = getBestSet(ex)
+    return { date: s.logged_at||s.date, weight:best?.weight, reps:best?.reps, sets:ex?.sets||[], band:getRepBand(best?.reps) }
+  }).filter(h => h.weight > 0)
+
+  // Group by band for display
+  const byBand = {}
+  allHistory.forEach(h => {
+    if (!h.band) return
+    if (!byBand[h.band]) byBand[h.band] = []
+    byBand[h.band].push(h)
+  })
+  const bandOrder = ['strength','moderate','volume']
 
   return (
     <div style={{ padding:'0 20px' }}>
       <BackBtn label="Back" onClick={onBack} />
       <div style={{ fontSize:28, fontWeight:500, color:T.text, letterSpacing:-.5, marginBottom:4 }}>{exerciseName}</div>
-      <div style={{ fontSize:12, color:T.text2, marginBottom:20 }}>Progress over time</div>
+      <div style={{ fontSize:12, color:T.text2, marginBottom:20 }}>Full history</div>
 
       {overallBest.weight > 0 && (
-        <div style={{ background:'var(--green-bg)', border:'0.5px solid var(--green-dim)', borderRadius:rr('md'), padding:'14px 16px', marginBottom:16 }}>
-          <div style={{ fontSize:11, fontWeight:500, color:'var(--green)', letterSpacing:.5, textTransform:'uppercase', marginBottom:4 }}>Best set</div>
+        <div style={{ background:'var(--green-bg)', border:'0.5px solid var(--green-dim)', borderRadius:rr('md'), padding:'14px 16px', marginBottom:20 }}>
+          <div style={{ fontSize:11, fontWeight:500, color:'var(--green)', letterSpacing:.5, textTransform:'uppercase', marginBottom:4 }}>All-time best set</div>
           <div style={{ fontSize:24, fontWeight:500, color:T.text }}>{overallBest.weight} lb <span style={{ fontSize:14, color:T.text2, fontWeight:400 }}>× {overallBest.reps} reps</span></div>
         </div>
       )}
 
-      <div style={{ fontSize:11, fontWeight:500, color:T.text3, letterSpacing:.6, textTransform:'uppercase', marginBottom:10 }}>Last {last5.length} sessions</div>
-      {last5.length === 0 && <div style={{ fontSize:13, color:T.text3 }}>No data yet.</div>}
-      {last5.map((sess, i) => {
-        const ex = getExData(sess)
-        const best = getBestSet(ex)
-        const prev = i > 0 ? getBestSet(getExData(last5[i-1])) : null
-        const trend = prev ? (best?.weight > prev?.weight ? '↑' : best?.weight < prev?.weight ? '↓' : '→') : null
-        const date = new Date(sess.logged_at||sess.date).toLocaleDateString('en-US', { month:'short', day:'numeric' })
+      {bandOrder.filter(b => byBand[b]?.length).map(band => {
+        const bandHistory = byBand[band]
+        const { trend, diff } = getBandTrend(bandHistory.map(h=>({weight:h.weight,reps:h.reps})), band)
+        const trendColor = trend==='↑' ? 'var(--green)' : T.text3
         return (
-          <div key={i} style={{ background:T.surface, borderRadius:rr('md'), padding:'12px 16px', marginBottom:8, overflow:'hidden' }}>
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
-              <div style={{ fontSize:12, color:T.text3 }}>{date}</div>
-              {trend && <div style={{ fontSize:14, color: trend==='↑'?'var(--green)':trend==='↓'?'var(--coral)':T.text3 }}>{trend}</div>}
+          <div key={band} style={{ marginBottom:20 }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8 }}>
+              <div style={{ fontSize:11, fontWeight:600, color:T.text2, letterSpacing:.4, textTransform:'uppercase' }}>{REP_BAND_LABEL[band]}</div>
+              <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                {diff > 0 && <div style={{ fontSize:11, color:'var(--green)' }}>+{diff} lb</div>}
+                <div style={{ fontSize:14, color:trend==='—'?T.text3:trendColor }}>{trend}</div>
+              </div>
             </div>
-            <div style={{ fontSize:15, fontWeight:500, color:T.text, marginTop:4 }}>
-              {best?.weight} lb × {best?.reps} reps
-              <span style={{ fontSize:11, color:T.text3, fontWeight:400, marginLeft:8 }}>best set</span>
-            </div>
-
-            <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginTop:6 }}>
-              {(ex?.sets||[]).map((s,j) => (
-                <div key={j} style={{ fontSize:11, color:T.text2, background:T.surface2, borderRadius:rr('sm'), padding:'3px 8px' }}>
-                  {s.weight}×{s.reps}
+            {bandHistory.map((h, i) => {
+              const prev = i > 0 ? bandHistory[i-1] : null
+              const sessTrend = prev ? (h.weight > prev.weight ? '↑' : h.weight < prev.weight ? '→' : '→') : null
+              const date = new Date(h.date).toLocaleDateString('en-US', { month:'short', day:'numeric' })
+              return (
+                <div key={i} style={{ background:T.surface, borderRadius:rr('md'), padding:'10px 14px', marginBottom:6 }}>
+                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:4 }}>
+                    <div style={{ fontSize:11, color:T.text3 }}>{date}</div>
+                    {sessTrend && <div style={{ fontSize:13, color:sessTrend==='↑'?'var(--green)':T.text3 }}>{sessTrend}</div>}
+                  </div>
+                  <div style={{ fontSize:14, fontWeight:500, color:T.text, marginBottom:4 }}>
+                    {h.weight} lb × {h.reps} reps
+                  </div>
+                  <div style={{ display:'flex', gap:5, flexWrap:'wrap' }}>
+                    {h.sets.map((s,j) => (
+                      <div key={j} style={{ fontSize:11, color:T.text2, background:T.surface2, borderRadius:rr('sm'), padding:'2px 7px' }}>
+                        {s.weight}×{s.reps}
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              ))}
-            </div>
+              )
+            })}
           </div>
         )
       })}
+
+      {allHistory.length === 0 && <div style={{ fontSize:13, color:T.text3 }}>No sessions logged yet.</div>}
     </div>
   )
 }
 
 
+
+// ─── Rep range helpers ────────────────────────────────────────────────────────
+function getRepBand(reps) {
+  if (!reps || reps <= 0) return null
+  if (reps <= 5)  return 'strength'    // 1-5 reps
+  if (reps <= 10) return 'moderate'    // 6-10 reps
+  return 'volume'                       // 11+ reps
+}
+const REP_BAND_LABEL = { strength:'Strength (1–5)', moderate:'Moderate (6–10)', volume:'Volume (11+)' }
+
+// Get dominant band from a history array (most common band in last 3 sessions)
+function getDominantBand(history) {
+  if (!history?.length) return null
+  const recent = history.slice(-3)
+  const counts = {}
+  recent.forEach(h => {
+    const b = getRepBand(h.reps)
+    if (b) counts[b] = (counts[b]||0) + 1
+  })
+  return Object.entries(counts).sort((a,b)=>b[1]-a[1])[0]?.[0] || null
+}
+
+// Filter history to only sessions in the same band, return trend
+function getBandTrend(history, band) {
+  if (!band || !history?.length) return { trend:'—', diff:0, inBand:[] }
+  const inBand = history.filter(h => getRepBand(h.reps) === band)
+  if (inBand.length < 2) return { trend:'—', diff:0, inBand }
+  const last = inBand[inBand.length-1]
+  const prev = inBand[inBand.length-2]
+  const diff = last.weight - prev.weight
+  const trend = diff > 0 ? '↑' : diff < 0 ? '→' : '→' // never show down arrow
+  return { trend, diff, inBand, last, prev }
+}
+
 // ─── Progress summary (home screen) ──────────────────────────────────────────
 function ProgressSummary({ sessions, onViewExercise }) {
   if (!sessions.length) return null
 
-  const epley = (w, r) => r===1 ? w : Math.round(w*(1+r/30))
-
-  // Build per-exercise best sets across all sessions
   const exerciseMap = {}
   const sessionsByDate = [...sessions].sort((a,b) => new Date(a.logged_at||a.date) - new Date(b.logged_at||b.date))
 
@@ -1034,14 +1091,11 @@ function ProgressSummary({ sessions, onViewExercise }) {
       if (!ex.name || !ex.sets?.length) return
       const bestSet = ex.sets.reduce((b,s) => (s.weight||0)>(b.weight||0)?s:b, {weight:0,reps:0})
       if (!bestSet.weight) return
-      if (!exerciseMap[ex.name]) {
-        exerciseMap[ex.name] = { name:ex.name, exerciseId:ex.exerciseId, history:[] }
-      }
+      if (!exerciseMap[ex.name]) exerciseMap[ex.name] = { name:ex.name, exerciseId:ex.exerciseId, history:[] }
       exerciseMap[ex.name].history.push({ weight:bestSet.weight, reps:bestSet.reps, date:sess.logged_at||sess.date })
     })
   })
 
-  // Get top exercises by frequency (most logged = most important to user)
   const exercises = Object.values(exerciseMap)
     .filter(e => e.history.length >= 2)
     .sort((a,b) => b.history.length - a.history.length)
@@ -1053,11 +1107,10 @@ function ProgressSummary({ sessions, onViewExercise }) {
     <div style={{ marginTop:20 }}>
       <div style={{ fontSize:11, color:T.text3, letterSpacing:.5, textTransform:'uppercase', marginBottom:10 }}>Your progress</div>
       {exercises.map((ex, i) => {
-        const last = ex.history[ex.history.length-1]
-        const prev = ex.history[ex.history.length-2]
-        const trend = last.weight > prev.weight ? '↑' : last.weight < prev.weight ? '↓' : '→'
-        const trendColor = trend==='↑' ? 'var(--green)' : trend==='↓' ? 'var(--coral)' : T.text3
-        const diff = last.weight - prev.weight
+        const band = getDominantBand(ex.history)
+        const { trend, diff, last } = getBandTrend(ex.history, band)
+        const trendColor = trend==='↑' ? 'var(--green)' : T.text3
+        const showDiff = diff > 0
         return (
           <div key={i} onClick={()=>onViewExercise(ex.name, ex.exerciseId)}
             style={{ background:T.surface, borderRadius:rr('md'), padding:'12px 14px', marginBottom:8,
@@ -1065,16 +1118,13 @@ function ProgressSummary({ sessions, onViewExercise }) {
             <div style={{ flex:1, minWidth:0 }}>
               <div style={{ fontSize:13, fontWeight:500, color:T.text }}>{ex.name}</div>
               <div style={{ fontSize:11, color:T.text3, marginTop:2 }}>
-                {last.weight} lb × {last.reps}
+                {last ? `${last.weight} lb × ${last.reps}` : '—'}
+                {band && <span style={{ color:T.text3, marginLeft:6, opacity:.7 }}>· {REP_BAND_LABEL[band]}</span>}
               </div>
             </div>
             <div style={{ display:'flex', alignItems:'center', gap:8, flexShrink:0 }}>
-              {diff !== 0 && (
-                <div style={{ fontSize:11, fontWeight:500, color:trendColor }}>
-                  {diff > 0 ? `+${diff}` : diff} lb
-                </div>
-              )}
-              <div style={{ fontSize:16, color:trendColor }}>{trend}</div>
+              {showDiff && <div style={{ fontSize:11, fontWeight:500, color:trendColor }}>+{diff} lb</div>}
+              <div style={{ fontSize:16, color: trend==='—' ? T.text3 : trendColor }}>{trend}</div>
             </div>
           </div>
         )
@@ -1083,60 +1133,94 @@ function ProgressSummary({ sessions, onViewExercise }) {
   )
 }
 
-// ─── Program progress (inside program detail) ─────────────────────────────────
+// ─── Program progress (inside program detail) — phase-aware ──────────────────
 function ProgramProgress({ program, sessions, onViewExercise }) {
-  const epley = (w, r) => r===1 ? w : Math.round(w*(1+r/30))
-
-  // Get all unique exercises across this program's workouts
-  const programExercises = []
-  const seen = new Set()
-  program.phases.forEach(ph => ph.workouts.forEach(w => w.exercises.forEach(ex => {
-    if (!seen.has(ex.name)) { seen.add(ex.name); programExercises.push(ex) }
-  })))
-
-  // Build history per exercise from sessions
-  const programSessions = sessions.filter(s => s.program_id===program.id||s.programId===program.id)
+  const programSessions = sessions
+    .filter(s => s.program_id===program.id||s.programId===program.id)
     .sort((a,b) => new Date(a.logged_at||a.date) - new Date(b.logged_at||b.date))
 
-  const exerciseData = programExercises.map(ex => {
-    const history = []
-    programSessions.forEach(sess => {
-      const found = (sess.exercises||[]).find(e => e.exerciseId===ex.exerciseId||e.name===ex.name)
-      if (found?.sets?.length) {
-        const best = found.sets.reduce((b,s)=>(s.weight||0)>(b.weight||0)?s:b,{weight:0,reps:0})
-        if (best.weight) history.push({ weight:best.weight, reps:best.reps })
-      }
-    })
-    return { ...ex, history }
-  }).filter(e => e.history.length > 0)
+  if (!programSessions.length) return null
 
-  if (!exerciseData.length) return null
+  // Build progress grouped by phase
+  const phaseProgress = program.phases.map(ph => {
+    // Get sessions that logged workouts from this phase
+    const phaseWorkoutIds = new Set(ph.workouts.map(w => w.id))
+    const phaseSessions = programSessions.filter(s => phaseWorkoutIds.has(s.workoutId||s.workout_id))
+
+    // All exercises in this phase
+    const seen = new Set()
+    const phaseExercises = []
+    ph.workouts.forEach(w => w.exercises.forEach(ex => {
+      if (!seen.has(ex.name)) { seen.add(ex.name); phaseExercises.push(ex) }
+    }))
+
+    const exerciseData = phaseExercises.map(ex => {
+      const history = []
+      phaseSessions.forEach(sess => {
+        const found = (sess.exercises||[]).find(e => e.exerciseId===ex.exerciseId||e.name===ex.name)
+        if (found?.sets?.length) {
+          const best = found.sets.reduce((b,s)=>(s.weight||0)>(b.weight||0)?s:b,{weight:0,reps:0})
+          if (best.weight) history.push({ weight:best.weight, reps:best.reps, date:sess.logged_at||sess.date })
+        }
+      })
+      return { ...ex, history }
+    }).filter(e => e.history.length > 0)
+
+    return { phase:ph, exerciseData }
+  }).filter(p => p.exerciseData.length > 0)
+
+  // Fallback: if no phase-matched sessions (older data without workoutId), show flat view
+  const flatExercises = (() => {
+    if (phaseProgress.length > 0) return []
+    const seen = new Set(); const exs = []
+    program.phases.forEach(ph => ph.workouts.forEach(w => w.exercises.forEach(ex => {
+      if (!seen.has(ex.name)) { seen.add(ex.name); exs.push(ex) }
+    })))
+    return exs.map(ex => {
+      const history = []
+      programSessions.forEach(sess => {
+        const found = (sess.exercises||[]).find(e => e.exerciseId===ex.exerciseId||e.name===ex.name)
+        if (found?.sets?.length) {
+          const best = found.sets.reduce((b,s)=>(s.weight||0)>(b.weight||0)?s:b,{weight:0,reps:0})
+          if (best.weight) history.push({ weight:best.weight, reps:best.reps })
+        }
+      })
+      return { ...ex, history }
+    }).filter(e => e.history.length > 0)
+  })()
+
+  const renderExercise = (ex, i, showBand=true) => {
+    const band = getDominantBand(ex.history)
+    const { trend, diff, last } = getBandTrend(ex.history, band)
+    const trendColor = trend==='↑' ? 'var(--green)' : T.text3
+    return (
+      <div key={i} onClick={()=>onViewExercise(ex.name, ex.exerciseId||ex.id)}
+        style={{ background:T.surface2, borderRadius:rr('sm'), padding:'10px 12px', marginBottom:6,
+          cursor:'pointer', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+        <div style={{ flex:1 }}>
+          <div style={{ fontSize:12, fontWeight:500, color:T.text }}>{ex.name}</div>
+          <div style={{ fontSize:11, color:T.text3, marginTop:2 }}>
+            {last ? `${last.weight} lb × ${last.reps}` : '—'}
+            {showBand && band && <span style={{ opacity:.6, marginLeft:5 }}>· {REP_BAND_LABEL[band]}</span>}
+            {diff > 0 && <span style={{ color:'var(--green)', marginLeft:5 }}>+{diff} lb</span>}
+          </div>
+        </div>
+        <div style={{ fontSize:14, color:trend==='—'?T.text3:trendColor, marginLeft:8 }}>{trend}</div>
+      </div>
+    )
+  }
 
   return (
     <div style={{ marginTop:20, marginBottom:12 }}>
       <div style={{ height:'0.5px', background:T.border, marginBottom:16 }} />
-      <div style={{ fontSize:11, color:T.text3, letterSpacing:.5, textTransform:'uppercase', marginBottom:10 }}>Progress this program</div>
-      {exerciseData.map((ex, i) => {
-        const first = ex.history[0]
-        const last = ex.history[ex.history.length-1]
-        const trend = last.weight > first.weight ? '↑' : '→'
-        const trendColor = trend==='↑' ? 'var(--green)' : T.text3
-        const gain = last.weight - first.weight
-        return (
-          <div key={i} onClick={()=>onViewExercise(ex.name, ex.exerciseId||ex.id)}
-            style={{ background:T.surface2, borderRadius:rr('sm'), padding:'10px 12px', marginBottom:6,
-              cursor:'pointer', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-            <div style={{ flex:1 }}>
-              <div style={{ fontSize:12, fontWeight:500, color:T.text }}>{ex.name}</div>
-              <div style={{ fontSize:11, color:T.text3, marginTop:2 }}>
-                {last.weight} lb
-                {gain !== 0 && <span style={{ color:trendColor, marginLeft:6 }}>{gain>0?`+${gain}`:gain} lb from start</span>}
-              </div>
-            </div>
-            <div style={{ fontSize:14, color:trendColor, marginLeft:8 }}>{trend}</div>
-          </div>
-        )
-      })}
+      <div style={{ fontSize:11, color:T.text3, letterSpacing:.5, textTransform:'uppercase', marginBottom:12 }}>Progress this program</div>
+
+      {phaseProgress.length > 0 ? phaseProgress.map((pp, pi) => (
+        <div key={pi} style={{ marginBottom:14 }}>
+          <div style={{ fontSize:11, fontWeight:600, color:T.text2, marginBottom:6, letterSpacing:.3 }}>{pp.phase.name}</div>
+          {pp.exerciseData.map((ex, i) => renderExercise(ex, i))}
+        </div>
+      )) : flatExercises.map((ex, i) => renderExercise(ex, i, false))}
     </div>
   )
 }
