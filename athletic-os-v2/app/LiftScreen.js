@@ -497,60 +497,52 @@ function InlineSetRow({ setNum, initial, lastSet, prevSet, isCurrent, onSave, on
   }
 
   // Border color: green = done, blue = current, default = pending
-  const borderColor = saved ? 'var(--green-dim)' : isCurrent ? 'var(--amber-dim)' : T.border
-  const bgColor     = saved ? 'rgba(58,138,88,0.08)' : isCurrent ? 'rgba(176,120,32,0.1)' : T.surface2
+  const setNumColor = saved ? 'var(--green)' : isCurrent ? 'var(--amber)' : T.text3
+  const inputBg = saved ? 'rgba(58,138,88,0.1)' : isCurrent ? 'rgba(176,120,32,0.08)' : T.surface2
+  const inputBorder = saved ? 'var(--green-dim)' : isCurrent ? 'var(--amber-dim)' : T.border
 
-  const inputStyle = {
-    width:'100%', padding:'10px 6px', borderRadius:rr('sm'), fontSize:17, fontWeight:500,
-    border: `0.5px solid ${borderColor}`,
-    background: bgColor,
-    color: T.text, outline:'none', textAlign:'center',
+  const bigInput = {
+    flex:1, padding:'14px 8px', borderRadius:rr('md'), fontSize:22, fontWeight:600,
+    border: `1px solid ${inputBorder}`, background:inputBg,
+    color:T.text, outline:'none', textAlign:'center',
   }
 
   return (
-    <div style={{ marginBottom:10 }}>
-      <div style={{ display:'flex', gap:6, marginBottom:6, alignItems:'center' }}>
-        <div style={{ fontSize:13, fontWeight:600,
-          color: saved ? 'var(--green)' : isCurrent ? 'var(--amber)' : T.text3,
-          width:20, textAlign:'center', flexShrink:0 }}>{setNum}</div>
-        {/* Copy prev set button */}
-        {prevSet && !saved && (
-          <button onClick={copyPrev} style={{ fontSize:11, color:T.text3, border:`0.5px solid ${T.border}`, borderRadius:20, padding:'3px 10px', background:T.surface2, cursor:'pointer', flexShrink:0 }}>
-            Copy last
-          </button>
-        )}
-        <div style={{ flex:1 }} />
-        {/* Weight increment buttons */}
-        {!saved && [2.5, 5, 10].map(d => (
-          <button key={d} onClick={()=>adjustWeight(d)} style={{ fontSize:11, color:T.text2, border:`0.5px solid ${T.border}`, borderRadius:20, padding:'3px 10px', background:T.surface2, cursor:'pointer', flexShrink:0 }}>
-            +{d}
-          </button>
-        ))}
-        {/* Undo button for completed sets */}
-        {saved && (
-          <button onClick={handleUndo} style={{ fontSize:11, color:T.text3, border:`0.5px solid ${T.border}`, borderRadius:20, padding:'3px 10px', background:T.surface2, cursor:'pointer', flexShrink:0 }}>
-            Undo
-          </button>
-        )}
-      </div>
-      <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+    <div style={{ marginBottom:6 }}>
+      {/* Increment chips — only show when not saved */}
+      {!saved && (
+        <div style={{ display:'flex', gap:6, marginBottom:6, alignItems:'center', paddingLeft:36 }}>
+          {prevSet && (
+            <button onClick={copyPrev} style={{ fontSize:11, color:T.text3, border:`0.5px solid ${T.border}`, borderRadius:20, padding:'3px 10px', background:T.surface2, cursor:'pointer' }}>
+              Copy last
+            </button>
+          )}
+          <div style={{ flex:1 }} />
+          {[2.5, 5, 10].map(d => (
+            <button key={d} onClick={()=>adjustWeight(d)} style={{ fontSize:11, color:T.text2, border:`0.5px solid ${T.border}`, borderRadius:20, padding:'3px 10px', background:T.surface2, cursor:'pointer' }}>
+              +{d}
+            </button>
+          ))}
+        </div>
+      )}
+      {/* Main row: set number | weight input | reps input | action btn */}
+      <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:2 }}>
+        <div style={{ fontSize:18, fontWeight:600, color:setNumColor, width:28, textAlign:'center', flexShrink:0 }}>{setNum}</div>
         <input type="number" inputMode="decimal" value={weight}
           onChange={e=>{ setWeight(e.target.value); setSaved(false) }}
-          placeholder={lastSet?.weight?.toString() || 'lb'}
-          style={inputStyle} />
-        <div style={{ fontSize:13, color:T.text3, flexShrink:0 }}>×</div>
+          placeholder={lastSet?.weight?.toString() || '—'}
+          style={bigInput} />
         <input type="number" inputMode="numeric" value={reps}
           onChange={e=>{ setReps(e.target.value); setSaved(false) }}
-          placeholder={lastSet?.reps?.toString() || 'reps'}
-          style={inputStyle} />
+          placeholder={lastSet?.reps?.toString() || '—'}
+          style={bigInput} />
         <button onClick={saved ? handleUndo : handleSave} style={{
-          width:38, height:38, borderRadius:'50%', flexShrink:0,
+          width:42, height:42, borderRadius:'50%', flexShrink:0, border:'none',
           background: saved ? T.surface2 : (!weight||!reps) ? T.surface2 : 'var(--green-dim)',
           color: saved ? 'var(--green)' : (!weight||!reps) ? T.text3 : '#fff',
-          fontSize:saved?16:15, cursor:'pointer',
+          fontSize: saved ? 18 : 16, cursor:'pointer',
           display:'flex', alignItems:'center', justifyContent:'center',
-          boxShadow: (!saved&&weight&&reps) ? '0 2px 6px rgba(58,138,88,0.4)' : 'none',
-          border: saved ? `1px solid ${T.border2}` : 'none',
+          boxShadow: (!saved&&weight&&reps) ? '0 2px 8px rgba(58,138,88,0.35)' : 'none',
         }}>{saved ? '✓' : '→'}</button>
       </div>
     </div>
@@ -655,7 +647,32 @@ function SessionLogger({ workout, programId, phaseId, userId, profile, onGoEat, 
   const [loggedSets, setLoggedSets] = useState(
     workout.exercises.map(ex => ({ exerciseId:ex.exerciseId||ex.id, name:ex.name, sets:[] }))
   )
+
+  const addExerciseLive = (ex) => {
+    const newEx = { id:uid(), exerciseId:ex.id, name:ex.name, group:ex.group, sets:3, targetReps:8 }
+    setLiveExercises(prev => [...prev, newEx])
+    setLoggedSets(prev => [...prev, { exerciseId:ex.id, name:ex.name, sets:[] }])
+    setAddingExercise(false)
+    setExpandedEx(liveExercises.length)
+  }
+
+  const swapExerciseLive = (idx, ex) => {
+    const newEx = { ...liveExercises[idx], id:uid(), exerciseId:ex.id, name:ex.name, group:ex.group }
+    setLiveExercises(prev => { const next=[...prev]; next[idx]=newEx; return next })
+    setLoggedSets(prev => { const next=[...prev]; next[idx]={ exerciseId:ex.id, name:ex.name, sets:[] }; return next })
+    setSwappingIdx(null)
+    setExpandedEx(idx)
+  }
+
+  const removeExerciseLive = (idx) => {
+    setLiveExercises(prev => prev.filter((_,i)=>i!==idx))
+    setLoggedSets(prev => prev.filter((_,i)=>i!==idx))
+    if (expandedEx === idx) setExpandedEx(null)
+  }
+  const [liveExercises, setLiveExercises] = useState(workout.exercises)
   const [expandedEx, setExpandedEx] = useState(0)
+  const [swappingIdx, setSwappingIdx] = useState(null)
+  const [addingExercise, setAddingExercise] = useState(false)
   const [sessionComplete, setSessionComplete] = useState(false)
   const [sessionStats, setSessionStats] = useState(null)
   const [restActive, setRestActive] = useState(false)
@@ -693,7 +710,9 @@ function SessionLogger({ workout, programId, phaseId, userId, profile, onGoEat, 
 
   const buildStats = () => {
     let totalVolume=0; let totalSets=0; const prs=[]; const nextTargets=[]
-    loggedSets.forEach(ex => {
+    const currentExercises = liveExercises || workout.exercises
+    loggedSets.forEach((ex, idx) => {
+      const exDef = currentExercises[idx]
       ex.sets.forEach(s=>{ totalVolume+=(s.weight||0)*(s.reps||0); totalSets++ })
       const lastEx=getLastSession(ex.exerciseId)
       const bestSet=ex.sets.reduce((b,s)=>(s.weight||0)*(s.reps||0)>(b.weight||0)*(b.reps||0)?s:b, {weight:0,reps:0})
@@ -742,6 +761,12 @@ function SessionLogger({ workout, programId, phaseId, userId, profile, onGoEat, 
       {sessionComplete && sessionStats && (
         <SessionCompleteModal stats={sessionStats} profile={profile} onGoEat={onGoEat} onDone={()=>onFinish(sessionStats)} />
       )}
+      {(addingExercise || swappingIdx !== null) && (
+        <ExercisePicker
+          onSelect={ex => swappingIdx !== null ? swapExerciseLive(swappingIdx, ex) : addExerciseLive(ex)}
+          onClose={()=>{ setAddingExercise(false); setSwappingIdx(null) }}
+        />
+      )}
 
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:18, paddingTop:4 }}>
         <button onClick={onBack} style={{ border:'none', background:'none', color:T.text3, fontSize:12, padding:0, cursor:'pointer' }}>← Exit</button>
@@ -751,8 +776,8 @@ function SessionLogger({ workout, programId, phaseId, userId, profile, onGoEat, 
       <div style={{ fontSize:18, fontWeight:500, color:T.text, letterSpacing:-.3, marginBottom:6 }}>{workout.name}</div>
       <WarmupSuggestion workout={workout} />
 
-      {workout.exercises.map((ex, exIdx) => {
-        const logged = loggedSets[exIdx]
+      {liveExercises.map((ex, exIdx) => {
+        const logged = loggedSets[exIdx] || { sets:[] }
         const lastSess = getLastSession(ex.exerciseId||ex.id)
         const targetSets = ex.sets || 3
         const isExpanded = expandedEx === exIdx
@@ -760,43 +785,54 @@ function SessionLogger({ workout, programId, phaseId, userId, profile, onGoEat, 
         const allDone = setsLogged >= targetSets
 
         return (
-          <div key={ex.id||exIdx} style={{ marginBottom:8 }}>
-            <div
-              onClick={()=>setExpandedEx(isExpanded ? null : exIdx)}
-              style={{ background:T.surface, border:`0.5px solid ${allDone ? 'var(--green-dim)' : isExpanded ? T.border2 : T.border}`,
-                borderRadius: isExpanded ? `${rr('md')} ${rr('md')} 0 0` : rr('md'),
-                padding:'14px 16px', cursor:'pointer', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+          <div key={ex.id||exIdx} style={{ marginBottom:10 }}>
+            {/* Exercise header */}
+            <div onClick={()=>setExpandedEx(isExpanded ? null : exIdx)}
+              style={{ background:T.surface,
+                border:`1px solid ${allDone ? 'var(--green-dim)' : isExpanded ? T.border2 : T.border}`,
+                borderRadius: isExpanded ? `${rr('lg')} ${rr('lg')} 0 0` : rr('lg'),
+                padding:'14px 16px', cursor:'pointer',
+                display:'flex', justifyContent:'space-between', alignItems:'center' }}>
               <div style={{ flex:1 }}>
-                <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:3 }}>
-                  <div style={{ fontSize:15, fontWeight:500, color: allDone ? 'var(--green)' : T.text }}>{ex.name}</div>
-                  {allDone && <div style={{ fontSize:10, color:'var(--green)', border:'0.5px solid var(--green-dim)', borderRadius:20, padding:'2px 8px', fontWeight:500 }}>✓ done</div>}
+                <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4 }}>
+                  <div style={{ fontSize:17, fontWeight:500, color: allDone ? 'var(--green)' : T.text }}>{ex.name}</div>
+                  {allDone && (
+                    <div style={{ width:22, height:22, borderRadius:'50%', background:'var(--green-dim)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, color:'#fff', flexShrink:0 }}>✓</div>
+                  )}
                 </div>
-                <div style={{ fontSize:11, color:T.text3 }}>
-                  {targetSets} sets · {ex.targetReps} reps
+                <div style={{ fontSize:12, color:T.text3 }}>
+                  {targetSets} sets
                   {setsLogged > 0 && !allDone && <span style={{ color:'var(--blue)', marginLeft:6 }}>{setsLogged}/{targetSets} logged</span>}
                 </div>
               </div>
-              <div style={{ fontSize:13, color:T.text3, transition:'transform .2s', transform: isExpanded ? 'rotate(180deg)' : 'none', marginLeft:8 }}>∨</div>
+              <div style={{ fontSize:16, color:T.text3, transition:'transform .2s', transform:isExpanded?'rotate(180deg)':'none', marginLeft:8 }}>∨</div>
             </div>
 
+            {/* Expanded content */}
             {isExpanded && (
-              <div style={{ background:T.surface, border:`0.5px solid ${T.border2}`, borderTop:'none',
-                borderRadius:`0 0 ${rr('md')} ${rr('md')}`, overflow:'hidden' }}>
+              <div style={{ background:T.surface, border:`1px solid ${T.border2}`, borderTop:'none',
+                borderRadius:`0 0 ${rr('lg')} ${rr('lg')}`, overflow:'hidden' }}>
+
+                {/* Last session pills */}
                 {lastSess && (
-                  <div style={{ padding:'8px 14px', borderBottom:`0.5px solid ${T.border}`, display:'flex', gap:6, flexWrap:'wrap', alignItems:'center' }}>
-                    <div style={{ fontSize:10, color:T.text3, marginRight:4 }}>Last</div>
+                  <div style={{ padding:'8px 16px', borderBottom:`0.5px solid ${T.border}`, display:'flex', gap:6, flexWrap:'wrap', alignItems:'center' }}>
+                    <div style={{ fontSize:10, color:T.text3, marginRight:4, letterSpacing:.4, textTransform:'uppercase' }}>Last</div>
                     {lastSess.sets.map((s,i)=>(
-                      <div key={i} style={{ fontSize:11, color:T.text2, background:T.surface2, borderRadius:6, padding:'2px 8px' }}>{s.weight}×{s.reps}</div>
+                      <div key={i} style={{ fontSize:12, color:T.text2, background:T.surface2, borderRadius:6, padding:'3px 10px' }}>{s.weight}×{s.reps}</div>
                     ))}
                   </div>
                 )}
-                <div style={{ padding:'8px 14px' }}>
-                  <div style={{ display:'flex', paddingBottom:6, marginBottom:4 }}>
-                    <div style={{ fontSize:10, color:T.text3, letterSpacing:.4, flex:1 }}>SET</div>
-                    <div style={{ fontSize:10, color:T.text3, letterSpacing:.4, flex:1, textAlign:'center' }}>WEIGHT (LB)</div>
-                    <div style={{ fontSize:10, color:T.text3, letterSpacing:.4, flex:1, textAlign:'center' }}>REPS</div>
-                    <div style={{ width:32 }}></div>
-                  </div>
+
+                {/* Column headers */}
+                <div style={{ display:'flex', alignItems:'center', padding:'10px 16px 4px', gap:8 }}>
+                  <div style={{ width:28, flexShrink:0 }} />
+                  <div style={{ flex:1, fontSize:10, fontWeight:600, color:T.text3, letterSpacing:.6, textTransform:'uppercase', textAlign:'center' }}>Weight (lb)</div>
+                  <div style={{ flex:1, fontSize:10, fontWeight:600, color:T.text3, letterSpacing:.6, textTransform:'uppercase', textAlign:'center' }}>Reps</div>
+                  <div style={{ width:42, flexShrink:0 }} />
+                </div>
+
+                {/* Set rows */}
+                <div style={{ padding:'4px 16px 12px' }}>
                   {Array.from({ length:targetSets }).map((_,i) => {
                     const done = logged.sets[i]
                     const lastSet = lastSess?.sets?.[i]
@@ -815,11 +851,30 @@ function SessionLogger({ workout, programId, phaseId, userId, profile, onGoEat, 
                     )
                   })}
                 </div>
+
+                {/* Swap / Remove actions */}
+                <div style={{ display:'flex', gap:8, padding:'8px 16px 14px', borderTop:`0.5px solid ${T.border}` }}>
+                  <button onClick={e=>{ e.stopPropagation(); setSwappingIdx(exIdx) }} style={{
+                    flex:1, padding:'8px', borderRadius:rr('sm'), border:`0.5px solid ${T.border}`,
+                    background:'transparent', color:T.text2, fontSize:12, fontWeight:500, cursor:'pointer',
+                  }}>⇄ Swap exercise</button>
+                  <button onClick={e=>{ e.stopPropagation(); removeExerciseLive(exIdx) }} style={{
+                    padding:'8px 14px', borderRadius:rr('sm'), border:`0.5px solid var(--coral-dim)`,
+                    background:'transparent', color:'var(--coral)', fontSize:12, fontWeight:500, cursor:'pointer',
+                  }}>Remove</button>
+                </div>
               </div>
             )}
           </div>
         )
       })}
+
+      {/* Add exercise mid-session */}
+      <button onClick={()=>setAddingExercise(true)} style={{
+        width:'100%', padding:'12px', borderRadius:rr('md'), marginBottom:10,
+        border:`1px dashed ${T.border2}`, background:'transparent',
+        color:T.text3, fontSize:13, fontWeight:500, cursor:'pointer',
+      }}>+ Add exercise</button>
 
       <div style={{ marginTop:16 }}>
         <button onClick={finishSession} style={{
