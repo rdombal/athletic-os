@@ -477,10 +477,11 @@ function SportLibrary({ onSave }) {
         <div style={{ display:'flex', gap:6, marginBottom:10 }}>
           {[['lower','Lower body'],['upper','Upper body']].map(([k,l]) => (
             <button key={k} onClick={()=>{ setLiftType(k); setSaved(false) }} style={{
-              flex:1, padding:'7px', borderRadius:rr('sm'), fontSize:12,
-              border: liftType===k ? 'none' : `0.5px solid ${T.border}`,
-              background: liftType===k ? T.surface3 : 'transparent',
-              color: liftType===k ? T.text : T.text2,
+              flex:1, padding:'8px', borderRadius:rr('sm'), fontSize:12, fontWeight: liftType===k ? 600 : 400,
+              border: liftType===k ? `1px solid ${T.border2}` : `0.5px solid ${T.border}`,
+              background: liftType===k ? T.text : 'transparent',
+              color: liftType===k ? T.bg : T.text2,
+              cursor:'pointer',
             }}>{l}</button>
           ))}
         </div>
