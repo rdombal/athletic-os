@@ -558,7 +558,7 @@ function HomeScreen({ onNav, savedItems, profile, userId }) {
       <div style={{ marginBottom:24 }}>
         <div style={{ fontSize:13, color:T.text3, marginBottom:6 }}>{greeting}</div>
         <div style={{ fontSize:28, fontWeight:400, color:T.text, letterSpacing:-.5, lineHeight:1.2 }}>Good day{name}.</div>
-        <div style={{ fontSize:14, color:T.text2, marginTop:8 }}>Move better. Eat well. Lift consistently.</div>
+        <div style={{ fontSize:14, color:T.text2, marginTop:8 }}>Feel better without overthinking it.</div>
       </div>
 
       {isNewUser && (
