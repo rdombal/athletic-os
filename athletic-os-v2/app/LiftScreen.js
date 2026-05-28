@@ -1525,7 +1525,7 @@ function ProgramDetail({ program, lastWorkoutId, sessions, onBack, onEdit, onSta
               </div>
               {ph.workouts.length===0 && <div style={{ padding:'12px 14px', fontSize:12, color:T.text3 }}>No workouts in this phase.</div>}
               {ph.workouts.map((w) => {
-                const isNext = nextW?.id === w.id
+                const isNext = nextUp?.phaseId === ph.id && nextUp?.workoutId === w.id
                 return (
                   <div key={w.id} style={{ padding:'12px 16px', borderBottom:`0.5px solid ${T.border}`, display:'flex', justifyContent:'space-between', alignItems:'center', background: isNext ? 'rgba(58,138,88,0.06)' : 'transparent' }}>
                     <div>
