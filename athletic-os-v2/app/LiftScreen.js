@@ -1468,34 +1468,36 @@ function ProgramsList({ programs, loading, activeProgramId, onSelectProgram, onN
 function ProgramDetail({ program, lastWorkoutId, sessions, onBack, onEdit, onStartWorkout, onViewHistory, onViewProgress }) {
   // Find the single next workout across the entire program
   const getGlobalNextWorkout = () => {
-    if (!lastWorkoutId) {
-      // Never started — first workout of first phase
-      const firstPhase = program.phases.find(ph => ph.workouts.length > 0)
-      return firstPhase ? { phaseId: firstPhase.id, workoutId: firstPhase.workouts[0].id } : null
-    }
-    // Find which phase + position has the last workout
-    for (let pi = 0; pi < program.phases.length; pi++) {
-      const ph = program.phases[pi]
-      const idx = ph.workouts.findIndex(w => w.id === lastWorkoutId)
-      if (idx >= 0) {
-        // Next workout in same phase
-        if (idx + 1 < ph.workouts.length) {
-          return { phaseId: ph.id, workoutId: ph.workouts[idx + 1].id }
-        }
-        // Move to next phase
-        for (let ni = pi + 1; ni < program.phases.length; ni++) {
-          if (program.phases[ni].workouts.length > 0) {
-            return { phaseId: program.phases[ni].id, workoutId: program.phases[ni].workouts[0].id }
-          }
-        }
-        // Completed program — loop back to start
-        const firstPhase = program.phases.find(ph => ph.workouts.length > 0)
-        return firstPhase ? { phaseId: firstPhase.id, workoutId: firstPhase.workouts[0].id } : null
+    try {
+      const phases = program?.phases || []
+      const firstPhaseWithWorkouts = phases.find(p => (p.workouts||[]).length > 0)
+      if (!firstPhaseWithWorkouts) return null
+
+      if (!lastWorkoutId) {
+        return { phaseId: firstPhaseWithWorkouts.id, workoutId: firstPhaseWithWorkouts.workouts[0].id }
       }
+
+      for (let pi = 0; pi < phases.length; pi++) {
+        const phase = phases[pi]
+        const workouts = phase.workouts || []
+        const idx = workouts.findIndex(w => w.id === lastWorkoutId)
+        if (idx >= 0) {
+          if (idx + 1 < workouts.length) {
+            return { phaseId: phase.id, workoutId: workouts[idx + 1].id }
+          }
+          for (let ni = pi + 1; ni < phases.length; ni++) {
+            const nextPhaseWorkouts = phases[ni].workouts || []
+            if (nextPhaseWorkouts.length > 0) {
+              return { phaseId: phases[ni].id, workoutId: nextPhaseWorkouts[0].id }
+            }
+          }
+          return { phaseId: firstPhaseWithWorkouts.id, workoutId: firstPhaseWithWorkouts.workouts[0].id }
+        }
+      }
+      return { phaseId: firstPhaseWithWorkouts.id, workoutId: firstPhaseWithWorkouts.workouts[0].id }
+    } catch(e) {
+      return null
     }
-    // lastWorkoutId not found in program — default to first workout
-    const firstPhase = program.phases.find(ph => ph.workouts.length > 0)
-    return firstPhase ? { phaseId: firstPhase.id, workoutId: firstPhase.workouts[0].id } : null
   }
   const nextUp = getGlobalNextWorkout()
 
