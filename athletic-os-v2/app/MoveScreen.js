@@ -294,11 +294,9 @@ function RoutineCard({ exercises, title, duration, source, onSave, saved }) {
       )}
       {exercises.map((ex, i) => (
         <div key={i} style={{ padding:'12px 16px', borderBottom:`0.5px solid ${T.border}` }}>
-          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:4 }}>
-            <div style={{ fontSize:13, fontWeight:500, color:T.text, flex:1 }}>{ex.name}</div>
-            <div style={{ fontSize:11, color:'var(--green)', marginLeft:8, flexShrink:0, fontWeight:500 }}>{ex.reps}</div>
-          </div>
-          <div style={{ fontSize:12, color:T.text2, lineHeight:1.55 }}>{ex.cue}</div>
+          <div style={{ fontSize:13, fontWeight:500, color:T.text, marginBottom:3 }}>{ex.name}</div>
+          {ex.reps && <div style={{ fontSize:11, color:'var(--green)', fontWeight:500, marginBottom:4 }}>{ex.reps}</div>}
+          {ex.cue && <div style={{ fontSize:12, color:T.text2, lineHeight:1.55 }}>{ex.cue}</div>}
         </div>
       ))}
       {onSave && (
