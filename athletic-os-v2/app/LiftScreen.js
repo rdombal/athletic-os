@@ -1516,7 +1516,6 @@ function ProgramDetail({ program, lastWorkoutId, sessions, onBack, onEdit, onSta
       </div>
 
       {program.phases.map((ph) => {
-        const nextW = getNextWorkout(ph)
         return (
           <div key={ph.id} style={{ marginBottom:12 }}>
             <div style={{ background:T.surface, border:`0.5px solid ${T.border}`, borderRadius:rr('md'), overflow:'hidden' }}>
