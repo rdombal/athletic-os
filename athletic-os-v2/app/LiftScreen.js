@@ -459,7 +459,7 @@ function ProgramBuilder({ program, onSave, onBack, onDelete }) {
 
 
 // ─── Inline set row ───────────────────────────────────────────────────────────
-function InlineSetRow({ setNum, initial, lastSet, prevSet, isCurrent, onSave, onUndo, onRestStart }) {
+function InlineSetRow({ setNum, initial, lastSet, prevSet, isCurrent, onSave, onUndo, onRestStart, useRpe }) {
   // Pre-fill from last session on mount — so +5 buttons work immediately
   const defaultWeight = initial?.weight?.toString() || lastSet?.weight?.toString() || ''
   const defaultReps   = initial?.reps?.toString()   || lastSet?.reps?.toString()   || ''
@@ -469,7 +469,7 @@ function InlineSetRow({ setNum, initial, lastSet, prevSet, isCurrent, onSave, on
 
   const handleSave = () => {
     if (!weight || !reps) return
-    onSave({ weight: parseFloat(weight)||0, reps: parseInt(reps)||0 })
+    onSave({ weight: parseFloat(weight)||0, reps: parseInt(reps)||0, ...(useRpe && rpe ? { rpe: parseFloat(rpe) } : {}) })
     setSaved(true)
     if (onRestStart) onRestStart()
   }
@@ -828,6 +828,7 @@ function SessionLogger({ workout, programId, phaseId, userId, profile, onGoEat, 
                   <div style={{ width:28, flexShrink:0 }} />
                   <div style={{ flex:1, fontSize:10, fontWeight:600, color:T.text3, letterSpacing:.6, textTransform:'uppercase', textAlign:'center' }}>Weight (lb)</div>
                   <div style={{ flex:1, fontSize:10, fontWeight:600, color:T.text3, letterSpacing:.6, textTransform:'uppercase', textAlign:'center' }}>Reps</div>
+                  {ex.useRpe && <div style={{ width:52, fontSize:10, fontWeight:600, color:T.text3, letterSpacing:.6, textTransform:'uppercase', textAlign:'center', flexShrink:0 }}>RPE</div>}
                   <div style={{ width:42, flexShrink:0 }} />
                 </div>
 
@@ -847,6 +848,7 @@ function SessionLogger({ workout, programId, phaseId, userId, profile, onGoEat, 
                         onSave={data => logSet(exIdx, i, data)}
                         onUndo={()=>{ setLoggedSets(prev => { const next=[...prev]; const sets=[...next[exIdx].sets]; sets[i]=undefined; next[exIdx]={...next[exIdx],sets}; return next }) }}
                         onRestStart={()=>{ setRestActive(true); setRestKey(k=>k+1) }}
+                        useRpe={workout.useRpe || ex.useRpe}
                       />
                     )
                   })}
