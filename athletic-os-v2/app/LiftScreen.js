@@ -465,6 +465,7 @@ function InlineSetRow({ setNum, initial, lastSet, prevSet, isCurrent, onSave, on
   const defaultReps   = initial?.reps?.toString()   || lastSet?.reps?.toString()   || ''
   const [weight, setWeight] = useState(defaultWeight)
   const [reps,   setReps]   = useState(defaultReps)
+  const [rpe,    setRpe]    = useState(initial?.rpe?.toString() || '')
   const [saved,  setSaved]  = useState(!!initial)
 
   const handleSave = () => {
