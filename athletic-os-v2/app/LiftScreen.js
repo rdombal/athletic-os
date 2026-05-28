@@ -642,7 +642,7 @@ function RestTimer({ onDismiss }) {
 }
 
 // ─── Session logger ────────────────────────────────────────────────────────────
-function SessionLogger({ workout, programId, phaseId, userId, profile, onGoEat, onFinish, onBack }) {
+function SessionLogger({ workout, programId, phaseId, userId, profile, onGoEat, onFinish, onBack, program }) {
   const [sessions, setSessions] = useState([])
   const [loggedSets, setLoggedSets] = useState(
     workout.exercises.map(ex => ({ exerciseId:ex.exerciseId||ex.id, name:ex.name, sets:[] }))
@@ -813,6 +813,13 @@ function SessionLogger({ workout, programId, phaseId, userId, profile, onGoEat, 
               <div style={{ background:T.surface, border:`1px solid ${T.border2}`, borderTop:'none',
                 borderRadius:`0 0 ${rr('lg')} ${rr('lg')}`, overflow:'hidden' }}>
 
+                {/* Coaching notes */}
+                {ex.notes && (
+                  <div style={{ padding:'10px 16px 2px', borderBottom:`0.5px solid ${T.border}` }}>
+                    <div style={{ fontSize:11, color:T.text3, letterSpacing:.4, textTransform:'uppercase', marginBottom:4 }}>Coach note</div>
+                    <div style={{ fontSize:12, color:T.text2, lineHeight:1.6 }}>{ex.notes}</div>
+                  </div>
+                )}
                 {/* Last session pills */}
                 {lastSess && (
                   <div style={{ padding:'8px 16px', borderBottom:`0.5px solid ${T.border}`, display:'flex', gap:6, flexWrap:'wrap', alignItems:'center' }}>
@@ -828,7 +835,7 @@ function SessionLogger({ workout, programId, phaseId, userId, profile, onGoEat, 
                   <div style={{ width:28, flexShrink:0 }} />
                   <div style={{ flex:1, fontSize:10, fontWeight:600, color:T.text3, letterSpacing:.6, textTransform:'uppercase', textAlign:'center' }}>Weight (lb)</div>
                   <div style={{ flex:1, fontSize:10, fontWeight:600, color:T.text3, letterSpacing:.6, textTransform:'uppercase', textAlign:'center' }}>Reps</div>
-                  {ex.useRpe && <div style={{ width:52, fontSize:10, fontWeight:600, color:T.text3, letterSpacing:.6, textTransform:'uppercase', textAlign:'center', flexShrink:0 }}>RPE</div>}
+                  {(ex.useRpe || workout.useRpe || program?.useRpe) && <div style={{ width:52, fontSize:10, fontWeight:600, color:T.text3, letterSpacing:.6, textTransform:'uppercase', textAlign:'center', flexShrink:0 }}>RPE</div>}
                   <div style={{ width:42, flexShrink:0 }} />
                 </div>
 
@@ -848,7 +855,7 @@ function SessionLogger({ workout, programId, phaseId, userId, profile, onGoEat, 
                         onSave={data => logSet(exIdx, i, data)}
                         onUndo={()=>{ setLoggedSets(prev => { const next=[...prev]; const sets=[...next[exIdx].sets]; sets[i]=undefined; next[exIdx]={...next[exIdx],sets}; return next }) }}
                         onRestStart={()=>{ setRestActive(true); setRestKey(k=>k+1) }}
-                        useRpe={workout.useRpe || ex.useRpe}
+                        useRpe={workout.useRpe || ex.useRpe || program?.useRpe || false}
                       />
                     )
                   })}
@@ -1459,13 +1466,38 @@ function ProgramsList({ programs, loading, activeProgramId, onSelectProgram, onN
 
 // ─── Program detail ───────────────────────────────────────────────────────────
 function ProgramDetail({ program, lastWorkoutId, sessions, onBack, onEdit, onStartWorkout, onViewHistory, onViewProgress }) {
-  const getNextWorkout = (phase) => {
-    if (!phase || phase.workouts.length === 0) return null
-    if (!lastWorkoutId) return phase.workouts[0]
-    const lastIdx = phase.workouts.findIndex(w => w.id === lastWorkoutId)
-    if (lastIdx === -1) return phase.workouts[0]
-    return phase.workouts[(lastIdx + 1) % phase.workouts.length]
+  // Find the single next workout across the entire program
+  const getGlobalNextWorkout = () => {
+    if (!lastWorkoutId) {
+      // Never started — first workout of first phase
+      const firstPhase = program.phases.find(ph => ph.workouts.length > 0)
+      return firstPhase ? { phaseId: firstPhase.id, workoutId: firstPhase.workouts[0].id } : null
+    }
+    // Find which phase + position has the last workout
+    for (let pi = 0; pi < program.phases.length; pi++) {
+      const ph = program.phases[pi]
+      const idx = ph.workouts.findIndex(w => w.id === lastWorkoutId)
+      if (idx >= 0) {
+        // Next workout in same phase
+        if (idx + 1 < ph.workouts.length) {
+          return { phaseId: ph.id, workoutId: ph.workouts[idx + 1].id }
+        }
+        // Move to next phase
+        for (let ni = pi + 1; ni < program.phases.length; ni++) {
+          if (program.phases[ni].workouts.length > 0) {
+            return { phaseId: program.phases[ni].id, workoutId: program.phases[ni].workouts[0].id }
+          }
+        }
+        // Completed program — loop back to start
+        const firstPhase = program.phases.find(ph => ph.workouts.length > 0)
+        return firstPhase ? { phaseId: firstPhase.id, workoutId: firstPhase.workouts[0].id } : null
+      }
+    }
+    // lastWorkoutId not found in program — default to first workout
+    const firstPhase = program.phases.find(ph => ph.workouts.length > 0)
+    return firstPhase ? { phaseId: firstPhase.id, workoutId: firstPhase.workouts[0].id } : null
   }
+  const nextUp = getGlobalNextWorkout()
 
   return (
     <div style={{ padding:'0 20px' }}>
@@ -1646,6 +1678,7 @@ export default function LiftScreen({ userId, userProfile, onGoEat, onGoMove }) {
       {view==='session' && activeSession && (
         <SessionLogger workout={activeSession.workout} programId={activeSession.programId}
           phaseId={activeSession.phaseId} userId={userId} profile={userProfile} onGoEat={onGoEat}
+          program={programs.find(p=>p.id===activeSession.programId)}
           onFinish={handleFinishSession}
           onBack={()=>{ setActiveSession(null); setView('detail') }} />
       )}
