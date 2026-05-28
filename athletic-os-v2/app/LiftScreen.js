@@ -525,7 +525,7 @@ function InlineSetRow({ setNum, initial, lastSet, prevSet, isCurrent, onSave, on
           ))}
         </div>
       )}
-      {/* Main row: set number | weight input | reps input | action btn */}
+      {/* Main row: set number | weight input | reps input | RPE input | action btn */}
       <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:2 }}>
         <div style={{ fontSize:18, fontWeight:600, color:setNumColor, width:28, textAlign:'center', flexShrink:0 }}>{setNum}</div>
         <input type="number" inputMode="decimal" value={weight}
@@ -536,10 +536,16 @@ function InlineSetRow({ setNum, initial, lastSet, prevSet, isCurrent, onSave, on
           onChange={e=>{ setReps(e.target.value); setSaved(false) }}
           placeholder={lastSet?.reps?.toString() || '—'}
           style={bigInput} />
+        {useRpe && (
+          <input type="number" inputMode="decimal" value={rpe}
+            onChange={e=>{ setRpe(e.target.value); setSaved(false) }}
+            placeholder="RPE"
+            style={{ ...bigInput, width:58, flexShrink:0, fontSize:14 }} />
+        )}
         <button onClick={saved ? handleUndo : handleSave} style={{
           width:42, height:42, borderRadius:'50%', flexShrink:0, border:'none',
-          background: saved ? T.surface2 : (!weight||!reps) ? T.surface2 : 'var(--green-dim)',
-          color: saved ? 'var(--green)' : (!weight||!reps) ? T.text3 : '#fff',
+          background: saved ? T.surface2 : (weight&&reps) ? 'var(--green-dim)' : T.surface2,
+          color: saved ? 'var(--green)' : (weight&&reps) ? '#fff' : T.text3,
           fontSize: saved ? 18 : 16, cursor:'pointer',
           display:'flex', alignItems:'center', justifyContent:'center',
           boxShadow: (!saved&&weight&&reps) ? '0 2px 8px rgba(58,138,88,0.35)' : 'none',
