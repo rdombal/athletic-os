@@ -602,7 +602,7 @@ const CURATED_SPOTS = {
     { name:'Placeholder Restaurant 1', neighborhood:'South Boston', cuisine:'American', priceRange:'$',
       description:'A neighborhood staple known for fresh, quality ingredients and generous portions. Great for a post-workout meal.',
       mustOrder:'Grilled salmon bowl', tags:['high-protein','local-favorite','post-workout'], curated:true, curatorNote:'Ryan recommends' },
-    { name:'Placeholder Restaurant 2', neighborhood:'Seaport', cuisine:'Mediterranean', priceRange:'$
+    { name:'Placeholder Restaurant 2', neighborhood:'Seaport', cuisine:'Mediterranean',
   const { pantry, add, remove } = usePantry(userId)
   const [effort, setEffort] = useState('normal')
   const [meal, setMeal] = useState('Lunch')
