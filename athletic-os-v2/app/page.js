@@ -818,6 +818,13 @@ Variations:
 
   return (
     <div style={{ padding:'20px 20px' }}>
+      <div style={{ display:'flex', gap:6, marginBottom:20 }}>
+        {[['cook','Cook at home'],['eatout','Eat out']].map(([mode,label])=>(
+          <button key={mode} onClick={()=>setEatMode(mode)} style={{ flex:1, padding:'9px', borderRadius:rr('sm'), fontSize:13, border:'none', cursor:'pointer', background:eatMode===mode?T.text:T.surface2, color:eatMode===mode?T.bg:T.text2, fontWeight:eatMode===mode?500:400 }}>{label}</button>
+        ))}
+      </div>
+      {eatMode==='eatout' && <EatOutScreen />}
+      {eatMode==='cook' && <div>
       <PantryEditor pantry={pantry} onAdd={add} onRemove={remove} />
       <Divider />
       <PrefLabel>Effort level</PrefLabel>
@@ -844,6 +851,7 @@ Variations:
         </button>
         {saved && <div style={{ fontSize:12, color:T.text3, textAlign:'center', fontStyle:'italic', marginBottom:8 }}>Simple meals repeated consistently make a huge difference.</div>}
         <button onClick={()=>go(true)} style={{ width:'100%', padding:'9px', borderRadius:rr('md'), border:`0.5px solid ${T.border}`, background:'transparent', color:T.text2, fontSize:13, cursor:'pointer' }}>Not quite — try something different</button>
+      </div>}
       </div>}
     </div>
   )
