@@ -595,7 +595,1174 @@ function HomeScreen({ onNav, savedItems, profile, userId }) {
   )
 }
 
+
+// ─── Curated restaurant data ──────────────────────────────────────────────────
+const CURATED_SPOTS = {
+  'Boston — Southie & Seaport': [
+    { name:'Placeholder Restaurant 1', neighborhood:'South Boston', cuisine:'American', priceRange:'$',
+      description:'A neighborhood staple known for fresh, quality ingredients and generous portions. Great for a post-workout meal.',
+      mustOrder:'Grilled salmon bowl', tags:['high-protein','local-favorite','post-workout'], curated:true, curatorNote:'Ryan recommends' },
+    { name:'Placeholder Restaurant 2', neighborhood:'Seaport', cuisine:'Mediterranean', priceRange:'$
+  const { pantry, add, remove } = usePantry(userId)
+  const [effort, setEffort] = useState('normal')
+  const [meal, setMeal] = useState('Lunch')
+  const [vibe, setVibe] = useState('')
+  const [cuisine, setCuisine] = useState('')
+  const [resp, setResp] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [adjusting, setAdjusting] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const [attempts, setAttempts] = useState(0)
+  const [suggestedNames, setSuggestedNames] = useState([])
+
+  const ASSUMED_STAPLES = 'olive oil, butter, garlic, onion, salt, pepper, cumin, paprika, chili flakes, Italian seasoning, soy sauce, hot sauce, lemon, lime, vinegar, chicken broth, mustard, honey, Worcestershire sauce'
+  const TECHNIQUES = ['pan sear and sauce', 'sheet pan roast', 'stir fry', 'skillet scramble', 'soup or stew', 'marinate and grill', 'stuffed or wrapped', 'rice bowl with sauce', 'fried rice', 'frittata or egg bake']
+  const effortDesc = { low:'minimal prep, one pan, 15 min max', normal:'standard weeknight, 20-30 min', chef:'more involved, worth the effort, up to 45 min' }
+
+  const ADJUST_PROMPTS = {
+    calories_up:   (_,r)=>`Make this recipe significantly higher calorie. Add more calorie-dense ingredients or increase portions.\n\nOriginal:\n${r}\n\nReturn full modified recipe in same plain text format. No markdown.`,
+    calories_down: (_,r)=>`Make this recipe lighter. Reduce portions or swap high-calorie ingredients for lighter versions.\n\nOriginal:\n${r}\n\nReturn full modified recipe in same plain text format. No markdown.`,
+    protein_up:    (_,r)=>`Increase the protein in this recipe. Add more of the protein source or add another.\n\nOriginal:\n${r}\n\nReturn full modified recipe in same plain text format. No markdown.`,
+    carbs_up:      (_,r)=>`Increase the carbs. Add more rice, potatoes, or bread to this recipe.\n\nOriginal:\n${r}\n\nReturn full modified recipe in same plain text format. No markdown.`,
+    quicker:       (_,r)=>`Make this recipe faster. Should be doable in 10-15 minutes max.\n\nOriginal:\n${r}\n\nReturn full modified recipe in same plain text format. No markdown.`,
+    simpler:       (_,r)=>`Reduce the ingredient count to 5 or fewer while keeping the core dish.\n\nOriginal:\n${r}\n\nReturn full modified recipe in same plain text format. No markdown.`,
+  }
+
+  const buildPrompt = async (attempt) => {
+    const mem = userId ? await getTasteMemory(userId) : {}
+    const profile = userId ? await getProfile(userId) : {}
+    const tasteCtx = buildTasteContext(mem)
+    const profileCtx = buildProfileContext(profile)
+    const avoidNote = suggestedNames.length > 0
+      ? `\nAVOID these exact recipes already suggested: ${suggestedNames.join(', ')}. Give something genuinely different — different main protein, different cuisine style, different cooking method. Do not recycle the same base dish with minor tweaks.`
+      : ''
+    const cuisineNote = cuisine ? `Cuisine direction: ${cuisine}\n` : ''
+    const techNote = TECHNIQUES[Math.floor(Math.random()*TECHNIQUES.length)]
+    return `You are a skilled home cook helping someone eat well and actually enjoy their food. Sound like a knowledgeable friend giving a real recipe — not a meal prep slop bowl.
+${tasteCtx}${profileCtx}
+Main ingredients (proteins and bases): ${pantry.join(', ')}
+Assumed pantry staples always available: ${ASSUMED_STAPLES}
+Meal: ${meal}
+Effort: ${effortDesc[effort]}
+Vibe: ${vibe||'tasty, satisfying, something I would actually want to eat'}
+${cuisineNote}Cooking technique to try: ${techNote}
+${avoidNote}
+
+Give ONE recipe that feels like something from a good casual restaurant — not a bland bowl. Use the main ingredients as the base and enhance freely with assumed staples. The result should taste like a real dish with a name, not just "protein + carb."
+
+IMPORTANT: No markdown. No # symbols. Plain text only. Recipe name goes on the FIRST LINE with no prefix.
+
+Format exactly like this:
+
+[Creative recipe name]
+
+Ingredients:
+- [amount] [ingredient]
+
+Steps:
+1. [One punchy line. They know how to cook.]
+2. [One line.]
+3. [One line.]
+4. [One line.]
+
+Macros per serving:
+Calories: [number]
+Protein: [number]g
+Carbs: [number]g
+Fat: [number]g
+
+Variations:
+- [One-line twist that changes the whole vibe]
+- [Another quick variation]
+- [One more]`
+  }
+
+  const go = async (isRetry) => {
+    setLoading(true); setResp(''); setSaved(false)
+    const attempt = isRetry?attempts+1:0
+    setAttempts(attempt)
+    if (vibe&&userId) updateTasteMemory(userId,{vibes:[vibe]})
+    if (userId) updateTasteMemory(userId,{efforts:[effort],meals:[meal]})
+    try {
+      const prompt = await buildPrompt(attempt)
+      const text = await callAI(prompt)
+      setResp(text)
+      // Extract recipe name (first non-empty line) and track it
+      const firstName = text.split('\n').map(l=>l.trim()).find(l=>l.length>0)
+      if (firstName) setSuggestedNames(prev => [...prev.slice(-4), firstName])
+    } catch(e) { setResp('Something went wrong. Try again.') }
+    setLoading(false)
+  }
+
+  const adjust = async (type,name,currentRecipe) => {
+    setAdjusting(true)
+    try { const text = await callAI(ADJUST_PROMPTS[type](name,currentRecipe)); setResp(text); setSaved(false) } catch(e) { setResp('Something went wrong.') }
+    setAdjusting(false)
+  }
+
+  const save = () => {
+    if (userId) updateTasteMemory(userId,{savedIngredients:pantry})
+    // Use the actual recipe name (first non-empty line of response)
+    // Extract name exactly like RecipeCard does — first non-empty line after stripping markdown
+    const recipeLines = resp.split('\n').map(l=>l.trim().replace(/^#+\s*/,'')).filter(Boolean)
+    const recipeName = recipeLines[0] || `${meal} — ${cuisine||vibe||'recipe'}`
+    onSave({ label:recipeName, text:resp, type:'recipe' })
+    addVote()
+    setSaved(true)
+  }
+
+  return (
+    <div style={{ padding:'20px 20px' }}>
+      <div style={{ display:'flex', gap:6, marginBottom:20 }}>
+        {[['cook','Cook at home'],['eatout','Eat out']].map(([mode,label])=>(
+          <button key={mode} onClick={()=>setEatMode(mode)} style={{ flex:1, padding:'9px', borderRadius:rr('sm'), fontSize:13, border:'none', cursor:'pointer', background:eatMode===mode?T.text:T.surface2, color:eatMode===mode?T.bg:T.text2, fontWeight:eatMode===mode?500:400 }}>{label}</button>
+        ))}
+      </div>
+      {eatMode==='eatout' && <EatOutScreen />}
+      {eatMode==='cook' && <div>
+      <PantryEditor pantry={pantry} onAdd={add} onRemove={remove} />
+      <Divider />
+      <PrefLabel>Effort level</PrefLabel>
+      <div style={{ display:'flex', gap:8, marginBottom:14 }}>
+        {EFFORT_LEVELS.map(e=><button key={e.key} onClick={()=>setEffort(e.key)} style={{ flex:1, padding:'10px 6px', borderRadius:rr('sm'), fontSize:11, textAlign:'center', border:effort===e.key?'none':`0.5px solid ${T.border}`, background:effort===e.key?T.text:T.surface, color:effort===e.key?T.bg:T.text2 }}><div style={{ fontWeight:500, marginBottom:2, fontSize:12 }}>{e.label}</div><div style={{ opacity:.7, lineHeight:1.3 }}>{e.desc}</div></button>)}
+      </div>
+      <PrefLabel>Meal type</PrefLabel>
+      <ChipRow options={['Breakfast','Lunch','Dinner','Snack']} selected={meal} onSelect={setMeal} />
+      <PrefLabel>Cuisine (optional)</PrefLabel>
+      <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom:14 }}>
+        {CUISINES.map(cu=><button key={cu} onClick={()=>setCuisine(cuisine===cu?'':cu)} style={{ padding:'5px 12px', borderRadius:20, fontSize:12, border:`0.5px solid ${T.border}`, background:cuisine===cu?T.text:T.surface2, color:cuisine===cu?T.bg:T.text2 }}>{cu}</button>)}
+      </div>
+      <PrefLabel>What's the vibe?</PrefLabel>
+      <textarea value={vibe} onChange={e=>setVibe(e.target.value)} placeholder="high protein, comforting, fresh, post-workout..." rows={2} style={{ width:'100%', background:T.surface, border:`0.5px solid ${T.border}`, borderRadius:rr('md'), padding:'10px 12px', fontSize:14, color:T.text, resize:'none', outline:'none', marginBottom:8 }} />
+      <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom:4 }}>
+        {VIBE_SUGGESTIONS.map(v=><button key={v} onClick={()=>setVibe(vibe===v?'':v)} style={{ padding:'4px 10px', borderRadius:20, fontSize:11, border:`0.5px solid ${T.border}`, background:vibe===v?T.text:T.surface2, color:vibe===v?T.bg:T.text3 }}>{v}</button>)}
+      </div>
+      <PrimaryBtn onClick={()=>go(false)} disabled={loading||pantry.length===0}>{loading?'Finding something good...':'Get recipe ideas'}</PrimaryBtn>
+      {loading&&<div style={{ marginTop:12 }}><LoadingDots /></div>}
+      {resp&&!loading&&<RecipeCard text={resp} onAdjust={adjust} adjusting={adjusting} />}
+      {resp&&!loading&&<div style={{ marginTop:10 }}>
+        <button onClick={save} style={{ width:'100%', padding:'11px', borderRadius:rr('md'), border:'none', background:saved?T.surface2:'var(--green-dim)', color:saved?'var(--green)':'#fff', fontSize:14, fontWeight:500, cursor:'pointer', marginBottom:8 }}>
+          {saved ? '✓ Added to your rotation' : '＋ Save this meal'}
+        </button>
+        {saved && <div style={{ fontSize:12, color:T.text3, textAlign:'center', fontStyle:'italic', marginBottom:8 }}>Simple meals repeated consistently make a huge difference.</div>}
+        <button onClick={()=>go(true)} style={{ width:'100%', padding:'9px', borderRadius:rr('md'), border:`0.5px solid ${T.border}`, background:'transparent', color:T.text2, fontSize:13, cursor:'pointer' }}>Not quite — try something different</button>
+      </div>}
+      </div>}
+    </div>
+  )
+}
+
+function PillarCard({ p, onDeepDive }) {
+  const [expanded, setExpanded] = useState(false)
+  const col = PILLAR_COLORS[p.color]
+  return (
+    <Card>
+      <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:10 }}>
+        <div style={{ width:32, height:32, borderRadius:8, background:col.bg, flexShrink:0 }} />
+        <div style={{ flex:1 }}>
+          <div style={{ fontSize:10, fontWeight:500, color:col.accent, letterSpacing:.5, textTransform:'uppercase' }}>Pillar {p.num}</div>
+          <div style={{ fontSize:16, fontWeight:500, color:T.text, marginTop:1 }}>{p.title}</div>
+        </div>
+      </div>
+      <div style={{ fontSize:13, color:col.accent, lineHeight:1.6, marginBottom:8, fontStyle:'italic' }}>{p.identity}</div>
+      <div style={{ fontSize:13, color:T.text2, lineHeight:1.7, marginBottom:10 }}>
+        {expanded ? p.body : ''}
+      </div>
+      {expanded && <>
+        <Divider />
+        <div style={{ display:'flex', gap:14, marginBottom:12 }}>
+          <div style={{ flex:1 }}><div style={{ fontSize:10, fontWeight:500, color:'var(--green)', letterSpacing:.5, textTransform:'uppercase', marginBottom:4 }}>Worth your time</div><div style={{ fontSize:12, color:T.text2, lineHeight:1.55 }}>{p.good}</div></div>
+          <div style={{ flex:1 }}><div style={{ fontSize:10, fontWeight:500, color:'var(--coral)', letterSpacing:.5, textTransform:'uppercase', marginBottom:4 }}>Skip this</div><div style={{ fontSize:12, color:T.text2, lineHeight:1.55 }}>{p.skip}</div></div>
+        </div>
+        <button onClick={()=>onDeepDive(p.prompt)} style={{ width:'100%', padding:'9px 12px', borderRadius:rr('sm'), border:`0.5px solid ${T.border}`, background:'transparent', color:T.text2, fontSize:13, textAlign:'left', marginBottom:6 }}>Go deeper →</button>
+      </>}
+      <button onClick={()=>setExpanded(v=>!v)} style={{ background:'none', border:'none', color:T.text3, fontSize:12, padding:'4px 0 0', cursor:'pointer' }}>
+        {expanded ? 'Show less ▲' : 'Read more ▼'}
+      </button>
+    </Card>
+  )
+}
+
+function PillarsScreen({ onDeepDive }) {
+  return (
+    <div style={{ padding:'20px 20px' }}>
+      {PILLARS.map(p => <PillarCard key={p.num} p={p} onDeepDive={onDeepDive} />)}
+    </div>
+  )
+}
+
+function DeepDiveScreen({ prompt, onBack }) {
+  const [resp, setResp] = useState('')
+  const [loading, setLoading] = useState(true)
+  useEffect(() => { callAI(prompt+'\n\nBe conversational, practical, and concise. No fluff.').then(setResp).catch(e=>setResp('Error: '+e.message)).finally(()=>setLoading(false)) }, [prompt])
+  return (
+    <div style={{ padding:'20px 20px' }}>
+      <button onClick={onBack} style={{ border:'none', background:'none', color:T.text2, fontSize:13, marginBottom:16, display:'flex', alignItems:'center', gap:4, padding:0 }}>Back to Pillars</button>
+      <ResponseBox text={resp} loading={loading} />
+    </div>
+  )
+}
+
+function ProfileScreen({ userId, onSaved, onNav }) {
+  const [profile, setProfile] = useState({ name:'', goal:'Athletic performance', activity:'Very active (5+/week)', calories:'', protein:'', notes:'' })
+  const [saved, setSaved] = useState(false)
+  const [loading, setLoading] = useState(true)
+  useEffect(() => { if (userId) getProfile(userId).then(p=>{ setProfile(p); setLoading(false) }) }, [userId])
+  const update = (key,val) => setProfile(p=>({ ...p, [key]:val }))
+  const handleSave = async () => {
+    await saveProfile(userId, profile)
+    setSaved(true); setTimeout(()=>setSaved(false),2000)
+    if (onSaved) onSaved(profile)
+  }
+  const isFirstSave = !profile.goal && !profile.name
+  if (loading) return <div style={{ padding:20 }}><LoadingDots /></div>
+  return (
+    <div style={{ padding:'20px 20px' }}>
+      <PrefLabel>Your name</PrefLabel>
+      <input value={profile.name} onChange={e=>update('name',e.target.value)} placeholder="First name" style={{ width:'100%', padding:'9px 12px', borderRadius:rr('sm'), fontSize:13, border:`0.5px solid ${T.border}`, background:T.surface, color:T.text, outline:'none', marginBottom:10 }} />
+      <PrefLabel>Who are you becoming?</PrefLabel>
+      <div style={{ display:'flex', flexDirection:'column', gap:6, marginBottom:14 }}>
+        {IDENTITY_STATEMENTS.map(s => (
+          <button key={s} onClick={()=>update('identity', profile.identity===s?'':s)} style={{
+            padding:'10px 14px', borderRadius:rr('sm'), fontSize:13, textAlign:'left',
+            border:`0.5px solid ${profile.identity===s?'var(--green-dim)':T.border}`,
+            background: profile.identity===s ? 'var(--green-bg)' : T.surface,
+            color: profile.identity===s ? 'var(--green)' : T.text2,
+            fontWeight: profile.identity===s ? 500 : 400,
+          }}>{s}</button>
+        ))}
+      </div>
+      <PrefLabel>Training focus (optional)</PrefLabel>
+      <ChipRow options={GOALS} selected={profile.goal} onSelect={v=>update('goal',v)} />
+      <PrefLabel>Activity level</PrefLabel>
+      <ChipRow options={ACTIVITY_LEVELS} selected={profile.activity} onSelect={v=>update('activity',v)} />
+      <PrefLabel>Daily calorie target (optional)</PrefLabel>
+      <input type="number" value={profile.calories} onChange={e=>update('calories',e.target.value)} placeholder="e.g. 2800" style={{ width:'100%', padding:'9px 12px', borderRadius:rr('sm'), fontSize:13, border:`0.5px solid ${T.border}`, background:T.surface, color:T.text, outline:'none', marginBottom:10 }} />
+      <PrefLabel>Daily protein target in grams (optional)</PrefLabel>
+      <input type="number" value={profile.protein} onChange={e=>update('protein',e.target.value)} placeholder="e.g. 160" style={{ width:'100%', padding:'9px 12px', borderRadius:rr('sm'), fontSize:13, border:`0.5px solid ${T.border}`, background:T.surface, color:T.text, outline:'none', marginBottom:10 }} />
+      <PrefLabel>Anything else the app should know?</PrefLabel>
+      <textarea value={profile.notes} onChange={e=>update('notes',e.target.value)} placeholder="e.g. I run and lift a lot, need to eat big." rows={3} style={{ width:'100%', background:T.surface, border:`0.5px solid ${T.border}`, borderRadius:rr('md'), padding:'10px 12px', fontSize:14, color:T.text, resize:'none', outline:'none' }} />
+      <PrimaryBtn onClick={handleSave}>{saved?'Profile saved ✓':'Save profile'}</PrimaryBtn>
+      {saved && (
+        <div style={{ marginTop:12, background:T.surface, borderRadius:rr('md'), padding:'14px 16px' }}>
+          <div style={{ fontSize:13, fontWeight:500, color:T.text, marginBottom:4 }}>Nice. Now let's find your first meal idea.</div>
+          <div style={{ fontSize:12, color:T.text2, marginBottom:10, lineHeight:1.6 }}>Your profile will shape recipe suggestions, portion sizes, and workout nutrition guidance from here on.</div>
+          <button onClick={()=>onNav&&onNav('eat')} style={{ width:'100%', padding:'9px', borderRadius:rr('sm'), border:'none', background:'var(--amber-dim)', color:'#fff', fontSize:13, fontWeight:500, cursor:'pointer' }}>
+            Find a meal →
+          </button>
+        </div>
+      )}
+      {!saved && <div style={{ marginTop:16, padding:'12px 14px', background:T.surface2, borderRadius:rr('md') }}>
+        <div style={{ fontSize:12, color:T.text3, lineHeight:1.7 }}>Your profile personalizes everything — recipes, portions, workout nutrition guidance.</div>
+      </div>}
+    </div>
+  )
+}
+
+function SavedItemDetail({ item }) {
+  // Try JSON routine format
+  if (item.type === 'routine') {
+    try {
+      const parsed = JSON.parse(item.text)
+      if (parsed.exercises?.length) {
+        return (
+          <div style={{ padding:'8px 16px 16px' }}>
+            {parsed.duration && <div style={{ fontSize:11, color:T.text3, marginBottom:10 }}>{parsed.duration}{parsed.source ? ` · ${parsed.source}` : ''}</div>}
+            {parsed.exercises.map((ex, i) => (
+              <div key={i} style={{ padding:'12px 0', borderBottom: i < parsed.exercises.length-1 ? `0.5px solid ${T.border}` : 'none' }}>
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:4 }}>
+                  <div style={{ fontSize:13, fontWeight:500, color:T.text, flex:1 }}>{ex.name}</div>
+                  <div style={{ fontSize:11, color:'var(--green)', marginLeft:8, flexShrink:0, fontWeight:500 }}>{ex.reps}</div>
+                </div>
+                {ex.cue && <div style={{ fontSize:12, color:T.text2, lineHeight:1.55 }}>{ex.cue}</div>}
+              </div>
+            ))}
+          </div>
+        )
+      }
+    } catch(e) {}
+    // Plain text fallback
+    return <div style={{ padding:'8px 16px 16px', fontSize:13, color:T.text2, lineHeight:1.7, whiteSpace:'pre-wrap' }}>{item.text}</div>
+  }
+  // Recipe
+  return <div style={{ padding:'0 16px 16px' }}><RecipeCard text={item.text} /></div>
+}
+
+function StackScreen({ items, onDelete, onRename }) {
+  const [tab, setTab] = useState('routines')
+  const [expandedId, setExpandedId] = useState(null)
+  const [editingId, setEditingId] = useState(null)
+  const [editingLabel, setEditingLabel] = useState('')
+  const filtered = items.filter(i=>tab==='routines'?i.type==='routine':i.type==='recipe')
+
+  return (
+    <div style={{ padding:'20px 20px' }}>
+      <div style={{ display:'flex', gap:6, marginBottom:20 }}>
+        {['routines','recipes'].map(t=>(
+          <button key={t} onClick={()=>{ setTab(t); setExpandedId(null) }}
+            style={{ flex:1, padding:'8px', borderRadius:rr('sm'), fontSize:13, border:'none',
+              background:tab===t?T.text:T.surface2, color:tab===t?T.bg:T.text2, textTransform:'capitalize' }}>
+            {t}
+          </button>
+        ))}
+      </div>
+
+      {filtered.length===0 ? (
+        <div style={{ textAlign:'center', padding:'3rem 1rem' }}>
+          <div style={{ fontSize:15, fontWeight:500, color:T.text, marginBottom:8 }}>your rotation is empty for now.</div>
+          <div style={{ fontSize:13, color:T.text2, lineHeight:1.7 }}>
+            {tab==='routines' ? 'Save any mobility or sport routine from the Move tab and it will live here.' : 'Save any recipe from the Eat tab and it will live here — easy to find next time.'}
+          </div>
+        </div>
+      ) : filtered.map((item) => {
+        const isOpen = expandedId === item.id
+        return (
+          <div key={item.id} style={{ background:T.surface, borderRadius:rr('md'), marginBottom:10, overflow:'hidden' }}>
+            {/* Header row — name + actions */}
+            <div style={{ padding:'14px 16px', cursor:'pointer' }} onClick={()=>{ if(editingId!==item.id) setExpandedId(isOpen?null:item.id) }}>
+              <div style={{ fontSize:10, color:T.text3, letterSpacing:.5, textTransform:'uppercase', marginBottom:6 }}>
+                {tab==='routines'?'Routine':'Recipe'} · {new Date(item.created_at||Date.now()).toLocaleDateString()}
+              </div>
+              {editingId === item.id ? (
+                <div style={{ display:'flex', gap:6, alignItems:'center', marginBottom:4 }}>
+                  <input
+                    autoFocus
+                    value={editingLabel}
+                    onChange={e=>setEditingLabel(e.target.value)}
+                    onKeyDown={e=>{ if(e.key==='Enter'){ onRename(item.id,editingLabel); setEditingId(null) } if(e.key==='Escape') setEditingId(null) }}
+                    style={{ flex:1, padding:'6px 10px', borderRadius:rr('sm'), border:`1px solid ${T.border2}`, background:T.surface2, color:T.text, fontSize:14, outline:'none' }}
+                  />
+                  <button onClick={()=>{ onRename(item.id,editingLabel); setEditingId(null) }}
+                    style={{ border:'none', background:'var(--green-dim)', color:'#fff', borderRadius:rr('sm'), padding:'6px 12px', fontSize:12, fontWeight:500, cursor:'pointer', flexShrink:0 }}>Save</button>
+                  <button onClick={()=>setEditingId(null)}
+                    style={{ border:'none', background:'none', color:T.text3, fontSize:12, cursor:'pointer', flexShrink:0 }}>✕</button>
+                </div>
+              ) : (
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                  <div style={{ fontSize:14, fontWeight:500, color:T.text, flex:1 }}>{item.label}</div>
+                  <div style={{ display:'flex', alignItems:'center', gap:8, flexShrink:0 }}>
+                    <button onClick={e=>{ e.stopPropagation(); setEditingId(item.id); setEditingLabel(item.label) }}
+                      style={{ border:`0.5px solid ${T.border}`, background:T.surface2, color:T.text3, borderRadius:rr('sm'), padding:'4px 10px', fontSize:11, cursor:'pointer' }}>Rename</button>
+                    <button onClick={e=>{ e.stopPropagation(); onDelete(item.id) }}
+                      style={{ border:'none', background:'none', color:T.text3, fontSize:15, padding:0, cursor:'pointer' }}>×</button>
+                  </div>
+                </div>
+              )}
+            </div>
+            {isOpen && (
+              <div style={{ borderTop:`0.5px solid ${T.border}` }}>
+                <SavedItemDetail item={item} />
+              </div>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+function MoreScreen({ onNav }) {
+  const items = [
+    { tab:'pillars', label:'The Pillars',  sub:'What actually moves the needle'  },
+    { tab:'stack',   label:'Your Rotation',     sub:'Your saved routines and recipes'  },
+    { tab:'profile', label:'Profile',      sub:'Your profile'       },
+  ]
+  return (
+    <div style={{ padding:'20px 20px' }}>
+      {items.map(item=>(
+        <div key={item.tab} onClick={()=>onNav(item.tab)} style={{ background:T.surface, border:`0.5px solid ${T.border}`, borderRadius:rr('md'), padding:'14px 16px', marginBottom:8, display:'flex', justifyContent:'space-between', alignItems:'center', cursor:'pointer' }}>
+          <div><div style={{ fontSize:14, fontWeight:500, color:T.text }}>{item.label}</div><div style={{ fontSize:12, color:T.text3, marginTop:2 }}>{item.sub}</div></div>
+          <div style={{ fontSize:18, color:T.text3 }}>›</div>
+        </div>
+      ))}
+      <div style={{ marginTop:20, padding:'14px 16px', background:T.surface2, borderRadius:rr('md') }}>
+        <button onClick={async()=>{ await supabase.auth.signOut() }} style={{ fontSize:13, color:'var(--coral)', border:'none', background:'none', cursor:'pointer', padding:0 }}>Sign out</button>
+      </div>
+    </div>
+  )
+}
+
+const NAV_ICONS = {
+  home: (active) => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active?2:1.5} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z"/>
+      <path d="M9 21V12h6v9"/>
+    </svg>
+  ),
+  move: (active) => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active?2:1.5} strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="5" r="2"/>
+      <path d="M12 7v6M9 10l-2 4h10l-2-4"/>
+      <path d="M9 21l1-4h4l1 4"/>
+    </svg>
+  ),
+  eat: (active) => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active?2:1.5} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M18 8h1a4 4 0 010 8h-1"/>
+      <path d="M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8z"/>
+      <line x1="6" y1="1" x2="6" y2="4"/>
+      <line x1="10" y1="1" x2="10" y2="4"/>
+      <line x1="14" y1="1" x2="14" y2="4"/>
+    </svg>
+  ),
+  lift: (active) => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active?2:1.5} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M6 4v16M18 4v16M2 9h4M18 9h4M2 15h4M18 15h4M6 12h12"/>
+    </svg>
+  ),
+  more: (active) => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active?2:1.5} strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>
+    </svg>
+  ),
+}
+
+const NAV = [
+  { tab:'home',  label:'Home'  },
+  { tab:'move',  label:'Move'  },
+  { tab:'eat',   label:'Eat'   },
+  { tab:'lift',  label:'Lift'  },
+  { tab:'more',  label:'Saved' },
+]
+
+const TOPBAR = {
+  move:    { title:'Move',        sub:'Mobility, warmups and recovery'                },
+  eat:     { title:'Eat better',  sub:'New ideas, your ingredients'                   },
+  lift:    { title:'Lift',        sub:'Your programs and sessions'                    },
+  more:    { title:'More',        sub:''                                              },
+  pillars: { title:'The Pillars', sub:'The only things that actually move the needle' },
+  stack:   { title:'Your Rotation',    sub:'Your saved routines and recipes'               },
+  profile: { title:'Profile',     sub:'Your profile'                    },
+}
+
+export default function App() {
+  const [session, setSession] = useState(null)
+  const [authLoading, setAuthLoading] = useState(true)
+  const [tab, setTab] = useState('home')
+  const [deepDive, setDeepDive] = useState(null)
+  const [savedItems, setSavedItems] = useState([])
+  const [toast, setToast] = useState({ visible:false, message:'' })
+
+  const showToast = (message) => {
+    setToast({ visible:true, message })
+    setTimeout(() => setToast({ visible:false, message:'' }), 2200)
+  }
+  const [profile, setProfile] = useState(null)
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session)
+      setAuthLoading(false)
+    })
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session)
+      setAuthLoading(false)
+    })
+    return () => subscription.unsubscribe()
+  }, [])
+
+  useEffect(() => {
+    if (!session?.user) return
+    const userId = session.user.id
+    getProfile(userId).then(setProfile)
+    getSavedItems(userId).then(setSavedItems)
+  }, [session])
+
+  const handleSave = async (item) => {
+    if (!session?.user) return
+    const saved = await addSavedItem(session.user.id, item)
+    if (saved) {
+      setSavedItems(prev=>[saved, ...prev])
+      const msg = item.type === 'recipe' ? '✓ Meal saved to your rotation' : '✓ Routine saved to your rotation'
+      showToast(msg)
+    }
+  }
+
+  const handleDelete = async (id) => {
+    await deleteSavedItem(id)
+    setSavedItems(prev=>prev.filter(i=>i.id!==id))
+  }
+
+  const handleRename = async (id, newLabel) => {
+    if (!newLabel.trim()) return
+    await supabase.from('saved_items').update({ label: newLabel.trim() }).eq('id', id)
+    setSavedItems(prev => prev.map(i => i.id===id ? { ...i, label:newLabel.trim() } : i))
+  }
+
+  const handleDeepDive = prompt => { setDeepDive(prompt); setTab('pillars') }
+
+  if (authLoading) {
+    return (
+      <div style={{ maxWidth:430, margin:'0 auto', minHeight:'100dvh', background:T.bg, display:'flex', alignItems:'center', justifyContent:'center' }}>
+        <LoadingDots />
+      </div>
+    )
+  }
+
+  if (!session) return <AuthScreen />
+
+  const userId = session.user.id
+  const tb = TOPBAR[tab]
+
+  return (
+    <div style={{ maxWidth:430, margin:'0 auto', minHeight:'100dvh', background:T.bg, display:'flex', flexDirection:'column' }}>
+      {tab!=='home' && tb && (
+        <div style={{ padding:'48px 20px 16px', borderBottom:`0.5px solid ${T.border}`, background:T.bg, flexShrink:0 }}>
+          {tb&&<><div style={{ fontSize:28, fontWeight:500, color:T.text, letterSpacing:-.5 }}>{tb.title}</div><div style={{ fontSize:13, color:T.text2, marginTop:4 }}>{tb.sub}</div></>}
+        </div>
+      )}
+      <div style={{ flex:1, overflowY:'auto', paddingBottom:80 }}>
+        {tab==='home'    && <HomeScreen onNav={setTab} savedItems={savedItems} profile={profile} userId={userId} />}
+        {tab==='move'    && <MoveScreen onSave={handleSave} />}
+        {tab==='eat'     && <EatScreen onSave={handleSave} userId={userId} />}
+        {tab==='lift'    && <LiftScreen userId={userId} userProfile={profile} onGoEat={()=>setTab('eat')} onGoMove={()=>setTab('move')} />}
+        {tab==='more'    && <MoreScreen onNav={setTab} />}
+        {tab==='pillars' && !deepDive && <PillarsScreen onDeepDive={handleDeepDive} />}
+        {tab==='pillars' && deepDive  && <DeepDiveScreen prompt={deepDive} onBack={()=>setDeepDive(null)} />}
+        {tab==='stack'   && <StackScreen items={savedItems} onDelete={handleDelete} onRename={handleRename} />}
+        {tab==='profile' && <ProfileScreen userId={userId} onSaved={setProfile} onNav={setTab} />}
+      </div>
+      <Toast message={toast.message} visible={toast.visible} />
+      <nav style={{ position:'fixed', bottom:0, left:'50%', transform:'translateX(-50%)', width:'100%', maxWidth:430, background:T.surface2, borderTop:`0.5px solid ${T.border}`, display:'flex', padding:'8px 0 max(16px, env(safe-area-inset-bottom))', zIndex:100 }}>
+        {NAV.map(n=>{ const active=tab===n.tab; return (
+          <button key={n.tab} onClick={()=>{ setDeepDive(null); setTab(n.tab) }} style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', gap:3, padding:'4px 0', border:'none', background:'none', color:active?T.text:T.text3, transition:'color .15s' }}>
+            {NAV_ICONS[n.tab]?.(active)}
+            <span style={{ fontSize:9, fontWeight:active?600:400, letterSpacing:.3 }}>{n.label}</span>
+          </button>
+        )})}
+      </nav>
+    </div>
+  )
+}
+,
+      description:'Farm-to-table driven menu that changes seasonally. One of the best spots in the Seaport for a quality meal.',
+      mustOrder:'Roasted chicken with seasonal vegetables', tags:['farm-to-table','chef-driven','worth-the-splurge'], curated:true, curatorNote:'Ryan recommends' },
+    { name:'Placeholder Restaurant 3', neighborhood:'South Boston', cuisine:'Seafood', priceRange:'$',
+      description:'Local seafood done right. Simple preparations that let the quality of the fish speak for itself.',
+      mustOrder:'Fish tacos', tags:['local-favorite','high-protein','hidden-gem'], curated:true, curatorNote:'Ryan recommends' },
+    { name:'Placeholder Restaurant 4', neighborhood:'Seaport', cuisine:'Japanese', priceRange:'$',
+      description:'Clean, simple Japanese food with an emphasis on quality protein and fresh ingredients.',
+      mustOrder:'Salmon bowl with brown rice', tags:['macro-friendly','high-protein','light-and-fresh'], curated:true, curatorNote:'Ryan recommends' },
+    { name:'Placeholder Restaurant 5', neighborhood:'South Boston', cuisine:'Breakfast & Lunch', priceRange:'
+  const { pantry, add, remove } = usePantry(userId)
+  const [effort, setEffort] = useState('normal')
+  const [meal, setMeal] = useState('Lunch')
+  const [vibe, setVibe] = useState('')
+  const [cuisine, setCuisine] = useState('')
+  const [resp, setResp] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [adjusting, setAdjusting] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const [attempts, setAttempts] = useState(0)
+  const [suggestedNames, setSuggestedNames] = useState([])
+
+  const ASSUMED_STAPLES = 'olive oil, butter, garlic, onion, salt, pepper, cumin, paprika, chili flakes, Italian seasoning, soy sauce, hot sauce, lemon, lime, vinegar, chicken broth, mustard, honey, Worcestershire sauce'
+  const TECHNIQUES = ['pan sear and sauce', 'sheet pan roast', 'stir fry', 'skillet scramble', 'soup or stew', 'marinate and grill', 'stuffed or wrapped', 'rice bowl with sauce', 'fried rice', 'frittata or egg bake']
+  const effortDesc = { low:'minimal prep, one pan, 15 min max', normal:'standard weeknight, 20-30 min', chef:'more involved, worth the effort, up to 45 min' }
+
+  const ADJUST_PROMPTS = {
+    calories_up:   (_,r)=>`Make this recipe significantly higher calorie. Add more calorie-dense ingredients or increase portions.\n\nOriginal:\n${r}\n\nReturn full modified recipe in same plain text format. No markdown.`,
+    calories_down: (_,r)=>`Make this recipe lighter. Reduce portions or swap high-calorie ingredients for lighter versions.\n\nOriginal:\n${r}\n\nReturn full modified recipe in same plain text format. No markdown.`,
+    protein_up:    (_,r)=>`Increase the protein in this recipe. Add more of the protein source or add another.\n\nOriginal:\n${r}\n\nReturn full modified recipe in same plain text format. No markdown.`,
+    carbs_up:      (_,r)=>`Increase the carbs. Add more rice, potatoes, or bread to this recipe.\n\nOriginal:\n${r}\n\nReturn full modified recipe in same plain text format. No markdown.`,
+    quicker:       (_,r)=>`Make this recipe faster. Should be doable in 10-15 minutes max.\n\nOriginal:\n${r}\n\nReturn full modified recipe in same plain text format. No markdown.`,
+    simpler:       (_,r)=>`Reduce the ingredient count to 5 or fewer while keeping the core dish.\n\nOriginal:\n${r}\n\nReturn full modified recipe in same plain text format. No markdown.`,
+  }
+
+  const buildPrompt = async (attempt) => {
+    const mem = userId ? await getTasteMemory(userId) : {}
+    const profile = userId ? await getProfile(userId) : {}
+    const tasteCtx = buildTasteContext(mem)
+    const profileCtx = buildProfileContext(profile)
+    const avoidNote = suggestedNames.length > 0
+      ? `\nAVOID these exact recipes already suggested: ${suggestedNames.join(', ')}. Give something genuinely different — different main protein, different cuisine style, different cooking method. Do not recycle the same base dish with minor tweaks.`
+      : ''
+    const cuisineNote = cuisine ? `Cuisine direction: ${cuisine}\n` : ''
+    const techNote = TECHNIQUES[Math.floor(Math.random()*TECHNIQUES.length)]
+    return `You are a skilled home cook helping someone eat well and actually enjoy their food. Sound like a knowledgeable friend giving a real recipe — not a meal prep slop bowl.
+${tasteCtx}${profileCtx}
+Main ingredients (proteins and bases): ${pantry.join(', ')}
+Assumed pantry staples always available: ${ASSUMED_STAPLES}
+Meal: ${meal}
+Effort: ${effortDesc[effort]}
+Vibe: ${vibe||'tasty, satisfying, something I would actually want to eat'}
+${cuisineNote}Cooking technique to try: ${techNote}
+${avoidNote}
+
+Give ONE recipe that feels like something from a good casual restaurant — not a bland bowl. Use the main ingredients as the base and enhance freely with assumed staples. The result should taste like a real dish with a name, not just "protein + carb."
+
+IMPORTANT: No markdown. No # symbols. Plain text only. Recipe name goes on the FIRST LINE with no prefix.
+
+Format exactly like this:
+
+[Creative recipe name]
+
+Ingredients:
+- [amount] [ingredient]
+
+Steps:
+1. [One punchy line. They know how to cook.]
+2. [One line.]
+3. [One line.]
+4. [One line.]
+
+Macros per serving:
+Calories: [number]
+Protein: [number]g
+Carbs: [number]g
+Fat: [number]g
+
+Variations:
+- [One-line twist that changes the whole vibe]
+- [Another quick variation]
+- [One more]`
+  }
+
+  const go = async (isRetry) => {
+    setLoading(true); setResp(''); setSaved(false)
+    const attempt = isRetry?attempts+1:0
+    setAttempts(attempt)
+    if (vibe&&userId) updateTasteMemory(userId,{vibes:[vibe]})
+    if (userId) updateTasteMemory(userId,{efforts:[effort],meals:[meal]})
+    try {
+      const prompt = await buildPrompt(attempt)
+      const text = await callAI(prompt)
+      setResp(text)
+      // Extract recipe name (first non-empty line) and track it
+      const firstName = text.split('\n').map(l=>l.trim()).find(l=>l.length>0)
+      if (firstName) setSuggestedNames(prev => [...prev.slice(-4), firstName])
+    } catch(e) { setResp('Something went wrong. Try again.') }
+    setLoading(false)
+  }
+
+  const adjust = async (type,name,currentRecipe) => {
+    setAdjusting(true)
+    try { const text = await callAI(ADJUST_PROMPTS[type](name,currentRecipe)); setResp(text); setSaved(false) } catch(e) { setResp('Something went wrong.') }
+    setAdjusting(false)
+  }
+
+  const save = () => {
+    if (userId) updateTasteMemory(userId,{savedIngredients:pantry})
+    // Use the actual recipe name (first non-empty line of response)
+    // Extract name exactly like RecipeCard does — first non-empty line after stripping markdown
+    const recipeLines = resp.split('\n').map(l=>l.trim().replace(/^#+\s*/,'')).filter(Boolean)
+    const recipeName = recipeLines[0] || `${meal} — ${cuisine||vibe||'recipe'}`
+    onSave({ label:recipeName, text:resp, type:'recipe' })
+    addVote()
+    setSaved(true)
+  }
+
+  return (
+    <div style={{ padding:'20px 20px' }}>
+      <PantryEditor pantry={pantry} onAdd={add} onRemove={remove} />
+      <Divider />
+      <PrefLabel>Effort level</PrefLabel>
+      <div style={{ display:'flex', gap:8, marginBottom:14 }}>
+        {EFFORT_LEVELS.map(e=><button key={e.key} onClick={()=>setEffort(e.key)} style={{ flex:1, padding:'10px 6px', borderRadius:rr('sm'), fontSize:11, textAlign:'center', border:effort===e.key?'none':`0.5px solid ${T.border}`, background:effort===e.key?T.text:T.surface, color:effort===e.key?T.bg:T.text2 }}><div style={{ fontWeight:500, marginBottom:2, fontSize:12 }}>{e.label}</div><div style={{ opacity:.7, lineHeight:1.3 }}>{e.desc}</div></button>)}
+      </div>
+      <PrefLabel>Meal type</PrefLabel>
+      <ChipRow options={['Breakfast','Lunch','Dinner','Snack']} selected={meal} onSelect={setMeal} />
+      <PrefLabel>Cuisine (optional)</PrefLabel>
+      <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom:14 }}>
+        {CUISINES.map(cu=><button key={cu} onClick={()=>setCuisine(cuisine===cu?'':cu)} style={{ padding:'5px 12px', borderRadius:20, fontSize:12, border:`0.5px solid ${T.border}`, background:cuisine===cu?T.text:T.surface2, color:cuisine===cu?T.bg:T.text2 }}>{cu}</button>)}
+      </div>
+      <PrefLabel>What's the vibe?</PrefLabel>
+      <textarea value={vibe} onChange={e=>setVibe(e.target.value)} placeholder="high protein, comforting, fresh, post-workout..." rows={2} style={{ width:'100%', background:T.surface, border:`0.5px solid ${T.border}`, borderRadius:rr('md'), padding:'10px 12px', fontSize:14, color:T.text, resize:'none', outline:'none', marginBottom:8 }} />
+      <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom:4 }}>
+        {VIBE_SUGGESTIONS.map(v=><button key={v} onClick={()=>setVibe(vibe===v?'':v)} style={{ padding:'4px 10px', borderRadius:20, fontSize:11, border:`0.5px solid ${T.border}`, background:vibe===v?T.text:T.surface2, color:vibe===v?T.bg:T.text3 }}>{v}</button>)}
+      </div>
+      <PrimaryBtn onClick={()=>go(false)} disabled={loading||pantry.length===0}>{loading?'Finding something good...':'Get recipe ideas'}</PrimaryBtn>
+      {loading&&<div style={{ marginTop:12 }}><LoadingDots /></div>}
+      {resp&&!loading&&<RecipeCard text={resp} onAdjust={adjust} adjusting={adjusting} />}
+      {resp&&!loading&&<div style={{ marginTop:10 }}>
+        <button onClick={save} style={{ width:'100%', padding:'11px', borderRadius:rr('md'), border:'none', background:saved?T.surface2:'var(--green-dim)', color:saved?'var(--green)':'#fff', fontSize:14, fontWeight:500, cursor:'pointer', marginBottom:8 }}>
+          {saved ? '✓ Added to your rotation' : '＋ Save this meal'}
+        </button>
+        {saved && <div style={{ fontSize:12, color:T.text3, textAlign:'center', fontStyle:'italic', marginBottom:8 }}>Simple meals repeated consistently make a huge difference.</div>}
+        <button onClick={()=>go(true)} style={{ width:'100%', padding:'9px', borderRadius:rr('md'), border:`0.5px solid ${T.border}`, background:'transparent', color:T.text2, fontSize:13, cursor:'pointer' }}>Not quite — try something different</button>
+      </div>}
+    </div>
+  )
+}
+
+function PillarCard({ p, onDeepDive }) {
+  const [expanded, setExpanded] = useState(false)
+  const col = PILLAR_COLORS[p.color]
+  return (
+    <Card>
+      <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:10 }}>
+        <div style={{ width:32, height:32, borderRadius:8, background:col.bg, flexShrink:0 }} />
+        <div style={{ flex:1 }}>
+          <div style={{ fontSize:10, fontWeight:500, color:col.accent, letterSpacing:.5, textTransform:'uppercase' }}>Pillar {p.num}</div>
+          <div style={{ fontSize:16, fontWeight:500, color:T.text, marginTop:1 }}>{p.title}</div>
+        </div>
+      </div>
+      <div style={{ fontSize:13, color:col.accent, lineHeight:1.6, marginBottom:8, fontStyle:'italic' }}>{p.identity}</div>
+      <div style={{ fontSize:13, color:T.text2, lineHeight:1.7, marginBottom:10 }}>
+        {expanded ? p.body : ''}
+      </div>
+      {expanded && <>
+        <Divider />
+        <div style={{ display:'flex', gap:14, marginBottom:12 }}>
+          <div style={{ flex:1 }}><div style={{ fontSize:10, fontWeight:500, color:'var(--green)', letterSpacing:.5, textTransform:'uppercase', marginBottom:4 }}>Worth your time</div><div style={{ fontSize:12, color:T.text2, lineHeight:1.55 }}>{p.good}</div></div>
+          <div style={{ flex:1 }}><div style={{ fontSize:10, fontWeight:500, color:'var(--coral)', letterSpacing:.5, textTransform:'uppercase', marginBottom:4 }}>Skip this</div><div style={{ fontSize:12, color:T.text2, lineHeight:1.55 }}>{p.skip}</div></div>
+        </div>
+        <button onClick={()=>onDeepDive(p.prompt)} style={{ width:'100%', padding:'9px 12px', borderRadius:rr('sm'), border:`0.5px solid ${T.border}`, background:'transparent', color:T.text2, fontSize:13, textAlign:'left', marginBottom:6 }}>Go deeper →</button>
+      </>}
+      <button onClick={()=>setExpanded(v=>!v)} style={{ background:'none', border:'none', color:T.text3, fontSize:12, padding:'4px 0 0', cursor:'pointer' }}>
+        {expanded ? 'Show less ▲' : 'Read more ▼'}
+      </button>
+    </Card>
+  )
+}
+
+function PillarsScreen({ onDeepDive }) {
+  return (
+    <div style={{ padding:'20px 20px' }}>
+      {PILLARS.map(p => <PillarCard key={p.num} p={p} onDeepDive={onDeepDive} />)}
+    </div>
+  )
+}
+
+function DeepDiveScreen({ prompt, onBack }) {
+  const [resp, setResp] = useState('')
+  const [loading, setLoading] = useState(true)
+  useEffect(() => { callAI(prompt+'\n\nBe conversational, practical, and concise. No fluff.').then(setResp).catch(e=>setResp('Error: '+e.message)).finally(()=>setLoading(false)) }, [prompt])
+  return (
+    <div style={{ padding:'20px 20px' }}>
+      <button onClick={onBack} style={{ border:'none', background:'none', color:T.text2, fontSize:13, marginBottom:16, display:'flex', alignItems:'center', gap:4, padding:0 }}>Back to Pillars</button>
+      <ResponseBox text={resp} loading={loading} />
+    </div>
+  )
+}
+
+function ProfileScreen({ userId, onSaved, onNav }) {
+  const [profile, setProfile] = useState({ name:'', goal:'Athletic performance', activity:'Very active (5+/week)', calories:'', protein:'', notes:'' })
+  const [saved, setSaved] = useState(false)
+  const [loading, setLoading] = useState(true)
+  useEffect(() => { if (userId) getProfile(userId).then(p=>{ setProfile(p); setLoading(false) }) }, [userId])
+  const update = (key,val) => setProfile(p=>({ ...p, [key]:val }))
+  const handleSave = async () => {
+    await saveProfile(userId, profile)
+    setSaved(true); setTimeout(()=>setSaved(false),2000)
+    if (onSaved) onSaved(profile)
+  }
+  const isFirstSave = !profile.goal && !profile.name
+  if (loading) return <div style={{ padding:20 }}><LoadingDots /></div>
+  return (
+    <div style={{ padding:'20px 20px' }}>
+      <PrefLabel>Your name</PrefLabel>
+      <input value={profile.name} onChange={e=>update('name',e.target.value)} placeholder="First name" style={{ width:'100%', padding:'9px 12px', borderRadius:rr('sm'), fontSize:13, border:`0.5px solid ${T.border}`, background:T.surface, color:T.text, outline:'none', marginBottom:10 }} />
+      <PrefLabel>Who are you becoming?</PrefLabel>
+      <div style={{ display:'flex', flexDirection:'column', gap:6, marginBottom:14 }}>
+        {IDENTITY_STATEMENTS.map(s => (
+          <button key={s} onClick={()=>update('identity', profile.identity===s?'':s)} style={{
+            padding:'10px 14px', borderRadius:rr('sm'), fontSize:13, textAlign:'left',
+            border:`0.5px solid ${profile.identity===s?'var(--green-dim)':T.border}`,
+            background: profile.identity===s ? 'var(--green-bg)' : T.surface,
+            color: profile.identity===s ? 'var(--green)' : T.text2,
+            fontWeight: profile.identity===s ? 500 : 400,
+          }}>{s}</button>
+        ))}
+      </div>
+      <PrefLabel>Training focus (optional)</PrefLabel>
+      <ChipRow options={GOALS} selected={profile.goal} onSelect={v=>update('goal',v)} />
+      <PrefLabel>Activity level</PrefLabel>
+      <ChipRow options={ACTIVITY_LEVELS} selected={profile.activity} onSelect={v=>update('activity',v)} />
+      <PrefLabel>Daily calorie target (optional)</PrefLabel>
+      <input type="number" value={profile.calories} onChange={e=>update('calories',e.target.value)} placeholder="e.g. 2800" style={{ width:'100%', padding:'9px 12px', borderRadius:rr('sm'), fontSize:13, border:`0.5px solid ${T.border}`, background:T.surface, color:T.text, outline:'none', marginBottom:10 }} />
+      <PrefLabel>Daily protein target in grams (optional)</PrefLabel>
+      <input type="number" value={profile.protein} onChange={e=>update('protein',e.target.value)} placeholder="e.g. 160" style={{ width:'100%', padding:'9px 12px', borderRadius:rr('sm'), fontSize:13, border:`0.5px solid ${T.border}`, background:T.surface, color:T.text, outline:'none', marginBottom:10 }} />
+      <PrefLabel>Anything else the app should know?</PrefLabel>
+      <textarea value={profile.notes} onChange={e=>update('notes',e.target.value)} placeholder="e.g. I run and lift a lot, need to eat big." rows={3} style={{ width:'100%', background:T.surface, border:`0.5px solid ${T.border}`, borderRadius:rr('md'), padding:'10px 12px', fontSize:14, color:T.text, resize:'none', outline:'none' }} />
+      <PrimaryBtn onClick={handleSave}>{saved?'Profile saved ✓':'Save profile'}</PrimaryBtn>
+      {saved && (
+        <div style={{ marginTop:12, background:T.surface, borderRadius:rr('md'), padding:'14px 16px' }}>
+          <div style={{ fontSize:13, fontWeight:500, color:T.text, marginBottom:4 }}>Nice. Now let's find your first meal idea.</div>
+          <div style={{ fontSize:12, color:T.text2, marginBottom:10, lineHeight:1.6 }}>Your profile will shape recipe suggestions, portion sizes, and workout nutrition guidance from here on.</div>
+          <button onClick={()=>onNav&&onNav('eat')} style={{ width:'100%', padding:'9px', borderRadius:rr('sm'), border:'none', background:'var(--amber-dim)', color:'#fff', fontSize:13, fontWeight:500, cursor:'pointer' }}>
+            Find a meal →
+          </button>
+        </div>
+      )}
+      {!saved && <div style={{ marginTop:16, padding:'12px 14px', background:T.surface2, borderRadius:rr('md') }}>
+        <div style={{ fontSize:12, color:T.text3, lineHeight:1.7 }}>Your profile personalizes everything — recipes, portions, workout nutrition guidance.</div>
+      </div>}
+    </div>
+  )
+}
+
+function SavedItemDetail({ item }) {
+  // Try JSON routine format
+  if (item.type === 'routine') {
+    try {
+      const parsed = JSON.parse(item.text)
+      if (parsed.exercises?.length) {
+        return (
+          <div style={{ padding:'8px 16px 16px' }}>
+            {parsed.duration && <div style={{ fontSize:11, color:T.text3, marginBottom:10 }}>{parsed.duration}{parsed.source ? ` · ${parsed.source}` : ''}</div>}
+            {parsed.exercises.map((ex, i) => (
+              <div key={i} style={{ padding:'12px 0', borderBottom: i < parsed.exercises.length-1 ? `0.5px solid ${T.border}` : 'none' }}>
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:4 }}>
+                  <div style={{ fontSize:13, fontWeight:500, color:T.text, flex:1 }}>{ex.name}</div>
+                  <div style={{ fontSize:11, color:'var(--green)', marginLeft:8, flexShrink:0, fontWeight:500 }}>{ex.reps}</div>
+                </div>
+                {ex.cue && <div style={{ fontSize:12, color:T.text2, lineHeight:1.55 }}>{ex.cue}</div>}
+              </div>
+            ))}
+          </div>
+        )
+      }
+    } catch(e) {}
+    // Plain text fallback
+    return <div style={{ padding:'8px 16px 16px', fontSize:13, color:T.text2, lineHeight:1.7, whiteSpace:'pre-wrap' }}>{item.text}</div>
+  }
+  // Recipe
+  return <div style={{ padding:'0 16px 16px' }}><RecipeCard text={item.text} /></div>
+}
+
+function StackScreen({ items, onDelete, onRename }) {
+  const [tab, setTab] = useState('routines')
+  const [expandedId, setExpandedId] = useState(null)
+  const [editingId, setEditingId] = useState(null)
+  const [editingLabel, setEditingLabel] = useState('')
+  const filtered = items.filter(i=>tab==='routines'?i.type==='routine':i.type==='recipe')
+
+  return (
+    <div style={{ padding:'20px 20px' }}>
+      <div style={{ display:'flex', gap:6, marginBottom:20 }}>
+        {['routines','recipes'].map(t=>(
+          <button key={t} onClick={()=>{ setTab(t); setExpandedId(null) }}
+            style={{ flex:1, padding:'8px', borderRadius:rr('sm'), fontSize:13, border:'none',
+              background:tab===t?T.text:T.surface2, color:tab===t?T.bg:T.text2, textTransform:'capitalize' }}>
+            {t}
+          </button>
+        ))}
+      </div>
+
+      {filtered.length===0 ? (
+        <div style={{ textAlign:'center', padding:'3rem 1rem' }}>
+          <div style={{ fontSize:15, fontWeight:500, color:T.text, marginBottom:8 }}>your rotation is empty for now.</div>
+          <div style={{ fontSize:13, color:T.text2, lineHeight:1.7 }}>
+            {tab==='routines' ? 'Save any mobility or sport routine from the Move tab and it will live here.' : 'Save any recipe from the Eat tab and it will live here — easy to find next time.'}
+          </div>
+        </div>
+      ) : filtered.map((item) => {
+        const isOpen = expandedId === item.id
+        return (
+          <div key={item.id} style={{ background:T.surface, borderRadius:rr('md'), marginBottom:10, overflow:'hidden' }}>
+            {/* Header row — name + actions */}
+            <div style={{ padding:'14px 16px', cursor:'pointer' }} onClick={()=>{ if(editingId!==item.id) setExpandedId(isOpen?null:item.id) }}>
+              <div style={{ fontSize:10, color:T.text3, letterSpacing:.5, textTransform:'uppercase', marginBottom:6 }}>
+                {tab==='routines'?'Routine':'Recipe'} · {new Date(item.created_at||Date.now()).toLocaleDateString()}
+              </div>
+              {editingId === item.id ? (
+                <div style={{ display:'flex', gap:6, alignItems:'center', marginBottom:4 }}>
+                  <input
+                    autoFocus
+                    value={editingLabel}
+                    onChange={e=>setEditingLabel(e.target.value)}
+                    onKeyDown={e=>{ if(e.key==='Enter'){ onRename(item.id,editingLabel); setEditingId(null) } if(e.key==='Escape') setEditingId(null) }}
+                    style={{ flex:1, padding:'6px 10px', borderRadius:rr('sm'), border:`1px solid ${T.border2}`, background:T.surface2, color:T.text, fontSize:14, outline:'none' }}
+                  />
+                  <button onClick={()=>{ onRename(item.id,editingLabel); setEditingId(null) }}
+                    style={{ border:'none', background:'var(--green-dim)', color:'#fff', borderRadius:rr('sm'), padding:'6px 12px', fontSize:12, fontWeight:500, cursor:'pointer', flexShrink:0 }}>Save</button>
+                  <button onClick={()=>setEditingId(null)}
+                    style={{ border:'none', background:'none', color:T.text3, fontSize:12, cursor:'pointer', flexShrink:0 }}>✕</button>
+                </div>
+              ) : (
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                  <div style={{ fontSize:14, fontWeight:500, color:T.text, flex:1 }}>{item.label}</div>
+                  <div style={{ display:'flex', alignItems:'center', gap:8, flexShrink:0 }}>
+                    <button onClick={e=>{ e.stopPropagation(); setEditingId(item.id); setEditingLabel(item.label) }}
+                      style={{ border:`0.5px solid ${T.border}`, background:T.surface2, color:T.text3, borderRadius:rr('sm'), padding:'4px 10px', fontSize:11, cursor:'pointer' }}>Rename</button>
+                    <button onClick={e=>{ e.stopPropagation(); onDelete(item.id) }}
+                      style={{ border:'none', background:'none', color:T.text3, fontSize:15, padding:0, cursor:'pointer' }}>×</button>
+                  </div>
+                </div>
+              )}
+            </div>
+            {isOpen && (
+              <div style={{ borderTop:`0.5px solid ${T.border}` }}>
+                <SavedItemDetail item={item} />
+              </div>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+function MoreScreen({ onNav }) {
+  const items = [
+    { tab:'pillars', label:'The Pillars',  sub:'What actually moves the needle'  },
+    { tab:'stack',   label:'Your Rotation',     sub:'Your saved routines and recipes'  },
+    { tab:'profile', label:'Profile',      sub:'Your profile'       },
+  ]
+  return (
+    <div style={{ padding:'20px 20px' }}>
+      {items.map(item=>(
+        <div key={item.tab} onClick={()=>onNav(item.tab)} style={{ background:T.surface, border:`0.5px solid ${T.border}`, borderRadius:rr('md'), padding:'14px 16px', marginBottom:8, display:'flex', justifyContent:'space-between', alignItems:'center', cursor:'pointer' }}>
+          <div><div style={{ fontSize:14, fontWeight:500, color:T.text }}>{item.label}</div><div style={{ fontSize:12, color:T.text3, marginTop:2 }}>{item.sub}</div></div>
+          <div style={{ fontSize:18, color:T.text3 }}>›</div>
+        </div>
+      ))}
+      <div style={{ marginTop:20, padding:'14px 16px', background:T.surface2, borderRadius:rr('md') }}>
+        <button onClick={async()=>{ await supabase.auth.signOut() }} style={{ fontSize:13, color:'var(--coral)', border:'none', background:'none', cursor:'pointer', padding:0 }}>Sign out</button>
+      </div>
+    </div>
+  )
+}
+
+const NAV_ICONS = {
+  home: (active) => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active?2:1.5} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z"/>
+      <path d="M9 21V12h6v9"/>
+    </svg>
+  ),
+  move: (active) => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active?2:1.5} strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="5" r="2"/>
+      <path d="M12 7v6M9 10l-2 4h10l-2-4"/>
+      <path d="M9 21l1-4h4l1 4"/>
+    </svg>
+  ),
+  eat: (active) => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active?2:1.5} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M18 8h1a4 4 0 010 8h-1"/>
+      <path d="M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8z"/>
+      <line x1="6" y1="1" x2="6" y2="4"/>
+      <line x1="10" y1="1" x2="10" y2="4"/>
+      <line x1="14" y1="1" x2="14" y2="4"/>
+    </svg>
+  ),
+  lift: (active) => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active?2:1.5} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M6 4v16M18 4v16M2 9h4M18 9h4M2 15h4M18 15h4M6 12h12"/>
+    </svg>
+  ),
+  more: (active) => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active?2:1.5} strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>
+    </svg>
+  ),
+}
+
+const NAV = [
+  { tab:'home',  label:'Home'  },
+  { tab:'move',  label:'Move'  },
+  { tab:'eat',   label:'Eat'   },
+  { tab:'lift',  label:'Lift'  },
+  { tab:'more',  label:'Saved' },
+]
+
+const TOPBAR = {
+  move:    { title:'Move',        sub:'Mobility, warmups and recovery'                },
+  eat:     { title:'Eat better',  sub:'New ideas, your ingredients'                   },
+  lift:    { title:'Lift',        sub:'Your programs and sessions'                    },
+  more:    { title:'More',        sub:''                                              },
+  pillars: { title:'The Pillars', sub:'The only things that actually move the needle' },
+  stack:   { title:'Your Rotation',    sub:'Your saved routines and recipes'               },
+  profile: { title:'Profile',     sub:'Your profile'                    },
+}
+
+export default function App() {
+  const [session, setSession] = useState(null)
+  const [authLoading, setAuthLoading] = useState(true)
+  const [tab, setTab] = useState('home')
+  const [deepDive, setDeepDive] = useState(null)
+  const [savedItems, setSavedItems] = useState([])
+  const [toast, setToast] = useState({ visible:false, message:'' })
+
+  const showToast = (message) => {
+    setToast({ visible:true, message })
+    setTimeout(() => setToast({ visible:false, message:'' }), 2200)
+  }
+  const [profile, setProfile] = useState(null)
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session)
+      setAuthLoading(false)
+    })
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session)
+      setAuthLoading(false)
+    })
+    return () => subscription.unsubscribe()
+  }, [])
+
+  useEffect(() => {
+    if (!session?.user) return
+    const userId = session.user.id
+    getProfile(userId).then(setProfile)
+    getSavedItems(userId).then(setSavedItems)
+  }, [session])
+
+  const handleSave = async (item) => {
+    if (!session?.user) return
+    const saved = await addSavedItem(session.user.id, item)
+    if (saved) {
+      setSavedItems(prev=>[saved, ...prev])
+      const msg = item.type === 'recipe' ? '✓ Meal saved to your rotation' : '✓ Routine saved to your rotation'
+      showToast(msg)
+    }
+  }
+
+  const handleDelete = async (id) => {
+    await deleteSavedItem(id)
+    setSavedItems(prev=>prev.filter(i=>i.id!==id))
+  }
+
+  const handleRename = async (id, newLabel) => {
+    if (!newLabel.trim()) return
+    await supabase.from('saved_items').update({ label: newLabel.trim() }).eq('id', id)
+    setSavedItems(prev => prev.map(i => i.id===id ? { ...i, label:newLabel.trim() } : i))
+  }
+
+  const handleDeepDive = prompt => { setDeepDive(prompt); setTab('pillars') }
+
+  if (authLoading) {
+    return (
+      <div style={{ maxWidth:430, margin:'0 auto', minHeight:'100dvh', background:T.bg, display:'flex', alignItems:'center', justifyContent:'center' }}>
+        <LoadingDots />
+      </div>
+    )
+  }
+
+  if (!session) return <AuthScreen />
+
+  const userId = session.user.id
+  const tb = TOPBAR[tab]
+
+  return (
+    <div style={{ maxWidth:430, margin:'0 auto', minHeight:'100dvh', background:T.bg, display:'flex', flexDirection:'column' }}>
+      {tab!=='home' && tb && (
+        <div style={{ padding:'48px 20px 16px', borderBottom:`0.5px solid ${T.border}`, background:T.bg, flexShrink:0 }}>
+          {tb&&<><div style={{ fontSize:28, fontWeight:500, color:T.text, letterSpacing:-.5 }}>{tb.title}</div><div style={{ fontSize:13, color:T.text2, marginTop:4 }}>{tb.sub}</div></>}
+        </div>
+      )}
+      <div style={{ flex:1, overflowY:'auto', paddingBottom:80 }}>
+        {tab==='home'    && <HomeScreen onNav={setTab} savedItems={savedItems} profile={profile} userId={userId} />}
+        {tab==='move'    && <MoveScreen onSave={handleSave} />}
+        {tab==='eat'     && <EatScreen onSave={handleSave} userId={userId} />}
+        {tab==='lift'    && <LiftScreen userId={userId} userProfile={profile} onGoEat={()=>setTab('eat')} onGoMove={()=>setTab('move')} />}
+        {tab==='more'    && <MoreScreen onNav={setTab} />}
+        {tab==='pillars' && !deepDive && <PillarsScreen onDeepDive={handleDeepDive} />}
+        {tab==='pillars' && deepDive  && <DeepDiveScreen prompt={deepDive} onBack={()=>setDeepDive(null)} />}
+        {tab==='stack'   && <StackScreen items={savedItems} onDelete={handleDelete} onRename={handleRename} />}
+        {tab==='profile' && <ProfileScreen userId={userId} onSaved={setProfile} onNav={setTab} />}
+      </div>
+      <Toast message={toast.message} visible={toast.visible} />
+      <nav style={{ position:'fixed', bottom:0, left:'50%', transform:'translateX(-50%)', width:'100%', maxWidth:430, background:T.surface2, borderTop:`0.5px solid ${T.border}`, display:'flex', padding:'8px 0 max(16px, env(safe-area-inset-bottom))', zIndex:100 }}>
+        {NAV.map(n=>{ const active=tab===n.tab; return (
+          <button key={n.tab} onClick={()=>{ setDeepDive(null); setTab(n.tab) }} style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', gap:3, padding:'4px 0', border:'none', background:'none', color:active?T.text:T.text3, transition:'color .15s' }}>
+            {NAV_ICONS[n.tab]?.(active)}
+            <span style={{ fontSize:9, fontWeight:active?600:400, letterSpacing:.3 }}>{n.label}</span>
+          </button>
+        )})}
+      </nav>
+    </div>
+  )
+}
+,
+      description:'The neighborhood spot everyone knows. Best breakfast in Southie, locally owned and run.',
+      mustOrder:'Egg white veggie scramble', tags:['local-favorite','locally-owned','hidden-gem'], curated:true, curatorNote:'Ryan recommends' },
+  ]
+}
+
+const TAG_META = {
+  'high-protein':      { bg:'var(--green-bg)',  text:'var(--green)',  label:'High protein'      },
+  'local-favorite':    { bg:'var(--blue-bg)',   text:'var(--blue)',   label:'Local favorite'    },
+  'farm-to-table':     { bg:'var(--green-bg)',  text:'var(--green)',  label:'Farm to table'     },
+  'chef-driven':       { bg:'var(--purple-bg)', text:'var(--purple)', label:'Chef driven'       },
+  'worth-the-splurge': { bg:'var(--amber-bg)',  text:'var(--amber)',  label:'Worth the splurge' },
+  'post-workout':      { bg:'var(--green-bg)',  text:'var(--green)',  label:'Post-workout'      },
+  'macro-friendly':    { bg:'var(--blue-bg)',   text:'var(--blue)',   label:'Macro friendly'    },
+  'light-and-fresh':   { bg:'var(--blue-bg)',   text:'var(--blue)',   label:'Light & fresh'     },
+  'hidden-gem':        { bg:'var(--coral-bg)',  text:'var(--coral)',  label:'Hidden gem'        },
+  'locally-owned':     { bg:'var(--purple-bg)', text:'var(--purple)', label:'Locally owned'     },
+}
+
+function RestaurantCard({ spot }) {
+  const [expanded, setExpanded] = useState(false)
+  return (
+    <div style={{ background:T.surface, borderRadius:rr('md'), marginBottom:10, overflow:'hidden' }}>
+      <div onClick={()=>setExpanded(v=>!v)} style={{ padding:'14px 16px', cursor:'pointer' }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:6 }}>
+          <div style={{ flex:1 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:3 }}>
+              <div style={{ fontSize:15, fontWeight:500, color:T.text }}>{spot.name}</div>
+              {spot.curated && <div style={{ fontSize:10, padding:'2px 7px', borderRadius:20, background:'var(--amber-bg)', color:'var(--amber)', fontWeight:500, flexShrink:0 }}>✓ Curated</div>}
+            </div>
+            <div style={{ fontSize:12, color:T.text3 }}>{spot.neighborhood} · {spot.cuisine} · {spot.priceRange}</div>
+          </div>
+          <div style={{ fontSize:13, color:T.text3, marginLeft:8, transform:expanded?'rotate(180deg)':'none', transition:'transform .2s' }}>▼</div>
+        </div>
+        <div style={{ display:'flex', flexWrap:'wrap', gap:5 }}>
+          {spot.tags.map(tag => {
+            const s = TAG_META[tag] || { bg:T.surface2, text:T.text2, label:tag }
+            return <div key={tag} style={{ fontSize:10, padding:'2px 8px', borderRadius:20, background:s.bg, color:s.text, fontWeight:500 }}>{s.label}</div>
+          })}
+        </div>
+      </div>
+      {expanded && (
+        <div style={{ borderTop:`0.5px solid ${T.border}`, padding:'12px 16px' }}>
+          <div style={{ fontSize:13, color:T.text2, lineHeight:1.65, marginBottom:10 }}>{spot.description}</div>
+          <div style={{ background:T.surface2, borderRadius:rr('sm'), padding:'10px 12px', marginBottom:8 }}>
+            <div style={{ fontSize:10, color:T.text3, letterSpacing:.5, textTransform:'uppercase', marginBottom:4 }}>Order this</div>
+            <div style={{ fontSize:13, fontWeight:500, color:T.text }}>{spot.mustOrder}</div>
+          </div>
+          {spot.curatorNote && <div style={{ fontSize:11, color:T.text3, fontStyle:'italic' }}>— {spot.curatorNote}</div>}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function EatOutScreen() {
+  const [selectedCity, setSelectedCity] = useState('Boston — Southie & Seaport')
+  const [activeTag, setActiveTag] = useState(null)
+  const cities = Object.keys(CURATED_SPOTS)
+  const allSpots = CURATED_SPOTS[selectedCity] || []
+  const filtered = activeTag ? allSpots.filter(s => s.tags.includes(activeTag)) : allSpots
+  const allTags = [...new Set(allSpots.flatMap(s => s.tags))]
+  return (
+    <div>
+      <div style={{ marginBottom:16 }}>
+        <div style={{ fontSize:11, color:T.text3, letterSpacing:.5, textTransform:'uppercase', marginBottom:8 }}>Location</div>
+        <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
+          {cities.map(city => (
+            <button key={city} onClick={()=>{ setSelectedCity(city); setActiveTag(null) }} style={{
+              padding:'7px 14px', borderRadius:20, fontSize:12, border:`0.5px solid ${T.border}`, cursor:'pointer',
+              background: selectedCity===city ? T.text : T.surface, color: selectedCity===city ? T.bg : T.text2,
+            }}>{city}</button>
+          ))}
+        </div>
+      </div>
+      <div style={{ marginBottom:16 }}>
+        <div style={{ fontSize:11, color:T.text3, letterSpacing:.5, textTransform:'uppercase', marginBottom:8 }}>Filter</div>
+        <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
+          <button onClick={()=>setActiveTag(null)} style={{ padding:'5px 12px', borderRadius:20, fontSize:11, border:`0.5px solid ${T.border}`, cursor:'pointer', background:!activeTag?T.text:T.surface, color:!activeTag?T.bg:T.text2 }}>All</button>
+          {allTags.map(tag => {
+            const s = TAG_META[tag] || { bg:T.surface2, text:T.text2, label:tag }
+            return <button key={tag} onClick={()=>setActiveTag(activeTag===tag?null:tag)} style={{ padding:'5px 12px', borderRadius:20, fontSize:11, cursor:'pointer', border:`0.5px solid ${activeTag===tag?s.text:T.border}`, background:activeTag===tag?s.bg:T.surface, color:activeTag===tag?s.text:T.text2, fontWeight:activeTag===tag?500:400 }}>{s.label||tag}</button>
+          })}
+        </div>
+      </div>
+      <div style={{ fontSize:11, color:T.text3, letterSpacing:.5, textTransform:'uppercase', marginBottom:12 }}>{filtered.length} spot{filtered.length!==1?'s':''} · Personally curated</div>
+      {filtered.map((spot,i) => <RestaurantCard key={i} spot={spot} />)}
+      <div style={{ marginTop:16, padding:'12px 14px', background:T.surface, borderRadius:rr('md') }}>
+        <div style={{ fontSize:12, color:T.text3, lineHeight:1.6 }}>More cities coming soon. Know a spot that belongs here? Recommendations welcome.</div>
+      </div>
+    </div>
+  )
+}
+
 function EatScreen({ onSave, userId }) {
+  const [eatMode, setEatMode] = useState('cook')
   const { pantry, add, remove } = usePantry(userId)
   const [effort, setEffort] = useState('normal')
   const [meal, setMeal] = useState('Lunch')
