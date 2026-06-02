@@ -676,7 +676,48 @@ export function SavedRoutineCard({ item }) {
 }
 
 // ─── Main MoveScreen ──────────────────────────────────────────────────────────
-export default function MoveScreen({ onSave }) {
+export default function MoveScreen({ onSave, pendingSession, onClearPending, onStartSession }) {
+
+  // ─── Pending session warmup flow ─────────────────────────────────────────────
+  if (pendingSession) {
+    const { warmupType, workoutName } = pendingSession
+    const routineKey = `${warmupType}_warmup`
+    const routine = LIFT_ROUTINES[routineKey] || LIFT_ROUTINES['lower_warmup']
+    return (
+      <div style={{ padding:'0' }}>
+        <div style={{ padding:'16px 20px 12px', borderBottom:`0.5px solid ${T.border}` }}>
+          <button onClick={onClearPending} style={{ border:'none', background:'none', color:T.text3, fontSize:12, padding:0, cursor:'pointer', marginBottom:10 }}>← Back</button>
+          <div style={{ fontSize:11, color:'var(--green)', fontWeight:600, letterSpacing:.5, textTransform:'uppercase', marginBottom:4 }}>Pre-session warmup</div>
+          <div style={{ fontSize:20, fontWeight:500, color:T.text, marginBottom:2 }}>{routine.title}</div>
+          <div style={{ fontSize:12, color:T.text3 }}>{routine.duration} · Before {workoutName}</div>
+        </div>
+        <div style={{ padding:'8px 20px' }}>
+          {routine.exercises.map((ex, i) => (
+            <div key={i} style={{ padding:'12px 0', borderBottom: i < routine.exercises.length-1 ? `0.5px solid ${T.border}` : 'none' }}>
+              <div style={{ fontSize:14, fontWeight:500, color:T.text, marginBottom:3 }}>{ex.name}</div>
+              {ex.reps && <div style={{ fontSize:11, color:'var(--green)', fontWeight:500, marginBottom:4 }}>{ex.reps}</div>}
+              {ex.cue && <div style={{ fontSize:12, color:T.text2, lineHeight:1.6 }}>{ex.cue}</div>}
+            </div>
+          ))}
+        </div>
+        <div style={{ padding:'16px 20px 40px', borderTop:`0.5px solid ${T.border}` }}>
+          <div style={{ fontSize:13, color:T.text3, marginBottom:14, textAlign:'center' }}>Warmup done? Time to lift.</div>
+          <button onClick={()=>onStartSession(pendingSession)}
+            style={{ width:'100%', padding:'14px', borderRadius:rr('md'), border:'none',
+              background:'var(--green-dim)', color:'#fff', fontSize:15, fontWeight:600,
+              cursor:'pointer', marginBottom:10, boxShadow:'0 2px 8px rgba(58,138,88,0.35)' }}>
+            Start {workoutName} →
+          </button>
+          <button onClick={()=>{ onSave({ label:`${routine.title} · Pre-session`, text: JSON.stringify(routine), type:'routine' }); onClearPending() }}
+            style={{ width:'100%', padding:'10px', borderRadius:rr('md'), border:`0.5px solid ${T.border}`,
+              background:'transparent', color:T.text3, fontSize:13, cursor:'pointer' }}>
+            Save warmup to rotation
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div style={{ padding:'20px 20px' }}>
       <div style={{ marginBottom:20 }}>
