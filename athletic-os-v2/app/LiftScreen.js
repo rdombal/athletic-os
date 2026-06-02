@@ -252,9 +252,9 @@ Give 2-3 sentences max. Mention any PRs. Note one small win. No fluff, no exclam
     <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.85)', zIndex:300, display:'flex', alignItems:'center', justifyContent:'center', padding:16, overflowY:'auto' }}>
       <div style={{ background:T.surface, borderRadius:rr('lg'), width:'100%', maxWidth:360, padding:20, maxHeight:'90vh', overflowY:'auto' }}>
         <div style={{ fontSize:22, fontWeight:500, color:T.text, marginBottom:2 }}>
-          {stats.returningAfterGap ? 'Good to have you back.' : 'You showed up.'}
+          You showed up.
         </div>
-        {stats.returningAfterGap && <div style={{ fontSize:13, color:T.text2, marginBottom:4, lineHeight:1.5 }}>That is the one that counted.</div>}
+
         <div style={{ fontSize:13, color:T.text3, marginBottom:4 }}>{stats.workoutName}</div>
         <div style={{ fontSize:12, color:T.text3, fontStyle:'italic', marginBottom:16 }}>Strength is built gradually, session by session.</div>
 
@@ -745,10 +745,7 @@ function SessionLogger({ workout, programId, phaseId, userId, profile, onGoEat, 
     const s = elapsed%60
     const duration = h>0 ? `${h}h ${m}m` : m>0 ? `${m}m ${s}s` : `${s}s`
     // Check if returning after a gap
-    const lastSess = sessions.sort ? [...sessions].sort((a,b)=>new Date(b.logged_at||b.date)-new Date(a.logged_at||a.date))[0] : null
-    const daysSince = lastSess ? Math.floor((Date.now()-new Date(lastSess.logged_at||lastSess.date).getTime())/(1000*60*60*24)) : 0
-    const returningAfterGap = daysSince >= 5
-    return { workoutName:workout.name, duration, volume:totalVolume, totalSets, prs, nextTargets, exerciseNames:loggedSets.map(e=>e.name), returningAfterGap }
+    return { workoutName:workout.name, duration, volume:totalVolume, totalSets, prs, nextTargets, exerciseNames:loggedSets.map(e=>e.name) }
   }
 
   const finishSession = async () => {
@@ -1271,8 +1268,8 @@ function WeeklyOverview({ programs, sessions, activeProgramId, lastWorkoutId, on
   const lastSessionDate = allSorted[0] ? new Date(allSorted[0].logged_at||allSorted[0].date) : null
   const daysSinceLast = lastSessionDate ? Math.floor((Date.now() - lastSessionDate.getTime()) / (1000*60*60*24)) : null
   const hasHistory = sessions.length > 0
-  const beenAWhile = hasHistory && daysSinceLast >= 5
-  const longGap = hasHistory && daysSinceLast >= 10
+  const beenAWhile = false
+  const longGap = false
 
   // Consistency note — only positive framing, never guilt
   const consistencyNote = sessionCount >= 4
@@ -1311,25 +1308,7 @@ function WeeklyOverview({ programs, sessions, activeProgramId, lastWorkoutId, on
 
           {consistencyNote && (
             <div style={{ fontSize:13, color:T.text3, marginBottom:16, fontStyle:'italic' }}>{consistencyNote}</div>
-          )}
-
-          {beenAWhile && !longGap && (
-            <div style={{ background:T.surface, borderRadius:rr('md'), padding:'14px 16px', marginBottom:16, borderLeft:`3px solid ${T.border2}` }}>
-              <div style={{ fontSize:14, fontWeight:500, color:T.text, marginBottom:4 }}>It has been a little while.</div>
-              <div style={{ fontSize:13, color:T.text2, lineHeight:1.6, marginBottom:10 }}>No big deal. Life gets busy. Pick up where you left off or just do something small today — even 15 minutes counts.</div>
-              <div style={{ display:'flex', gap:8 }}>
-                <button onClick={()=>onSelectProgram(activeProgram, nextUp?.workout, nextUp?.phase?.id)} style={{ flex:1, padding:'8px', borderRadius:rr('sm'), border:'none', background:T.text, color:T.bg, fontSize:12, fontWeight:500, cursor:'pointer' }}>Resume program</button>
-                <button onClick={onGoMove} style={{ flex:1, padding:'8px', borderRadius:rr('sm'), border:`0.5px solid ${T.border}`, background:'transparent', color:T.text2, fontSize:12, cursor:'pointer' }}>Move instead</button>
-              </div>
-            </div>
-          )}
-
-          {longGap && (
-            <div style={{ background:T.surface, borderRadius:rr('md'), padding:'14px 16px', marginBottom:16, borderLeft:`3px solid var(--amber-dim)` }}>
-              <div style={{ fontSize:14, fontWeight:500, color:T.text, marginBottom:4 }}>Welcome back.</div>
-              <div style={{ fontSize:13, color:T.text2, lineHeight:1.6, marginBottom:10 }}>No catching up needed. No guilt. Just pick one workout and do that. Everything else will follow.</div>
-              <div style={{ display:'flex', gap:8 }}>
-                <button onClick={()=>onSelectProgram(activeProgram, nextUp?.workout, nextUp?.phase?.id)} style={{ flex:1, padding:'8px', borderRadius:rr('sm'), border:'none', background:T.text, color:T.bg, fontSize:12, fontWeight:500, cursor:'pointer' }}>Start a session</button>
+          )} style={{ flex:1, padding:'8px', borderRadius:rr('sm'), border:'none', background:T.text, color:T.bg, fontSize:12, fontWeight:500, cursor:'pointer' }}>Start a session</button>
                 <button onClick={onGoMove} style={{ flex:1, padding:'8px', borderRadius:rr('sm'), border:`0.5px solid ${T.border}`, background:'transparent', color:T.text2, fontSize:12, cursor:'pointer' }}>Just move today</button>
               </div>
             </div>
@@ -1471,6 +1450,78 @@ function ProgramsList({ programs, loading, activeProgramId, onSelectProgram, onN
   )
 }
 
+
+// ─── Workout row with preview ─────────────────────────────────────────────────
+function WorkoutRow({ w, isNext, onStart }) {
+  const [expanded, setExpanded] = useState(false)
+  const exercises = w.exercises || []
+
+  // Group exercises into main lifts (exclude athletic add-ons for preview)
+  const mainExercises = exercises.filter(ex =>
+    !['Nordic Hamstring Curl Negatives','Reverse Nordics','Pistol Box Squat',
+      'Turkish Half Get Up','Med Ball Rotational Slam','Med Ball Glute Bridge',
+      'Lateral Bounds','Box Jumps','Reverse Plank to Leg Lifts',
+      'S/L Hip Flexor Up & Overs','S/L Plate Hops'].includes(ex.name)
+  )
+
+  return (
+    <div style={{ borderBottom:`0.5px solid ${T.border}`, background: isNext ? 'rgba(58,138,88,0.04)' : 'transparent' }}>
+      {/* Main row */}
+      <div style={{ padding:'12px 16px', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+        <div onClick={()=>setExpanded(v=>!v)} style={{ flex:1, cursor:'pointer' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:3 }}>
+            <div style={{ fontSize:14, fontWeight:500, color:T.text }}>{w.name}</div>
+            {isNext && <div style={{ fontSize:10, padding:'2px 8px', borderRadius:20, background:'var(--green-bg)', color:'var(--green)', fontWeight:500 }}>Up next</div>}
+          </div>
+          <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+            <div style={{ fontSize:11, color:T.text3 }}>{exercises.length} exercises</div>
+            <div style={{ fontSize:11, color:T.text3, opacity:.5 }}>·</div>
+            <div style={{ fontSize:11, color: expanded ? 'var(--blue)' : T.text3 }}>
+              {expanded ? 'Hide preview ▲' : 'Preview ▼'}
+            </div>
+          </div>
+        </div>
+        <button onClick={onStart} style={{
+          padding:'8px 18px', borderRadius:rr('md'),
+          background: isNext ? 'var(--green-dim)' : 'transparent',
+          color: isNext ? '#fff' : T.text2,
+          fontSize:13, fontWeight:600, cursor:'pointer', flexShrink:0,
+          border: isNext ? 'none' : `1px solid ${T.border2}`,
+          boxShadow: isNext ? '0 1px 4px rgba(0,0,0,0.2)' : 'none',
+          marginLeft:12,
+        }}>Start</button>
+      </div>
+
+      {/* Exercise preview */}
+      {expanded && (
+        <div style={{ padding:'0 16px 14px' }}>
+          <div style={{ background:T.surface2, borderRadius:rr('md'), overflow:'hidden' }}>
+            {/* Column headers */}
+            <div style={{ display:'flex', padding:'8px 12px', borderBottom:`0.5px solid ${T.border}` }}>
+              <div style={{ flex:1, fontSize:10, fontWeight:600, color:T.text3, letterSpacing:.5, textTransform:'uppercase' }}>Exercise</div>
+              <div style={{ width:50, fontSize:10, fontWeight:600, color:T.text3, letterSpacing:.5, textTransform:'uppercase', textAlign:'center' }}>Sets</div>
+              <div style={{ width:50, fontSize:10, fontWeight:600, color:T.text3, letterSpacing:.5, textTransform:'uppercase', textAlign:'center' }}>Reps</div>
+            </div>
+            {mainExercises.map((ex, i) => (
+              <div key={i} style={{ display:'flex', alignItems:'center', padding:'8px 12px',
+                borderBottom: i < mainExercises.length-1 ? `0.5px solid ${T.border}` : 'none' }}>
+                <div style={{ flex:1, fontSize:12, color:T.text, fontWeight:500, lineHeight:1.4 }}>{ex.name}</div>
+                <div style={{ width:50, fontSize:12, color:T.text2, textAlign:'center' }}>{ex.sets||3}</div>
+                <div style={{ width:50, fontSize:12, color:T.text2, textAlign:'center' }}>{ex.targetReps||8}</div>
+              </div>
+            ))}
+            {exercises.length > mainExercises.length && (
+              <div style={{ padding:'8px 12px', fontSize:11, color:T.text3, fontStyle:'italic' }}>
+                + {exercises.length - mainExercises.length} athletic add-on exercises
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ─── Program detail ───────────────────────────────────────────────────────────
 function ProgramDetail({ program, lastWorkoutId, sessions, onBack, onEdit, onStartWorkout, onViewHistory, onViewProgress }) {
   // Find the single next workout across the entire program
@@ -1533,27 +1584,8 @@ function ProgramDetail({ program, lastWorkoutId, sessions, onBack, onEdit, onSta
               {ph.workouts.length===0 && <div style={{ padding:'12px 14px', fontSize:12, color:T.text3 }}>No workouts in this phase.</div>}
               {ph.workouts.map((w) => {
                 const isNext = nextUp?.phaseId === ph.id && nextUp?.workoutId === w.id
-                return (
-                  <div key={w.id} style={{ padding:'12px 16px', borderBottom:`0.5px solid ${T.border}`, display:'flex', justifyContent:'space-between', alignItems:'center', background: isNext ? 'rgba(58,138,88,0.06)' : 'transparent' }}>
-                    <div>
-                      <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:3 }}>
-                        <div style={{ fontSize:14, fontWeight:500, color:T.text }}>{w.name}</div>
-                        {isNext && <div style={{ fontSize:10, padding:'2px 8px', borderRadius:20, background:'var(--green-bg)', color:'var(--green)', fontWeight:500 }}>up next</div>}
-                      </div>
-                      <div style={{ fontSize:11, color:T.text3 }}>{w.exercises.length} exercise{w.exercises.length!==1?'s':''}</div>
-                    </div>
-                    <button onClick={()=>onStartWorkout(w, program.id, ph.id)} style={{
-                      padding:'8px 18px', borderRadius:rr('md'), border:'none',
-                      background:isNext?'var(--green-dim)':T.surface,
-                      color:isNext?'#fff':T.text2,
-                      fontSize:13, fontWeight:600, cursor:'pointer',
-                      border: isNext?'none':`1px solid ${T.border2}`,
-                      boxShadow: isNext?'0 1px 4px rgba(0,0,0,0.25)':'none',
-                    }}>
-                      {isNext ? 'Start' : 'Start'}
-                    </button>
-                  </div>
-                )
+                return <WorkoutRow key={w.id} w={w} isNext={isNext}
+                  onStart={()=>onStartWorkout(w, program.id, ph.id)} />
               })}
             </div>
           </div>
@@ -1565,11 +1597,29 @@ function ProgramDetail({ program, lastWorkoutId, sessions, onBack, onEdit, onSta
 }
 
 // ─── Root Lift screen ─────────────────────────────────────────────────────────
-export default function LiftScreen({ userId, userProfile, onGoEat, onGoMove }) {
+export default function LiftScreen({ userId, userProfile, onGoEat, onGoMove, deepLinkWorkout, onClearDeepLink }) {
   const [view, setView] = useState('home')
   const [selectedProgram, setSelectedProgram] = useState(null)
   const [editingProgram, setEditingProgram] = useState(null)
   const [activeSession, setActiveSession] = useState(null)
+
+  // Handle deep link from home screen warmup flow
+  useEffect(() => {
+    if (!deepLinkWorkout || !programs.length) return
+    const { programId, phaseId, workoutId } = deepLinkWorkout
+    const program = programs.find(p => p.id === programId)
+    if (!program) return
+    let workout = null
+    for (const ph of program.phases || []) {
+      const w = (ph.workouts || []).find(w => w.id === workoutId)
+      if (w) { workout = w; break }
+    }
+    if (!workout) return
+    setSelectedProgram(program)
+    setActiveSession({ workout, programId, phaseId })
+    setView('session')
+    if (onClearDeepLink) onClearDeepLink()
+  }, [deepLinkWorkout, programs])
   const [programs, setPrograms] = useState([])
   const [sessions, setSessions] = useState([])
   const [programsLoading, setProgramsLoading] = useState(true)
