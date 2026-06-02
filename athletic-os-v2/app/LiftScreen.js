@@ -1308,11 +1308,14 @@ function WeeklyOverview({ programs, sessions, activeProgramId, lastWorkoutId, on
 
           {consistencyNote && (
             <div style={{ fontSize:13, color:T.text3, marginBottom:16, fontStyle:'italic' }}>{consistencyNote}</div>
-          )} style={{ flex:1, padding:'8px', borderRadius:rr('sm'), border:'none', background:T.text, color:T.bg, fontSize:12, fontWeight:500, cursor:'pointer' }}>Start a session</button>
-                <button onClick={onGoMove} style={{ flex:1, padding:'8px', borderRadius:rr('sm'), border:`0.5px solid ${T.border}`, background:'transparent', color:T.text2, fontSize:12, cursor:'pointer' }}>Just move today</button>
-              </div>
-            </div>
           )}
+          <div style={{ display:'flex', gap:8 }}>
+            <button onClick={()=>onSelectProgram(activeProgram)} style={{ flex:1, padding:'8px', borderRadius:rr('sm'), border:'none', background:T.text, color:T.bg, fontSize:12, fontWeight:500, cursor:'pointer' }}>Start a session</button>
+            <button onClick={onGoMove} style={{ flex:1, padding:'8px', borderRadius:rr('sm'), border:`0.5px solid ${T.border}`, background:'transparent', color:T.text2, fontSize:12, cursor:'pointer' }}>Just move today</button>
+          </div>
+        </div>
+      </div>
+      )}
 
           {nextUp && (
             <div style={{ background:T.surface, border:`1.5px solid ${T.text}`, borderRadius:rr('md'), padding:'14px 16px', marginBottom:16 }}>
