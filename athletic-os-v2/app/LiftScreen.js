@@ -1603,23 +1603,6 @@ export default function LiftScreen({ userId, userProfile, onGoEat, onGoMove, dee
   const [editingProgram, setEditingProgram] = useState(null)
   const [activeSession, setActiveSession] = useState(null)
 
-  // Handle deep link from home screen warmup flow
-  useEffect(() => {
-    if (!deepLinkWorkout || !programs.length) return
-    const { programId, phaseId, workoutId } = deepLinkWorkout
-    const program = programs.find(p => p.id === programId)
-    if (!program) return
-    let workout = null
-    for (const ph of program.phases || []) {
-      const w = (ph.workouts || []).find(w => w.id === workoutId)
-      if (w) { workout = w; break }
-    }
-    if (!workout) return
-    setSelectedProgram(program)
-    setActiveSession({ workout, programId, phaseId })
-    setView('session')
-    if (onClearDeepLink) onClearDeepLink()
-  }, [deepLinkWorkout, programs])
   const [programs, setPrograms] = useState([])
   const [sessions, setSessions] = useState([])
   const [programsLoading, setProgramsLoading] = useState(true)
@@ -1645,6 +1628,24 @@ export default function LiftScreen({ userId, userProfile, onGoEat, onGoMove, dee
       try { setLastWorkoutId(localStorage.getItem(`last_workout_${selectedProgram.id}`)) } catch {}
     }
   }, [selectedProgram])
+
+  // Handle deep link from home screen warmup flow — must be after programs state
+  useEffect(() => {
+    if (!deepLinkWorkout || !programs.length) return
+    const { programId, phaseId, workoutId } = deepLinkWorkout
+    const prog = programs.find(p => p.id === programId)
+    if (!prog) return
+    let workout = null
+    for (const ph of prog.phases || []) {
+      const w = (ph.workouts || []).find(w => w.id === workoutId)
+      if (w) { workout = w; break }
+    }
+    if (!workout) return
+    setSelectedProgram(prog)
+    setActiveSession({ workout, programId, phaseId })
+    setView('session')
+    if (onClearDeepLink) onClearDeepLink()
+  }, [deepLinkWorkout, programs])
 
   const reloadAll = async () => {
     const [freshPrograms, freshSessions] = await Promise.all([
