@@ -1238,6 +1238,72 @@ function ProgramProgress({ program, sessions, onViewExercise }) {
   )
 }
 
+
+// ─── Up next card with preview ────────────────────────────────────────────────
+function UpNextCard({ nextUp, activeProgram, onSelectProgram }) {
+  const [expanded, setExpanded] = useState(false)
+  const exercises = nextUp.workout.exercises || []
+  const mainExercises = exercises.filter(ex =>
+    !['Nordic Hamstring Curl Negatives','Reverse Nordics','Pistol Box Squat',
+      'Turkish Half Get Up','Med Ball Rotational Slam','Med Ball Glute Bridge',
+      'Lateral Bounds','Box Jumps','Reverse Plank to Leg Lifts',
+      'S/L Hip Flexor Up & Overs','S/L Plate Hops'].includes(ex.name)
+  )
+  return (
+    <div style={{ background:T.surface, border:`1.5px solid ${T.text}`, borderRadius:rr('md'), marginBottom:16, overflow:'hidden' }}>
+      {/* Header — tap to preview */}
+      <div onClick={()=>setExpanded(v=>!v)} style={{ padding:'14px 16px', cursor:'pointer' }}>
+        <div style={{ fontSize:11, color:T.text3, letterSpacing:.5, textTransform:'uppercase', marginBottom:6 }}>Up next</div>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+          <div>
+            <div style={{ fontSize:18, fontWeight:500, color:T.text }}>{nextUp.workout.name}</div>
+            <div style={{ fontSize:12, color:T.text2, marginTop:3, display:'flex', alignItems:'center', gap:6 }}>
+              <span>{nextUp.phase.name} · {exercises.length} exercises</span>
+              <span style={{ color:expanded?'var(--blue)':T.text3, fontSize:11 }}>{expanded ? '▲ hide' : '▼ preview'}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Exercise preview */}
+      {expanded && (
+        <div style={{ borderTop:`0.5px solid ${T.border}`, padding:'8px 16px 12px' }}>
+          <div style={{ background:T.surface2, borderRadius:rr('md'), overflow:'hidden' }}>
+            <div style={{ display:'flex', padding:'7px 12px', borderBottom:`0.5px solid ${T.border}` }}>
+              <div style={{ flex:1, fontSize:10, fontWeight:600, color:T.text3, letterSpacing:.5, textTransform:'uppercase' }}>Exercise</div>
+              <div style={{ width:44, fontSize:10, fontWeight:600, color:T.text3, letterSpacing:.5, textTransform:'uppercase', textAlign:'center' }}>Sets</div>
+              <div style={{ width:44, fontSize:10, fontWeight:600, color:T.text3, letterSpacing:.5, textTransform:'uppercase', textAlign:'center' }}>Reps</div>
+            </div>
+            {mainExercises.map((ex, i) => (
+              <div key={i} style={{ display:'flex', alignItems:'center', padding:'7px 12px',
+                borderBottom: i < mainExercises.length-1 ? `0.5px solid ${T.border}` : 'none' }}>
+                <div style={{ flex:1, fontSize:12, color:T.text, lineHeight:1.4 }}>{ex.name}</div>
+                <div style={{ width:44, fontSize:12, color:T.text2, textAlign:'center' }}>{ex.sets||3}</div>
+                <div style={{ width:44, fontSize:12, color:T.text2, textAlign:'center' }}>{ex.targetReps||8}</div>
+              </div>
+            ))}
+            {exercises.length > mainExercises.length && (
+              <div style={{ padding:'7px 12px', fontSize:11, color:T.text3, fontStyle:'italic' }}>
+                + {exercises.length - mainExercises.length} athletic add-ons
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Start button */}
+      <div style={{ padding:expanded?'0 16px 16px':'0 16px 16px' }}>
+        <button onClick={()=>onSelectProgram(activeProgram, nextUp.workout, nextUp.phase.id)}
+          style={{ width:'100%', padding:'13px', borderRadius:rr('md'), border:'none',
+            background:'var(--green-dim)', color:'#fff', fontSize:14, fontWeight:600,
+            cursor:'pointer', boxShadow:'0 1px 4px rgba(0,0,0,0.25)', letterSpacing:.1 }}>
+          Start session →
+        </button>
+      </div>
+    </div>
+  )
+}
+
 // ─── Weekly overview ──────────────────────────────────────────────────────────
 function WeeklyOverview({ programs, sessions, activeProgramId, lastWorkoutId, onSelectProgram, onNewProgram, onViewExercise, onGoMove, loading }) {
   const activeProgram = programs.find(p => p.id === activeProgramId) || programs[0]
@@ -1314,21 +1380,7 @@ function WeeklyOverview({ programs, sessions, activeProgramId, lastWorkoutId, on
             <button onClick={onGoMove} style={{ flex:1, padding:'8px', borderRadius:rr('sm'), border:`0.5px solid ${T.border}`, background:'transparent', color:T.text2, fontSize:12, cursor:'pointer' }}>Just move today</button>
           </div>
 
-          {nextUp && (
-            <div style={{ background:T.surface, border:`1.5px solid ${T.text}`, borderRadius:rr('md'), padding:'14px 16px', marginBottom:16 }}>
-              <div style={{ fontSize:11, color:T.text3, letterSpacing:.5, textTransform:'uppercase', marginBottom:6 }}>Up next</div>
-              <div style={{ fontSize:18, fontWeight:500, color:T.text }}>{nextUp.workout.name}</div>
-              <div style={{ fontSize:12, color:T.text2, marginTop:3 }}>
-                {nextUp.phase.name} · {nextUp.workout.exercises.length} exercise{nextUp.workout.exercises.length!==1?'s':''}
-              </div>
-              <button onClick={()=>onSelectProgram(activeProgram, nextUp.workout, nextUp.phase.id)}
-                style={{ marginTop:14, width:'100%', padding:'13px', borderRadius:rr('md'), border:'none',
-                  background:'var(--green-dim)', color:'#fff', fontSize:14, fontWeight:600, cursor:'pointer',
-                  boxShadow:'0 1px 4px rgba(0,0,0,0.25)', letterSpacing:.1 }}>
-                Start session →
-              </button>
-            </div>
-          )}
+          {nextUp && <UpNextCard nextUp={nextUp} activeProgram={activeProgram} onSelectProgram={onSelectProgram} />}
 
           {recentSessions.length > 0 && (
             <>
