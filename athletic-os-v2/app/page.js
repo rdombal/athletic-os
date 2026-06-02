@@ -521,11 +521,11 @@ function getWarmupType(workoutName) {
   return 'lower' // default to lower for full body
 }
 
-function SmartHomeCard({ programs, recentSessions, onStartWarmup, onNav }) {
+function SmartHomeCard({ programs, recentSessions, activeProgramId, onStartWarmup, onNav }) {
   if (!programs?.length) return null
 
-  // Find the active program — most recently used or first
-  const activeProgram = programs[0]
+  // Find the active program — match LiftScreen's active program
+  const activeProgram = programs.find(p => p.id === activeProgramId) || programs[0]
   if (!activeProgram?.phases?.length) return null
 
   // Find last session workout ID
@@ -591,7 +591,7 @@ function SmartHomeCard({ programs, recentSessions, onStartWarmup, onNav }) {
 }
 
 // ─── Screens ──────────────────────────────────────────────────────────────────
-function HomeScreen({ onNav, savedItems, profile, userId, programs, recentSessions, onStartWarmup }) {
+function HomeScreen({ onNav, savedItems, profile, userId, programs, recentSessions, activeProgramId, onStartWarmup }) {
   const hour = new Date().getHours()
   const greeting = hour<12?'Good morning':hour<17?'Good afternoon':'Good evening'
   const name = profile?.name?`, ${profile.name}`:''
@@ -650,7 +650,7 @@ function HomeScreen({ onNav, savedItems, profile, userId, programs, recentSessio
           </div>
         </div>
       )}
-      <SmartHomeCard programs={programs} recentSessions={recentSessions} onStartWarmup={onStartWarmup} onNav={onNav} />
+      <SmartHomeCard programs={programs} recentSessions={recentSessions} activeProgramId={activeProgramId} onStartWarmup={onStartWarmup} onNav={onNav} />
       <DailyCard userId={userId} cacheKey="daily_tip" category={TIP_CATEGORIES[day%TIP_CATEGORIES.length]} cardLabel="Daily tip"
         promptFn={cat=>'You are a knowledgeable health advisor. Give ONE practical tip about '+cat+'. 2-3 sentences. Specific and surprising. No fluff, no exclamation marks. Give a 2-4 word title. Format: TITLE: [title] TIP: [tip]'}
         fallback="Consistency over intensity. Showing up three times a week for a year will outperform any extreme program you can only stick to for a month." />
@@ -1250,6 +1250,7 @@ export default function App() {
 
   const [programs, setPrograms] = useState([])
   const [recentSessions, setRecentSessions] = useState([])
+  const [activeProgramId, setActiveProgramId] = useState(null)
 
   useEffect(() => {
     if (!session?.user) return
@@ -1258,6 +1259,7 @@ export default function App() {
     getSavedItems(userId).then(setSavedItems)
     getPrograms(userId).then(setPrograms).catch(()=>{})
     getSessions(userId).then(setRecentSessions).catch(()=>{})
+    try { setActiveProgramId(localStorage.getItem('active_program_id')) } catch {}
   }, [session])
 
   const handleSave = async (item) => {
@@ -1304,7 +1306,7 @@ export default function App() {
         </div>
       )}
       <div style={{ flex:1, overflowY:'auto', paddingBottom:80 }}>
-        {tab==='home'    && <HomeScreen onNav={setTab} savedItems={savedItems} profile={profile} userId={userId} programs={programs} recentSessions={recentSessions} onStartWarmup={(info)=>{ setPendingSession(info); setTab('move') }} />}
+        {tab==='home'    && <HomeScreen onNav={setTab} savedItems={savedItems} profile={profile} userId={userId} programs={programs} recentSessions={recentSessions} activeProgramId={activeProgramId} onStartWarmup={(info)=>{ setPendingSession(info); setTab('move') }} />}
         {tab==='move'    && <MoveScreen onSave={handleSave} pendingSession={pendingSession} onClearPending={()=>setPendingSession(null)} onStartSession={(info)=>{ setPendingSession(null); setLiftDeepLink(info); setTab('lift') }} />}
         {tab==='eat'     && <EatScreen onSave={handleSave} userId={userId} />}
         {tab==='lift'    && <LiftScreen userId={userId} userProfile={profile} onGoEat={()=>setTab('eat')} onGoMove={()=>setTab('move')} deepLinkWorkout={liftDeepLink} onClearDeepLink={()=>setLiftDeepLink(null)} />}
