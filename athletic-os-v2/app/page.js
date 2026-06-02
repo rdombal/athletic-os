@@ -511,8 +511,86 @@ function SomethingSmallCard({ onNav }) {
   )
 }
 
+
+// ─── Smart home card ──────────────────────────────────────────────────────────
+function getWarmupType(workoutName) {
+  const n = (workoutName||'').toLowerCase()
+  if (n.includes('lower') || n.includes('squat') || n.includes('deadlift') || n.includes('leg') || n.includes('hip')) return 'lower'
+  if (n.includes('upper') || n.includes('press') || n.includes('pull') || n.includes('bench') || n.includes('arm')) return 'upper'
+  return 'lower' // default to lower for full body
+}
+
+function SmartHomeCard({ programs, recentSessions, onStartWarmup, onNav }) {
+  if (!programs?.length) return null
+
+  // Find the active program — most recently used or first
+  const activeProgram = programs[0]
+  if (!activeProgram?.phases?.length) return null
+
+  // Find last session workout ID
+  const lastSession = recentSessions?.[0]
+  const lastWorkoutId = lastSession?.workoutId || lastSession?.workout_id
+
+  // Find next workout across all phases
+  let nextWorkout = null
+  let nextPhase = null
+  const phases = activeProgram.phases || []
+
+  if (!lastWorkoutId) {
+    const firstPhase = phases.find(p => p.workouts?.length > 0)
+    if (firstPhase) { nextPhase = firstPhase; nextWorkout = firstPhase.workouts[0] }
+  } else {
+    for (let pi = 0; pi < phases.length; pi++) {
+      const ph = phases[pi]
+      const workouts = ph.workouts || []
+      const idx = workouts.findIndex(w => w.id === lastWorkoutId)
+      if (idx >= 0) {
+        if (idx + 1 < workouts.length) { nextPhase = ph; nextWorkout = workouts[idx + 1] }
+        else {
+          for (let ni = pi + 1; ni < phases.length; ni++) {
+            if (phases[ni].workouts?.length > 0) { nextPhase = phases[ni]; nextWorkout = phases[ni].workouts[0]; break }
+          }
+          if (!nextWorkout) { nextPhase = phases[0]; nextWorkout = phases[0].workouts?.[0] }
+        }
+        break
+      }
+    }
+    if (!nextWorkout) {
+      const firstPhase = phases.find(p => p.workouts?.length > 0)
+      if (firstPhase) { nextPhase = firstPhase; nextWorkout = firstPhase.workouts[0] }
+    }
+  }
+
+  if (!nextWorkout || !nextPhase) return null
+
+  const warmupType = getWarmupType(nextWorkout.name)
+  const warmupLabel = warmupType === 'upper' ? 'Upper body warmup' : 'Lower body warmup'
+  const hour = new Date().getHours()
+  const timeLabel = hour < 12 ? 'Ready to train this morning?' : hour < 17 ? 'Afternoon session?' : 'Evening lift?'
+
+  return (
+    <div style={{ background:T.surface, borderRadius:rr('lg'), marginBottom:16, overflow:'hidden', border:`0.5px solid ${T.border}` }}>
+      <div style={{ padding:'16px 16px 12px' }}>
+        <div style={{ fontSize:11, color:'var(--blue)', fontWeight:600, letterSpacing:.5, textTransform:'uppercase', marginBottom:6 }}>{timeLabel}</div>
+        <div style={{ fontSize:17, fontWeight:500, color:T.text, marginBottom:4 }}>{nextWorkout.name}</div>
+        <div style={{ fontSize:12, color:T.text3, marginBottom:14 }}>{activeProgram.name} · {nextPhase.name}</div>
+        <div style={{ display:'flex', gap:8 }}>
+          <button onClick={()=>onStartWarmup({ programId:activeProgram.id, phaseId:nextPhase.id, workoutId:nextWorkout.id, workoutName:nextWorkout.name, warmupType })}
+            style={{ flex:1, padding:'11px', borderRadius:rr('md'), border:'none', background:'var(--green-dim)', color:'#fff', fontSize:13, fontWeight:600, cursor:'pointer' }}>
+            Start with warmup →
+          </button>
+          <button onClick={()=>onNav('lift')}
+            style={{ padding:'11px 14px', borderRadius:rr('md'), border:`0.5px solid ${T.border}`, background:'transparent', color:T.text2, fontSize:13, cursor:'pointer' }}>
+            Skip warmup
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Screens ──────────────────────────────────────────────────────────────────
-function HomeScreen({ onNav, savedItems, profile, userId }) {
+function HomeScreen({ onNav, savedItems, profile, userId, programs, recentSessions, onStartWarmup }) {
   const hour = new Date().getHours()
   const greeting = hour<12?'Good morning':hour<17?'Good afternoon':'Good evening'
   const name = profile?.name?`, ${profile.name}`:''
@@ -571,6 +649,7 @@ function HomeScreen({ onNav, savedItems, profile, userId }) {
           </div>
         </div>
       )}
+      <SmartHomeCard programs={programs} recentSessions={recentSessions} onStartWarmup={onStartWarmup} onNav={onNav} />
       <DailyCard userId={userId} cacheKey="daily_tip" category={TIP_CATEGORIES[day%TIP_CATEGORIES.length]} cardLabel="Daily tip"
         promptFn={cat=>'You are a knowledgeable health advisor. Give ONE practical tip about '+cat+'. 2-3 sentences. Specific and surprising. No fluff, no exclamation marks. Give a 2-4 word title. Format: TITLE: [title] TIP: [tip]'}
         fallback="Consistency over intensity. Showing up three times a week for a year will outperform any extreme program you can only stick to for a month." />
@@ -1145,6 +1224,8 @@ export default function App() {
   const [authLoading, setAuthLoading] = useState(true)
   const [tab, setTab] = useState('home')
   const [deepDive, setDeepDive] = useState(null)
+  const [pendingSession, setPendingSession] = useState(null) // { programId, phaseId, workoutId, warmupType }
+  const [liftDeepLink, setLiftDeepLink] = useState(null) // deep link into a specific workout
   const [savedItems, setSavedItems] = useState([])
   const [toast, setToast] = useState({ visible:false, message:'' })
 
@@ -1166,11 +1247,16 @@ export default function App() {
     return () => subscription.unsubscribe()
   }, [])
 
+  const [programs, setPrograms] = useState([])
+  const [recentSessions, setRecentSessions] = useState([])
+
   useEffect(() => {
     if (!session?.user) return
     const userId = session.user.id
     getProfile(userId).then(setProfile)
     getSavedItems(userId).then(setSavedItems)
+    getPrograms(userId).then(setPrograms).catch(()=>{})
+    getSessions(userId).then(setRecentSessions).catch(()=>{})
   }, [session])
 
   const handleSave = async (item) => {
@@ -1217,10 +1303,10 @@ export default function App() {
         </div>
       )}
       <div style={{ flex:1, overflowY:'auto', paddingBottom:80 }}>
-        {tab==='home'    && <HomeScreen onNav={setTab} savedItems={savedItems} profile={profile} userId={userId} />}
-        {tab==='move'    && <MoveScreen onSave={handleSave} />}
+        {tab==='home'    && <HomeScreen onNav={setTab} savedItems={savedItems} profile={profile} userId={userId} programs={programs} recentSessions={recentSessions} onStartWarmup={(info)=>{ setPendingSession(info); setTab('move') }} />}
+        {tab==='move'    && <MoveScreen onSave={handleSave} pendingSession={pendingSession} onClearPending={()=>setPendingSession(null)} onStartSession={(info)=>{ setPendingSession(null); setLiftDeepLink(info); setTab('lift') }} />}
         {tab==='eat'     && <EatScreen onSave={handleSave} userId={userId} />}
-        {tab==='lift'    && <LiftScreen userId={userId} userProfile={profile} onGoEat={()=>setTab('eat')} onGoMove={()=>setTab('move')} />}
+        {tab==='lift'    && <LiftScreen userId={userId} userProfile={profile} onGoEat={()=>setTab('eat')} onGoMove={()=>setTab('move')} deepLinkWorkout={liftDeepLink} onClearDeepLink={()=>setLiftDeepLink(null)} />}
         {tab==='more'    && <MoreScreen onNav={setTab} />}
         {tab==='pillars' && !deepDive && <PillarsScreen onDeepDive={handleDeepDive} />}
         {tab==='pillars' && deepDive  && <DeepDiveScreen prompt={deepDive} onBack={()=>setDeepDive(null)} />}
