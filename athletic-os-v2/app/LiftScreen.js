@@ -1474,12 +1474,16 @@ function ProgramsList({ programs, loading, activeProgramId, onSelectProgram, onN
     return (
       <div style={{ padding:'32px 24px' }}>
         {/* Mark */}
-        <div style={{ display:'flex', justifyContent:'center', marginBottom:28 }}>
+        <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:10, marginBottom:28 }}>
           <svg width="52" height="52" viewBox="0 0 52 52" fill="none">
             <circle cx="26" cy="26" r="22" stroke="var(--cream)" strokeWidth="1"/>
             <circle cx="26" cy="26" r="13" stroke="var(--cream)" strokeWidth="1" opacity=".3"/>
             <circle cx="26" cy="26" r="4.5" fill="var(--cream)"/>
           </svg>
+          <div style={{ fontFamily:"'Outfit', sans-serif", fontWeight:200, fontSize:20,
+            letterSpacing:'0.22em', textTransform:'uppercase', color:'var(--cream-dim)', paddingLeft:'0.22em' }}>
+            Hale
+          </div>
         </div>
 
         {/* Headline */}
