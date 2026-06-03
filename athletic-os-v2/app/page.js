@@ -126,14 +126,24 @@ const TIP_CATEGORIES  = ['sleep','nutrition','movement','recovery','mindset','pe
 const FACT_CATEGORIES = ['exercise science','nutrition science','sleep science','the human body','sports performance','longevity','mental health and exercise']
 
 // ─── API ──────────────────────────────────────────────────────────────────────
-async function callAI(prompt) {
-  const res = await fetch('/api/claude', {
-    method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({ prompt }),
-  })
-  const data = await res.json()
-  if (data.error) throw new Error(data.error)
-  return data.text
+async function callAI(prompt, timeoutMs = 25000) {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    const res = await fetch('/api/claude', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ prompt }),
+      signal: controller.signal,
+    })
+    const data = await res.json()
+    if (data.error) throw new Error(data.error)
+    return data.text
+  } catch(e) {
+    if (e.name === 'AbortError') throw new Error('timeout')
+    throw e
+  } finally {
+    clearTimeout(timer)
+  }
 }
 
 function buildTasteContext(mem) {
@@ -1140,13 +1150,19 @@ Variations:
       // Extract recipe name (first non-empty line) and track it
       const firstName = text.split('\n').map(l=>l.trim()).find(l=>l.length>0)
       if (firstName) setSuggestedNames(prev => [...prev.slice(-4), firstName])
-    } catch(e) { setResp('Something went wrong. Try again.') }
+    } catch(e) {
+      setResp(e.message === 'timeout'
+        ? 'Taking longer than usual. Check your connection and try again.'
+        : 'Something went wrong. Try again.')
+    }
     setLoading(false)
   }
 
   const adjust = async (type,name,currentRecipe) => {
     setAdjusting(true)
-    try { const text = await callAI(ADJUST_PROMPTS[type](name,currentRecipe)); setResp(text); setSaved(false) } catch(e) { setResp('Something went wrong.') }
+    try { const text = await callAI(ADJUST_PROMPTS[type](name,currentRecipe)); setResp(text); setSaved(false) } catch(e) {
+      setResp(e.message === 'timeout' ? 'Taking longer than usual. Try again.' : 'Something went wrong. Try again.')
+    }
     setAdjusting(false)
   }
 
@@ -1181,10 +1197,22 @@ Variations:
       <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom:4 }}>
         {VIBE_SUGGESTIONS.map(v=><button key={v} onClick={()=>setVibe(vibe===v?'':v)} style={{ padding:'4px 10px', borderRadius:20, fontSize:11, border:`0.5px solid ${T.border}`, background:vibe===v?T.text:T.surface2, color:vibe===v?T.bg:T.text3 }}>{v}</button>)}
       </div>
-      <PrimaryBtn onClick={()=>go(false)} disabled={loading||pantry.length===0}>{loading?'Finding something good...':'Get recipe ideas'}</PrimaryBtn>
+      <PrimaryBtn onClick={()=>go(false)} disabled={loading||pantry.length===0}>{loading?'Finding a great recipe...':'Get recipe ideas'}</PrimaryBtn>
       {loading&&<div style={{ marginTop:12 }}><LoadingDots /></div>}
-      {resp&&!loading&&<RecipeCard text={resp} onAdjust={adjust} adjusting={adjusting} />}
-      {resp&&!loading&&(
+      {resp&&!loading&&!resp.startsWith('Taking longer')&&!resp.startsWith('Something went wrong')&&<RecipeCard text={resp} onAdjust={adjust} adjusting={adjusting} />}
+      {resp&&!loading&&(resp.startsWith('Taking longer')||resp.startsWith('Something went wrong'))&&(
+        <div style={{ marginTop:16, background:T.surface, borderRadius:rr('md'), padding:'16px', border:`0.5px solid ${T.border}` }}>
+          <div style={{ fontSize:14, fontWeight:500, color:T.text, marginBottom:6 }}>
+            {resp.startsWith('Taking longer') ? 'Taking a moment...' : 'Something went wrong'}
+          </div>
+          <div style={{ fontSize:13, color:T.text2, marginBottom:14, lineHeight:1.6 }}>{resp}</div>
+          <button onClick={()=>go(false)} style={{ padding:'10px 20px', borderRadius:rr('sm'), border:'none',
+            background:'var(--cream)', color:'var(--bg)', fontSize:13, fontWeight:500, cursor:'pointer' }}>
+            Try again
+          </button>
+        </div>
+      )}
+      {resp&&!loading&&!resp.startsWith('Taking longer')&&!resp.startsWith('Something went wrong')&&(
         <div style={{ marginTop:12 }}>
           <div style={{ display:'flex', gap:8, marginBottom:8 }}>
             <button onClick={save} disabled={saved} style={{
@@ -1250,7 +1278,14 @@ function PillarsScreen({ onDeepDive }) {
 function DeepDiveScreen({ prompt, onBack }) {
   const [resp, setResp] = useState('')
   const [loading, setLoading] = useState(true)
-  useEffect(() => { callAI(prompt+'\n\nBe conversational, practical, and concise. No fluff.').then(setResp).catch(e=>setResp('Error: '+e.message)).finally(()=>setLoading(false)) }, [prompt])
+  useEffect(() => {
+    callAI(prompt+'\n\nBe conversational, practical, and concise. No fluff.')
+      .then(setResp)
+      .catch(e => setResp(e.message === 'timeout'
+        ? 'Taking a bit longer than usual. Go back and try again.'
+        : 'Something went wrong. Go back and try again.'))
+      .finally(()=>setLoading(false))
+  }, [prompt])
   return (
     <div style={{ padding:'20px 20px' }}>
       <button onClick={onBack} style={{ border:'none', background:'none', color:T.text2, fontSize:13, marginBottom:16, display:'flex', alignItems:'center', gap:4, padding:0 }}>Back to Pillars</button>
