@@ -94,7 +94,18 @@ export default function AuthScreen() {
       display:'flex', flexDirection:'column', justifyContent:'center', padding:'40px 24px' }}>
 
       <div style={{ marginBottom:40 }}>
-        <div style={{ fontSize:28, fontWeight:500, color:T.text, letterSpacing:-.5, marginBottom:6 }}>
+        <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:10, marginBottom:32 }}>
+          <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+            <circle cx="24" cy="24" r="20" stroke="var(--cream)" strokeWidth="1"/>
+            <circle cx="24" cy="24" r="12" stroke="var(--cream)" strokeWidth="1" opacity=".3"/>
+            <circle cx="24" cy="24" r="4" fill="var(--cream)"/>
+          </svg>
+          <div style={{ fontFamily:"'Outfit', sans-serif", fontWeight:200, fontSize:24,
+            letterSpacing:'0.22em', textTransform:'uppercase', color:'var(--cream)', paddingLeft:'0.22em' }}>
+            Hale
+          </div>
+        </div>
+        <div style={{ fontSize:24, fontWeight:500, color:T.text, letterSpacing:-.5, marginBottom:6 }}>
           {mode === 'setpassword' ? 'Set your password' : mode === 'signup' ? 'Create account' : 'Welcome back.'}
         </div>
         <div style={{ fontSize:14, color:T.text2 }}>
