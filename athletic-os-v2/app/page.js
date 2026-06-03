@@ -627,6 +627,188 @@ function SmartHomeCard({ programs, recentSessions, activeProgramId, onStartWarmu
   )
 }
 
+
+// ─── Onboarding flow ──────────────────────────────────────────────────────────
+function OnboardingFlow({ userId, onComplete }) {
+  const [step, setStep] = useState(0)
+  const [name, setName] = useState('')
+  const [identity, setIdentity] = useState('')
+  const [goal, setGoal] = useState('')
+  const [activity, setActivity] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  const steps = [
+    // Step 0 — Welcome
+    {
+      eyebrow: null,
+      title: 'Feel better without\noverthinking it.',
+      sub: 'A few quick questions to personalize your experience.',
+      content: null,
+      cta: 'Get started',
+    },
+    // Step 1 — Name
+    {
+      eyebrow: 'Step 1 of 3',
+      title: "What's your name?",
+      sub: null,
+      content: (
+        <input value={name} onChange={e=>setName(e.target.value)}
+          placeholder="First name"
+          autoFocus
+          style={{ width:'100%', padding:'14px', borderRadius:rr('md'), fontSize:16,
+            border:`1px solid ${T.border2}`, background:T.surface, color:T.text,
+            outline:'none', marginBottom:8 }} />
+      ),
+      cta: 'Continue',
+      canSkip: true,
+    },
+    // Step 2 — Identity
+    {
+      eyebrow: 'Step 2 of 3',
+      title: 'Who are you becoming?',
+      sub: 'Pick the one that resonates most.',
+      content: (
+        <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+          {IDENTITY_STATEMENTS.map(s => (
+            <button key={s} onClick={()=>setIdentity(s)} style={{
+              padding:'13px 16px', borderRadius:rr('md'), fontSize:14, textAlign:'left',
+              border:`1px solid ${identity===s?'var(--cream-dim)':T.border}`,
+              background: identity===s ? 'var(--cream-bg)' : T.surface,
+              color: identity===s ? 'var(--cream)' : T.text2,
+              fontWeight: identity===s ? 500 : 400, cursor:'pointer',
+              transition:'all .15s',
+            }}>{s}</button>
+          ))}
+        </div>
+      ),
+      cta: 'Continue',
+      canSkip: true,
+    },
+    // Step 3 — Goal + Activity
+    {
+      eyebrow: 'Step 3 of 3',
+      title: 'What are you focused on?',
+      sub: null,
+      content: (
+        <div>
+          <div style={{ fontSize:12, color:T.text3, marginBottom:8, letterSpacing:.2 }}>Training goal</div>
+          <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom:20 }}>
+            {GOALS.map(g => (
+              <button key={g} onClick={()=>setGoal(g)} style={{
+                padding:'8px 14px', borderRadius:20, fontSize:13, border:'none', cursor:'pointer',
+                background: goal===g ? 'var(--cream)' : T.surface2,
+                color: goal===g ? 'var(--bg)' : T.text2,
+                fontWeight: goal===g ? 500 : 400,
+              }}>{g}</button>
+            ))}
+          </div>
+          <div style={{ fontSize:12, color:T.text3, marginBottom:8, letterSpacing:.2 }}>How active are you?</div>
+          <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+            {ACTIVITY_LEVELS.map(a => (
+              <button key={a} onClick={()=>setActivity(a)} style={{
+                padding:'12px 14px', borderRadius:rr('md'), fontSize:13, textAlign:'left',
+                border:`1px solid ${activity===a?'var(--cream-dim)':T.border}`,
+                background: activity===a ? 'var(--cream-bg)' : T.surface,
+                color: activity===a ? 'var(--cream)' : T.text2,
+                cursor:'pointer',
+              }}>{a}</button>
+            ))}
+          </div>
+        </div>
+      ),
+      cta: "Let's go",
+      canSkip: false,
+    },
+  ]
+
+  const handleNext = async () => {
+    if (step < steps.length - 1) {
+      setStep(s => s + 1)
+      return
+    }
+    // Final step — save and complete
+    setSaving(true)
+    await saveProfile(userId, { name, identity, goal, activity })
+    setSaving(false)
+    onComplete({ name, identity, goal, activity })
+  }
+
+  const current = steps[step]
+  const canProceed = step === 0 || step === 3 ? true :
+    step === 1 ? true : // name is optional
+    step === 2 ? true : true // identity optional
+
+  return (
+    <div style={{ maxWidth:430, margin:'0 auto', minHeight:'100dvh', background:T.bg,
+      display:'flex', flexDirection:'column', padding:'0 24px' }}>
+
+      {/* Progress bar */}
+      {step > 0 && (
+        <div style={{ display:'flex', gap:4, padding:'52px 0 0' }}>
+          {[1,2,3].map(i => (
+            <div key={i} style={{ flex:1, height:2, borderRadius:2,
+              background: i <= step ? 'var(--cream)' : T.border,
+              transition:'background .3s' }} />
+          ))}
+        </div>
+      )}
+
+      <div style={{ flex:1, display:'flex', flexDirection:'column', justifyContent: step===0 ? 'center' : 'flex-start',
+        paddingTop: step===0 ? 0 : 32 }}>
+
+        {/* Eyebrow */}
+        {current.eyebrow && (
+          <div style={{ fontSize:11, color:T.text3, letterSpacing:.5, textTransform:'uppercase',
+            marginBottom:12, fontWeight:500 }}>{current.eyebrow}</div>
+        )}
+
+        {/* Title */}
+        <div style={{ fontSize: step===0 ? 32 : 26, fontWeight:400, color:T.text,
+          letterSpacing:-.5, lineHeight:1.25, marginBottom:current.sub?10:24,
+          whiteSpace:'pre-line' }}>{current.title}</div>
+
+        {/* Sub */}
+        {current.sub && (
+          <div style={{ fontSize:14, color:T.text2, marginBottom:24, lineHeight:1.6 }}>{current.sub}</div>
+        )}
+
+        {/* Content */}
+        {current.content && (
+          <div style={{ marginBottom:24 }}>{current.content}</div>
+        )}
+
+        {/* Welcome screen mark */}
+        {step === 0 && (
+          <div style={{ display:'flex', justifyContent:'center', marginBottom:48 }}>
+            <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
+              <circle cx="32" cy="32" r="28" stroke="var(--cream)" strokeWidth="1"/>
+              <circle cx="32" cy="32" r="17" stroke="var(--cream)" strokeWidth="1" opacity=".3"/>
+              <circle cx="32" cy="32" r="6" fill="var(--cream)"/>
+            </svg>
+          </div>
+        )}
+      </div>
+
+      {/* Bottom actions */}
+      <div style={{ paddingBottom:48 }}>
+        <button onClick={handleNext} disabled={saving} style={{
+          width:'100%', padding:'14px', borderRadius:rr('md'), border:'none',
+          background:'var(--cream)', color:'var(--bg)',
+          fontSize:15, fontWeight:600, cursor:'pointer', marginBottom:12,
+          opacity: saving ? .7 : 1,
+        }}>{saving ? 'Saving...' : current.cta}</button>
+
+        {current.canSkip && step > 0 && (
+          <button onClick={handleNext} style={{ width:'100%', padding:'10px', borderRadius:rr('md'),
+            border:'none', background:'none', color:T.text3, fontSize:13, cursor:'pointer' }}>
+            Skip
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ─── Screens ──────────────────────────────────────────────────────────────────
 function HomeScreen({ onNav, savedItems, profile, userId, programs, recentSessions, activeProgramId, onStartWarmup }) {
   const hour = new Date().getHours()
@@ -949,13 +1131,7 @@ Variations:
 
   return (
     <div style={{ padding:'20px 20px' }}>
-      <div style={{ display:'flex', gap:6, marginBottom:20 }}>
-        {[['cook','Cook'],['eatout','Eat out']].map(([mode,label])=>(
-          <button key={mode} onClick={()=>setEatMode(mode)} style={{ flex:1, padding:'9px', borderRadius:rr('sm'), fontSize:13, border:'none', cursor:'pointer', background:eatMode===mode?T.text:T.surface2, color:eatMode===mode?T.bg:T.text2, fontWeight:eatMode===mode?500:400 }}>{label}</button>
-        ))}
-      </div>
-      {eatMode==='eatout' && <EatOutScreen />}
-      {eatMode==='cook' && <div>
+      {true && <div>
       <PantryEditor pantry={pantry} onAdd={add} onRemove={remove} />
       <Divider />
       <PrefLabel>Effort level</PrefLabel>
@@ -995,7 +1171,7 @@ Variations:
           {saved && <div style={{ fontSize:12, color:T.text3, textAlign:'center', fontStyle:'italic' }}>Added to your rotation.</div>}
         </div>
       )}
-      </div>}
+      </div>
     </div>
   )
 }
@@ -1287,6 +1463,7 @@ export default function App() {
   const [session, setSession] = useState(null)
   const [authLoading, setAuthLoading] = useState(true)
   const [tab, setTab] = useState('home')
+  const [showOnboarding, setShowOnboarding] = useState(false)
   const [deepDive, setDeepDive] = useState(null)
   const [pendingSession, setPendingSession] = useState(null) // { programId, phaseId, workoutId, warmupType }
   const [liftDeepLink, setLiftDeepLink] = useState(null) // deep link into a specific workout
@@ -1318,7 +1495,13 @@ export default function App() {
   useEffect(() => {
     if (!session?.user) return
     const userId = session.user.id
-    getProfile(userId).then(setProfile)
+    getProfile(userId).then(p => {
+      setProfile(p)
+      // Show onboarding if profile is empty (new user)
+      if (!p || (!p.name && !p.goal && !p.identity)) {
+        setShowOnboarding(true)
+      }
+    })
     getSavedItems(userId).then(setSavedItems)
     getPrograms(userId).then(setPrograms).catch(()=>{})
     getSessions(userId).then(setRecentSessions).catch(()=>{})
@@ -1357,6 +1540,7 @@ export default function App() {
   }
 
   if (!session) return <AuthScreen />
+  if (showOnboarding) return <OnboardingFlow userId={session.user.id} onComplete={(profile) => { setProfile(profile); setShowOnboarding(false) }} />
 
   const userId = session.user.id
   const tb = TOPBAR[tab]
