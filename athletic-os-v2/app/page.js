@@ -779,12 +779,9 @@ function OnboardingFlow({ userId, onComplete }) {
 
         {/* Welcome screen mark */}
         {step === 0 && (
-          <div style={{ display:'flex', justifyContent:'center', marginBottom:48 }}>
-            <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
-              <circle cx="32" cy="32" r="28" stroke="var(--cream)" strokeWidth="1"/>
-              <circle cx="32" cy="32" r="17" stroke="var(--cream)" strokeWidth="1" opacity=".3"/>
-              <circle cx="32" cy="32" r="6" fill="var(--cream)"/>
-            </svg>
+          <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:12, marginBottom:48 }}>
+            <HaleMark size={72} />
+            <HaleWordmark size={28} />
           </div>
         )}
       </div>
@@ -805,6 +802,38 @@ function OnboardingFlow({ userId, onComplete }) {
           </button>
         )}
       </div>
+    </div>
+  )
+}
+
+
+// ─── Hale brand components ────────────────────────────────────────────────────
+function HaleMark({ size = 40, color = 'var(--cream)' }) {
+  const r1 = size * 0.42, r2 = size * 0.25, r3 = size * 0.087
+  const cx = size / 2, cy = size / 2
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} fill="none">
+      <circle cx={cx} cy={cy} r={r1} stroke={color} strokeWidth="1"/>
+      <circle cx={cx} cy={cy} r={r2} stroke={color} strokeWidth="1" opacity=".3"/>
+      <circle cx={cx} cy={cy} r={r3} fill={color}/>
+    </svg>
+  )
+}
+
+function HaleWordmark({ size = 32, color = 'var(--cream)' }) {
+  return (
+    <div style={{ fontFamily:"'Outfit', sans-serif", fontWeight:200, fontSize:size,
+      letterSpacing:'0.22em', textTransform:'uppercase', color, paddingLeft:'0.22em', lineHeight:1 }}>
+      Hale
+    </div>
+  )
+}
+
+function HaleLockup({ markSize = 28, wordSize = 22, color = 'var(--cream)', gap = 10 }) {
+  return (
+    <div style={{ display:'flex', alignItems:'center', gap }}>
+      <HaleMark size={markSize} color={color} />
+      <HaleWordmark size={wordSize} color={color} />
     </div>
   )
 }
@@ -854,6 +883,9 @@ function HomeScreen({ onNav, savedItems, profile, userId, programs, recentSessio
   return (
     <div style={{ padding:'32px 20px 20px' }}>
       <div style={{ marginBottom:24 }}>
+        <div style={{ marginBottom:16 }}>
+          <HaleLockup markSize={24} wordSize={18} color="var(--cream-dim)" gap={8} />
+        </div>
         <div style={{ fontSize:13, color:T.text3, marginBottom:6 }}>{greeting}</div>
         <div style={{ fontSize:28, fontWeight:400, color:T.text, letterSpacing:-.5, lineHeight:1.2 }}>Good day{name}.</div>
         <div style={{ fontSize:14, color:T.text2, marginTop:8 }}>Feel better without overthinking it.</div>
