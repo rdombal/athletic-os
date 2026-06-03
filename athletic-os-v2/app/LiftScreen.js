@@ -806,7 +806,7 @@ function SessionLogger({ workout, programId, phaseId, userId, profile, onGoEat, 
                 </div>
                 <div style={{ fontSize:12, color:T.text3 }}>
                   {targetSets} sets
-                  {setsLogged > 0 && !allDone && <span style={{ color:'var(--blue)', marginLeft:6 }}>{setsLogged}/{targetSets} logged</span>}
+                  {setsLogged > 0 && !allDone && <span style={{ color:'var(--cream)', marginLeft:6 }}>{setsLogged}/{targetSets} logged</span>}
                 </div>
               </div>
               <div style={{ fontSize:16, color:T.text3, transition:'transform .2s', transform:isExpanded?'rotate(180deg)':'none', marginLeft:8 }}>∨</div>
@@ -1259,7 +1259,7 @@ function UpNextCard({ nextUp, activeProgram, onSelectProgram }) {
             <div style={{ fontSize:18, fontWeight:500, color:T.text }}>{nextUp.workout.name}</div>
             <div style={{ fontSize:12, color:T.text2, marginTop:3, display:'flex', alignItems:'center', gap:6 }}>
               <span>{nextUp.phase.name} · {exercises.length} exercises</span>
-              <span style={{ color:expanded?'var(--blue)':T.text3, fontSize:11 }}>{expanded ? '▲ hide' : '▼ preview'}</span>
+              <span style={{ color:expanded?'var(--cream)':T.text3, fontSize:11 }}>{expanded ? '▲ hide' : '▼ preview'}</span>
             </div>
           </div>
         </div>
@@ -1528,7 +1528,7 @@ function WorkoutRow({ w, isNext, onStart }) {
           <div style={{ display:'flex', alignItems:'center', gap:6 }}>
             <div style={{ fontSize:11, color:T.text3 }}>{exercises.length} exercises</div>
             <div style={{ fontSize:11, color:T.text3, opacity:.5 }}>·</div>
-            <div style={{ fontSize:11, color: expanded ? 'var(--blue)' : T.text3 }}>
+            <div style={{ fontSize:11, color: expanded ? 'var(--cream)' : T.text3 }}>
               {expanded ? 'Hide preview ▲' : 'Preview ▼'}
             </div>
           </div>
