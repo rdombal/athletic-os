@@ -545,8 +545,8 @@ function InlineSetRow({ setNum, initial, lastSet, prevSet, isCurrent, onSave, on
         )}
         <button onClick={saved ? handleUndo : handleSave} style={{
           width:42, height:42, borderRadius:'50%', flexShrink:0, border:'none',
-          background: saved ? T.surface2 : (weight&&reps) ? 'var(--green-dim)' : T.surface2,
-          color: saved ? 'var(--green)' : (weight&&reps) ? '#fff' : T.text3,
+          background: saved ? T.surface2 : (weight&&reps) ? 'var(--cream)' : T.surface2,
+          color: saved ? 'var(--green)' : (weight&&reps) ? 'var(--bg)' : T.text3,
           fontSize: saved ? 18 : 16, cursor:'pointer',
           display:'flex', alignItems:'center', justifyContent:'center',
           boxShadow: (!saved&&weight&&reps) ? '0 2px 8px rgba(58,138,88,0.35)' : 'none',
@@ -892,8 +892,8 @@ function SessionLogger({ workout, programId, phaseId, userId, profile, onGoEat, 
       <div style={{ marginTop:16 }}>
         <button onClick={finishSession} style={{
           width:'100%', padding:'14px', borderRadius:rr('md'), border:'none',
-          background:'var(--green-dim)', color:'#fff', fontSize:15, fontWeight:600,
-          cursor:'pointer', boxShadow:'0 2px 6px rgba(0,0,0,0.3)', letterSpacing:.1,
+          background:'var(--cream)', color:'var(--bg)', fontSize:15, fontWeight:600,
+          cursor:'pointer', boxShadow:'0 2px 6px rgba(232,224,208,0.2)', letterSpacing:.1,
         }}>
           Finish session ✓
         </button>
@@ -1295,8 +1295,8 @@ function UpNextCard({ nextUp, activeProgram, onSelectProgram }) {
       <div style={{ padding:expanded?'0 16px 16px':'0 16px 16px' }}>
         <button onClick={()=>onSelectProgram(activeProgram, nextUp.workout, nextUp.phase.id)}
           style={{ width:'100%', padding:'13px', borderRadius:rr('md'), border:'none',
-            background:'var(--green-dim)', color:'#fff', fontSize:14, fontWeight:600,
-            cursor:'pointer', boxShadow:'0 1px 4px rgba(0,0,0,0.25)', letterSpacing:.1 }}>
+            background:'var(--cream)', color:'var(--bg)', fontSize:14, fontWeight:600,
+            cursor:'pointer', boxShadow:'0 1px 4px rgba(232,224,208,0.15)', letterSpacing:.1 }}>
           Start session →
         </button>
       </div>
@@ -1535,8 +1535,8 @@ function WorkoutRow({ w, isNext, onStart }) {
         </div>
         <button onClick={onStart} style={{
           padding:'8px 18px', borderRadius:rr('md'),
-          background: isNext ? 'var(--green-dim)' : 'transparent',
-          color: isNext ? '#fff' : T.text2,
+          background: isNext ? 'var(--cream)' : 'transparent',
+          color: isNext ? 'var(--bg)' : T.text2,
           fontSize:13, fontWeight:600, cursor:'pointer', flexShrink:0,
           border: isNext ? 'none' : `1px solid ${T.border2}`,
           boxShadow: isNext ? '0 1px 4px rgba(0,0,0,0.2)' : 'none',
@@ -1587,23 +1587,47 @@ function ProgramDetail({ program, lastWorkoutId, sessions, onBack, onEdit, onSta
         return { phaseId: firstPhaseWithWorkouts.id, workoutId: firstPhaseWithWorkouts.workouts[0].id }
       }
 
+      // Build a session count per workout to detect phase completion
+      // A phase is complete when each workout has been done (phase.weeks) times
+      const sessionCountByWorkout = {}
+      sessions.forEach(s => {
+        const wid = s.workoutId || s.workout_id
+        if (wid) sessionCountByWorkout[wid] = (sessionCountByWorkout[wid] || 0) + 1
+      })
+
+      // Check if a phase is fully complete based on weeks
+      const isPhaseComplete = (phase) => {
+        const workouts = phase.workouts || []
+        if (!workouts.length) return false
+        const requiredSessions = phase.weeks || 4
+        return workouts.every(w => (sessionCountByWorkout[w.id] || 0) >= requiredSessions)
+      }
+
+      // Find current phase and position
       for (let pi = 0; pi < phases.length; pi++) {
         const phase = phases[pi]
         const workouts = phase.workouts || []
         const idx = workouts.findIndex(w => w.id === lastWorkoutId)
         if (idx >= 0) {
-          if (idx + 1 < workouts.length) {
-            return { phaseId: phase.id, workoutId: workouts[idx + 1].id }
-          }
-          for (let ni = pi + 1; ni < phases.length; ni++) {
-            const nextPhaseWorkouts = phases[ni].workouts || []
-            if (nextPhaseWorkouts.length > 0) {
-              return { phaseId: phases[ni].id, workoutId: nextPhaseWorkouts[0].id }
+          // Check if this whole phase is complete
+          if (isPhaseComplete(phase)) {
+            // Move to next phase
+            for (let ni = pi + 1; ni < phases.length; ni++) {
+              const nextPhaseWorkouts = phases[ni].workouts || []
+              if (nextPhaseWorkouts.length > 0) {
+                return { phaseId: phases[ni].id, workoutId: nextPhaseWorkouts[0].id }
+              }
             }
+            // All phases done — loop back
+            return { phaseId: firstPhaseWithWorkouts.id, workoutId: firstPhaseWithWorkouts.workouts[0].id }
           }
-          return { phaseId: firstPhaseWithWorkouts.id, workoutId: firstPhaseWithWorkouts.workouts[0].id }
+
+          // Phase not complete — find next workout in rotation
+          const nextIdx = (idx + 1) % workouts.length
+          return { phaseId: phase.id, workoutId: workouts[nextIdx].id }
         }
       }
+
       return { phaseId: firstPhaseWithWorkouts.id, workoutId: firstPhaseWithWorkouts.workouts[0].id }
     } catch(e) {
       return null
