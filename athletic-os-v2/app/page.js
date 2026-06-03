@@ -25,14 +25,14 @@ const SECTION_COLORS = {
   feel:   { bg:'var(--purple-bg)', dot:'var(--purple-dim)' },
   eat:    { bg:'var(--green-bg)',  dot:'var(--green-dim)'  },
   play:   { bg:'var(--coral-bg)', dot:'var(--coral-dim)'  },
-  pillars:{ bg:'var(--blue-bg)',  dot:'var(--blue-dim)'   },
+  pillars:{ bg:'var(--cream-bg)',  dot:'var(--cream-dim)'   },
 }
 
 const PILLAR_COLORS = {
   purple:{ bg:'var(--purple-bg)', accent:'var(--purple)' },
   green: { bg:'var(--green-bg)',  accent:'var(--green)'  },
   amber: { bg:'var(--amber-bg)',  accent:'var(--amber)'  },
-  blue:  { bg:'var(--blue-bg)',   accent:'var(--blue)'   },
+  blue:  { bg:'var(--cream-bg)',   accent:'var(--cream)'   },
   coral: { bg:'var(--coral-bg)', accent:'var(--coral)'  },
   pink:  { bg:'var(--pink-bg)',   accent:'var(--pink)'   },
 }
@@ -278,19 +278,19 @@ function Toast({ message, visible }) {
 // ─── Daily cards ──────────────────────────────────────────────────────────────
 const CAT_COLORS = {
   sleep:'var(--purple-bg)', nutrition:'var(--green-bg)', movement:'var(--amber-bg)',
-  recovery:'var(--blue-bg)', mindset:'var(--pink-bg)', performance:'var(--coral-bg)',
-  hydration:'var(--blue-bg)', 'exercise science':'var(--coral-bg)',
+  recovery:'var(--cream-bg)', mindset:'var(--pink-bg)', performance:'var(--coral-bg)',
+  hydration:'var(--cream-bg)', 'exercise science':'var(--coral-bg)',
   'nutrition science':'var(--green-bg)', 'sleep science':'var(--purple-bg)',
   'the human body':'var(--amber-bg)', 'sports performance':'var(--coral-bg)',
-  'longevity':'var(--blue-bg)', 'mental health and exercise':'var(--pink-bg)'
+  'longevity':'var(--cream-bg)', 'mental health and exercise':'var(--pink-bg)'
 }
 const CAT_TEXT = {
   sleep:'var(--purple)', nutrition:'var(--green)', movement:'var(--amber)',
-  recovery:'var(--blue)', mindset:'var(--pink)', performance:'var(--coral)',
-  hydration:'var(--blue)', 'exercise science':'var(--coral)',
+  recovery:'var(--cream)', mindset:'var(--pink)', performance:'var(--coral)',
+  hydration:'var(--cream)', 'exercise science':'var(--coral)',
   'nutrition science':'var(--green)', 'sleep science':'var(--purple)',
   'the human body':'var(--amber)', 'sports performance':'var(--coral)',
-  'longevity':'var(--blue)', 'mental health and exercise':'var(--pink)'
+  'longevity':'var(--cream)', 'mental health and exercise':'var(--pink)'
 }
 
 function DailyCard({ userId, cacheKey, category, cardLabel, promptFn, fallback }) {
@@ -354,32 +354,69 @@ function usePantry(userId) {
 }
 
 // ─── Pantry editor ────────────────────────────────────────────────────────────
+const QUICK_ADD = [
+  '🥚 Eggs','🍗 Chicken','🥩 Ground beef','🐟 Salmon','🍖 Steak',
+  '🍚 Rice','🍝 Pasta','🥔 Potatoes','🫘 Beans','🌽 Corn',
+  '🥦 Broccoli','🥬 Spinach','🍅 Tomatoes','🧀 Cheese','🥛 Greek yogurt',
+  '🍌 Banana','🫐 Blueberries','🍠 Sweet potato','🥑 Avocado','🧇 Oats',
+]
+
 function PantryEditor({ pantry, onAdd, onRemove }) {
   const [input, setInput] = useState('')
   const [error, setError] = useState('')
-  const handleAdd = async () => {
-    if (!input.trim()) return
-    const ok = await onAdd(input)
+  const [showQuick, setShowQuick] = useState(pantry.length === 0)
+  const handleAdd = async (item) => {
+    const t = (item||input).trim().replace(/^\S+\s/, '') // strip emoji
+    if (!t) return
+    const ok = await onAdd(t)
     if (ok) { setInput(''); setError('') } else setError('Already in your pantry')
   }
+  const quickAvailable = QUICK_ADD.filter(q => {
+    const name = q.replace(/^\S+\s/, '').toLowerCase()
+    return !pantry.map(p=>p.toLowerCase()).includes(name)
+  })
   return (
     <div style={{ marginBottom:14 }}>
-      <PrefLabel>Your pantry — tap x to remove</PrefLabel>
-      <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom:10 }}>
-        {pantry.map(ing=>(
-          <div key={ing} style={{ display:'flex', alignItems:'center', gap:5, padding:'5px 10px', borderRadius:20, fontSize:12, background:T.surface2, color:T.text2 }}>
-            <span>{ing}</span>
-            <button onClick={()=>onRemove(ing)} style={{ border:'none', background:'none', color:T.text3, fontSize:12, padding:0, lineHeight:1, cursor:'pointer' }}>x</button>
+      {/* Current pantry */}
+      {pantry.length > 0 && (
+        <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom:10 }}>
+          {pantry.map(ing=>(
+            <div key={ing} style={{ display:'flex', alignItems:'center', gap:5, padding:'6px 10px', borderRadius:20, fontSize:13, background:T.surface2, color:T.text }}>
+              <span>{ing}</span>
+              <button onClick={()=>onRemove(ing)} style={{ border:'none', background:'none', color:T.text3, fontSize:14, padding:0, lineHeight:1, cursor:'pointer' }}>×</button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Quick add chips */}
+      {showQuick && quickAvailable.length > 0 && (
+        <div style={{ marginBottom:10 }}>
+          <div style={{ fontSize:11, color:T.text3, marginBottom:6 }}>Quick add</div>
+          <div style={{ display:'flex', flexWrap:'wrap', gap:5 }}>
+            {quickAvailable.slice(0,12).map(q=>(
+              <button key={q} onClick={()=>handleAdd(q)} style={{
+                padding:'5px 11px', borderRadius:20, fontSize:12, cursor:'pointer',
+                border:`0.5px solid ${T.border}`, background:T.surface, color:T.text2,
+              }}>{q}</button>
+            ))}
           </div>
-        ))}
-      </div>
+        </div>
+      )}
+
+      {/* Text input */}
       <div style={{ display:'flex', gap:6 }}>
         <input value={input} onChange={e=>{ setInput(e.target.value); setError('') }}
-          onKeyDown={e=>e.key==='Enter'&&handleAdd()} placeholder="Add an ingredient..."
-          style={{ flex:1, padding:'8px 12px', borderRadius:rr('sm'), fontSize:13, border:`0.5px solid ${T.border}`, background:T.surface, color:T.text, outline:'none' }} />
-        <button onClick={handleAdd} style={{ padding:'8px 14px', borderRadius:rr('sm'), fontSize:13, border:'none', background:T.text, color:T.bg, fontWeight:500 }}>Add</button>
+          onKeyDown={e=>e.key==='Enter'&&handleAdd()} placeholder="Add anything else..."
+          style={{ flex:1, padding:'9px 12px', borderRadius:rr('sm'), fontSize:13, border:`0.5px solid ${T.border}`, background:T.surface, color:T.text, outline:'none' }} />
+        <button onClick={()=>handleAdd()} style={{ padding:'9px 14px', borderRadius:rr('sm'), fontSize:13, border:'none', background:T.text, color:T.bg, fontWeight:500, cursor:'pointer' }}>Add</button>
       </div>
       {error && <div style={{ fontSize:11, color:'var(--coral)', marginTop:4 }}>{error}</div>}
+      {pantry.length > 0 && (
+        <button onClick={()=>setShowQuick(v=>!v)} style={{ marginTop:8, border:'none', background:'none', color:T.text3, fontSize:12, padding:0, cursor:'pointer' }}>
+          {showQuick ? 'Hide suggestions' : '+ Quick add more'}
+        </button>
+      )}
     </div>
   )
 }
@@ -410,7 +447,7 @@ function RecipeCard({ text, onAdjust, adjusting }) {
       {steps.length>0&&<div style={{ padding:'12px 16px', borderBottom:`0.5px solid ${T.border}` }}><div style={{ fontSize:11, fontWeight:500, color:T.text3, letterSpacing:.6, textTransform:'uppercase', marginBottom:8 }}>Steps</div>{steps.map((step,i)=><div key={i} style={{ display:'flex', gap:10, marginBottom:8, alignItems:'flex-start' }}><div style={{ width:20, height:20, borderRadius:'50%', background:T.surface2, display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:500, color:T.text2, flexShrink:0 }}>{i+1}</div><div style={{ fontSize:13, color:T.text, lineHeight:1.5 }}>{step.replace(/^\d+[\.\)]\s*/,'').replace(/^[-*]\s*/,'')}</div></div>)}</div>}
       {Object.keys(macros).length>0&&<div style={{ padding:'10px 16px', borderBottom:varLines.length>0||onAdjust?`0.5px solid ${T.border}`:'none' }}>
         <button onClick={()=>setShowMacros(v=>!v)} style={{ background:'none', border:'none', color:T.text3, fontSize:12, padding:0, cursor:'pointer', display:'flex', alignItems:'center', gap:6 }}>
-          <span>Nutrition info</span>
+          <span>Macros</span>
           <span style={{ fontSize:10 }}>{showMacros?'▲':'▼'}</span>
         </button>
         {showMacros && <div style={{ display:'flex', gap:8, marginTop:10 }}>{macros.cal&&<div style={{ flex:1, background:T.surface2, borderRadius:rr('sm'), padding:'8px 6px', textAlign:'center' }}><div style={{ fontSize:15, fontWeight:500, color:T.text }}>{macros.cal}</div><div style={{ fontSize:10, color:T.text3, marginTop:2 }}>cal</div></div>}{macros.protein&&<div style={{ flex:1, background:T.surface2, borderRadius:rr('sm'), padding:'8px 6px', textAlign:'center' }}><div style={{ fontSize:15, fontWeight:500, color:T.text }}>{macros.protein}g</div><div style={{ fontSize:10, color:T.text3, marginTop:2 }}>protein</div></div>}{macros.carbs&&<div style={{ flex:1, background:T.surface2, borderRadius:rr('sm'), padding:'8px 6px', textAlign:'center' }}><div style={{ fontSize:15, fontWeight:500, color:T.text }}>{macros.carbs}g</div><div style={{ fontSize:10, color:T.text3, marginTop:2 }}>carbs</div></div>}{macros.fat&&<div style={{ flex:1, background:T.surface2, borderRadius:rr('sm'), padding:'8px 6px', textAlign:'center' }}><div style={{ fontSize:15, fontWeight:500, color:T.text }}>{macros.fat}g</div><div style={{ fontSize:10, color:T.text3, marginTop:2 }}>fat</div></div>}</div>}
@@ -572,7 +609,7 @@ function SmartHomeCard({ programs, recentSessions, activeProgramId, onStartWarmu
   return (
     <div style={{ background:T.surface, borderRadius:rr('lg'), marginBottom:16, overflow:'hidden', border:`0.5px solid ${T.border}` }}>
       <div style={{ padding:'16px 16px 12px' }}>
-        <div style={{ fontSize:11, color:'var(--blue)', fontWeight:600, letterSpacing:.5, textTransform:'uppercase', marginBottom:6 }}>{timeLabel}</div>
+        <div style={{ fontSize:11, color:'var(--cream)', fontWeight:600, letterSpacing:.5, textTransform:'uppercase', marginBottom:6 }}>{timeLabel}</div>
         <div style={{ fontSize:17, fontWeight:500, color:T.text, marginBottom:4 }}>{nextWorkout.name}</div>
         <div style={{ fontSize:12, color:T.text3, marginBottom:14 }}>{activeProgram.name} · {nextPhase.name}</div>
         <div style={{ display:'flex', gap:8 }}>
@@ -598,7 +635,7 @@ function HomeScreen({ onNav, savedItems, profile, userId, programs, recentSessio
   const tiles = [
     { tab:'move',    label:'Move',         desc:'Mobility & warmups',          iconColor:'var(--green)',   iconBg:'var(--green-bg)'   },
     { tab:'eat',     label:'Eat',          desc:'Recipes, your ingredients',   iconColor:'var(--amber)',   iconBg:'var(--amber-bg)'   },
-    { tab:'lift',    label:'Lift',         desc:'Programs & sessions',         iconColor:'var(--blue)',    iconBg:'var(--blue-bg)'    },
+    { tab:'lift',    label:'Lift',         desc:'Programs & sessions',         iconColor:'var(--cream)',    iconBg:'var(--cream-bg)'    },
     { tab:'stack',   label:'Your Rotation',desc:'Saved meals & routines',      iconColor:'var(--purple)',  iconBg:'var(--purple-bg)'  },
   ]
 
@@ -641,7 +678,7 @@ function HomeScreen({ onNav, savedItems, profile, userId, programs, recentSessio
       </div>
 
       {isNewUser && (
-        <div style={{ background:T.surface, borderRadius:rr('md'), padding:'16px', marginBottom:20, borderLeft:`3px solid var(--blue)` }}>
+        <div style={{ background:T.surface, borderRadius:rr('md'), padding:'16px', marginBottom:20, borderLeft:`3px solid var(--cream)` }}>
           <div style={{ fontSize:14, fontWeight:500, color:T.text, marginBottom:4 }}>Welcome.</div>
           <div style={{ fontSize:13, color:T.text2, lineHeight:1.6, marginBottom:12 }}>Your personal health and performance app. Movement, meals, and lifting — all in one place, without the overwhelm.</div>
           <div style={{ display:'flex', gap:8 }}>
@@ -700,13 +737,13 @@ const CURATED_SPOTS = {
 
 const TAG_META = {
   'high-protein':      { bg:'var(--green-bg)',  text:'var(--green)',  label:'High protein'      },
-  'local-favorite':    { bg:'var(--blue-bg)',   text:'var(--blue)',   label:'Local favorite'    },
+  'local-favorite':    { bg:'var(--cream-bg)',   text:'var(--cream)',   label:'Local favorite'    },
   'farm-to-table':     { bg:'var(--green-bg)',  text:'var(--green)',  label:'Farm to table'     },
   'chef-driven':       { bg:'var(--purple-bg)', text:'var(--purple)', label:'Chef driven'       },
   'worth-the-splurge': { bg:'var(--amber-bg)',  text:'var(--amber)',  label:'Worth the splurge' },
   'post-workout':      { bg:'var(--green-bg)',  text:'var(--green)',  label:'Post-workout'      },
-  'macro-friendly':    { bg:'var(--blue-bg)',   text:'var(--blue)',   label:'Macro friendly'    },
-  'light-and-fresh':   { bg:'var(--blue-bg)',   text:'var(--blue)',   label:'Light & fresh'     },
+  'macro-friendly':    { bg:'var(--cream-bg)',   text:'var(--cream)',   label:'Macro friendly'    },
+  'light-and-fresh':   { bg:'var(--cream-bg)',   text:'var(--cream)',   label:'Light & fresh'     },
   'hidden-gem':        { bg:'var(--coral-bg)',  text:'var(--coral)',  label:'Hidden gem'        },
   'locally-owned':     { bg:'var(--purple-bg)', text:'var(--purple)', label:'Locally owned'     },
 }
@@ -823,32 +860,46 @@ function EatScreen({ onSave, userId }) {
       : ''
     const cuisineNote = cuisine ? `Cuisine direction: ${cuisine}\n` : ''
     const techNote = TECHNIQUES[Math.floor(Math.random()*TECHNIQUES.length)]
-    return `You are a skilled home cook helping someone eat well and actually enjoy their food. Sound like a knowledgeable friend giving a real recipe — not a meal prep slop bowl.
+    return `You are a skilled home cook who genuinely loves food. Your job is to suggest ONE recipe that someone will look at and immediately think "I want to make that tonight."
+
+The recipe must be:
+- Something a normal person would actually cook on a weeknight — not a restaurant project
+- Built around ingredients that genuinely go well together — never force an ingredient that doesn't belong
+- Specific and crave-worthy in name and execution — not generic or bland
+- The kind of thing a friend would text you after making: "dude this was so good"
+
+Think of the best recipes you see on food TikTok or Instagram — not the weird ones, the ones that go viral because they look achievable AND delicious. Birria tacos. Marry me chicken. Crispy rice with spicy tuna. One pan lemon butter salmon. Those have a hook AND they actually taste incredible.
 ${tasteCtx}${profileCtx}
-Main ingredients (proteins and bases): ${pantry.join(', ')}
-Assumed pantry staples always available: ${ASSUMED_STAPLES}
+Available ingredients (use what makes sense, ignore what doesn't fit): ${pantry.join(', ')}
+Pantry staples always available: ${ASSUMED_STAPLES}
 Meal: ${meal}
 Effort: ${effortDesc[effort]}
-Vibe: ${vibe||'tasty, satisfying, something I would actually want to eat'}
-${cuisineNote}Cooking technique to try: ${techNote}
-${avoidNote}
+Vibe: ${vibe||'delicious, satisfying, something I would genuinely be excited to eat'}
+${cuisineNote}${avoidNote}
 
-Give ONE recipe that feels like something from a good casual restaurant — not a bland bowl. Use the main ingredients as the base and enhance freely with assumed staples. The result should taste like a real dish with a name, not just "protein + carb."
+Rules:
+- Pick the protein and base that make the most sense from what's available — do not combine ingredients that don't belong together
+- The name must be specific and make someone hungry just reading it ("Crispy Garlic Butter Chicken Thighs with Lemon Pan Sauce" not "Garlic Chicken")
+- Steps must be clear enough that a confident home cook can execute without second-guessing
+- Include the one technique detail that makes the dish actually good — the hard sear, the sauce reduction, the resting time
+- Macros should be realistic estimates, not inflated
+- Variations should be genuinely different — different protein, different cuisine spin, different cooking method
 
-IMPORTANT: No markdown. No # symbols. Plain text only. Recipe name goes on the FIRST LINE with no prefix.
+IMPORTANT: No markdown, no # symbols, plain text only. Recipe name on the FIRST LINE with no prefix.
 
-Format exactly like this:
+Format exactly:
 
-[Creative recipe name]
+[Specific crave-worthy recipe name]
 
 Ingredients:
 - [amount] [ingredient]
 
 Steps:
-1. [One punchy line. They know how to cook.]
-2. [One line.]
-3. [One line.]
-4. [One line.]
+1. [Clear, specific step with the key detail that makes it work]
+2. [One line]
+3. [One line]
+4. [One line]
+5. [The finishing touch]
 
 Macros per serving:
 Calories: [number]
@@ -857,8 +908,8 @@ Carbs: [number]g
 Fat: [number]g
 
 Variations:
-- [One-line twist that changes the whole vibe]
-- [Another quick variation]
+- [Genuinely different spin — different protein, cuisine, or cooking method]
+- [Another real variation]
 - [One more]`
   }
 
@@ -899,7 +950,7 @@ Variations:
   return (
     <div style={{ padding:'20px 20px' }}>
       <div style={{ display:'flex', gap:6, marginBottom:20 }}>
-        {[['cook','Cook at home'],['eatout','Eat out']].map(([mode,label])=>(
+        {[['cook','Cook'],['eatout','Eat out']].map(([mode,label])=>(
           <button key={mode} onClick={()=>setEatMode(mode)} style={{ flex:1, padding:'9px', borderRadius:rr('sm'), fontSize:13, border:'none', cursor:'pointer', background:eatMode===mode?T.text:T.surface2, color:eatMode===mode?T.bg:T.text2, fontWeight:eatMode===mode?500:400 }}>{label}</button>
         ))}
       </div>
@@ -925,13 +976,25 @@ Variations:
       <PrimaryBtn onClick={()=>go(false)} disabled={loading||pantry.length===0}>{loading?'Finding something good...':'Get recipe ideas'}</PrimaryBtn>
       {loading&&<div style={{ marginTop:12 }}><LoadingDots /></div>}
       {resp&&!loading&&<RecipeCard text={resp} onAdjust={adjust} adjusting={adjusting} />}
-      {resp&&!loading&&<div style={{ marginTop:10 }}>
-        <button onClick={save} style={{ width:'100%', padding:'11px', borderRadius:rr('md'), border:'none', background:saved?T.surface2:'var(--green-dim)', color:saved?'var(--green)':'#fff', fontSize:14, fontWeight:500, cursor:'pointer', marginBottom:8 }}>
-          {saved ? '✓ Added to your rotation' : '＋ Save this meal'}
-        </button>
-        {saved && <div style={{ fontSize:12, color:T.text3, textAlign:'center', fontStyle:'italic', marginBottom:8 }}>Simple meals repeated consistently make a huge difference.</div>}
-        <button onClick={()=>go(true)} style={{ width:'100%', padding:'9px', borderRadius:rr('md'), border:`0.5px solid ${T.border}`, background:'transparent', color:T.text2, fontSize:13, cursor:'pointer' }}>Not quite — try something different</button>
-      </div>}
+      {resp&&!loading&&(
+        <div style={{ marginTop:12 }}>
+          <div style={{ display:'flex', gap:8, marginBottom:8 }}>
+            <button onClick={save} disabled={saved} style={{
+              flex:1, padding:'12px', borderRadius:rr('md'), border:'none',
+              background:saved?T.surface2:'var(--green-dim)', color:saved?'var(--green)':'#fff',
+              fontSize:14, fontWeight:500, cursor:saved?'default':'pointer',
+            }}>
+              {saved ? '✓ Saved' : '＋ Save'}
+            </button>
+            <button onClick={()=>go(true)} style={{
+              flex:1, padding:'12px', borderRadius:rr('md'),
+              border:`0.5px solid ${T.border}`, background:'transparent',
+              color:T.text2, fontSize:13, cursor:'pointer',
+            }}>Try another</button>
+          </div>
+          {saved && <div style={{ fontSize:12, color:T.text3, textAlign:'center', fontStyle:'italic' }}>Added to your rotation.</div>}
+        </div>
+      )}
       </div>}
     </div>
   )
