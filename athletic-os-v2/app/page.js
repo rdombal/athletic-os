@@ -264,7 +264,7 @@ function Toast({ message, visible }) {
   return (
     <div style={{
       position:'fixed', bottom:90, left:'50%', transform:'translateX(-50%)',
-      background:'var(--green-dim)', color:'#fff', padding:'10px 20px',
+      background:'var(--cream)', color:'var(--bg)', padding:'10px 20px',
       borderRadius:20, fontSize:13, fontWeight:500, zIndex:500,
       animation:'slideUp .2s ease-out',
       boxShadow:'0 4px 20px rgba(0,0,0,0.3)',
@@ -542,7 +542,7 @@ function SomethingSmallCard({ onNav }) {
       <div style={{ fontSize:13, color:T.text2, lineHeight:1.6, marginBottom:12 }}>
         No need to catch up or do everything at once. How about {suggestion.text}?
       </div>
-      <button onClick={()=>onNav(suggestion.action)} style={{ padding:'8px 18px', borderRadius:20, border:'none', background:'var(--green-dim)', color:'#fff', fontSize:13, fontWeight:500, cursor:'pointer' }}>
+      <button onClick={()=>onNav(suggestion.action)} style={{ padding:'8px 18px', borderRadius:20, border:'none', background:'var(--cream)', color:'var(--bg)', fontSize:13, fontWeight:500, cursor:'pointer' }}>
         {suggestion.btn}
       </button>
     </div>
@@ -614,7 +614,7 @@ function SmartHomeCard({ programs, recentSessions, activeProgramId, onStartWarmu
         <div style={{ fontSize:12, color:T.text3, marginBottom:14 }}>{activeProgram.name} · {nextPhase.name}</div>
         <div style={{ display:'flex', gap:8 }}>
           <button onClick={()=>onStartWarmup({ programId:activeProgram.id, phaseId:nextPhase.id, workoutId:nextWorkout.id, workoutName:nextWorkout.name, warmupType })}
-            style={{ flex:1, padding:'11px', borderRadius:rr('md'), border:'none', background:'var(--green-dim)', color:'#fff', fontSize:13, fontWeight:600, cursor:'pointer' }}>
+            style={{ flex:1, padding:'11px', borderRadius:rr('md'), border:'none', background:'var(--cream)', color:'var(--bg)', fontSize:13, fontWeight:600, cursor:'pointer' }}>
             Start with warmup →
           </button>
           <button onClick={()=>onNav('lift')}
@@ -707,7 +707,7 @@ function HomeScreen({ onNav, savedItems, profile, userId, programs, recentSessio
           </button>
         ))}
       </div>
-      <LowEnergyCard onNav={onNav} />
+
     </div>
   )
 }
@@ -981,7 +981,7 @@ Variations:
           <div style={{ display:'flex', gap:8, marginBottom:8 }}>
             <button onClick={save} disabled={saved} style={{
               flex:1, padding:'12px', borderRadius:rr('md'), border:'none',
-              background:saved?T.surface2:'var(--green-dim)', color:saved?'var(--green)':'#fff',
+              background:saved?T.surface2:'var(--cream)', color:saved?'var(--green)':'var(--bg)',
               fontSize:14, fontWeight:500, cursor:saved?'default':'pointer',
             }}>
               {saved ? '✓ Saved' : '＋ Save'}
@@ -1181,7 +1181,7 @@ function StackScreen({ items, onDelete, onRename }) {
                     style={{ flex:1, padding:'6px 10px', borderRadius:rr('sm'), border:`1px solid ${T.border2}`, background:T.surface2, color:T.text, fontSize:14, outline:'none' }}
                   />
                   <button onClick={()=>{ onRename(item.id,editingLabel); setEditingId(null) }}
-                    style={{ border:'none', background:'var(--green-dim)', color:'#fff', borderRadius:rr('sm'), padding:'6px 12px', fontSize:12, fontWeight:500, cursor:'pointer', flexShrink:0 }}>Save</button>
+                    style={{ border:'none', background:'var(--cream)', color:'var(--bg)', borderRadius:rr('sm'), padding:'6px 12px', fontSize:12, fontWeight:500, cursor:'pointer', flexShrink:0 }}>Save</button>
                   <button onClick={()=>setEditingId(null)}
                     style={{ border:'none', background:'none', color:T.text3, fontSize:12, cursor:'pointer', flexShrink:0 }}>✕</button>
                 </div>
