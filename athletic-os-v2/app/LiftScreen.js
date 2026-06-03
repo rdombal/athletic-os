@@ -1472,9 +1472,56 @@ function ProgramsList({ programs, loading, activeProgramId, onSelectProgram, onN
   if (loading) return <div style={{ padding:20 }}><LoadingDots /></div>
   if (programs.length===0) {
     return (
-      <div style={{ padding:'20px 20px' }}>
-        <EmptyState message="No programs yet." sub="Build your first one to get started." />
-        <FullBtn onClick={onNewProgram}>+ New program</FullBtn>
+      <div style={{ padding:'32px 24px' }}>
+        {/* Mark */}
+        <div style={{ display:'flex', justifyContent:'center', marginBottom:28 }}>
+          <svg width="52" height="52" viewBox="0 0 52 52" fill="none">
+            <circle cx="26" cy="26" r="22" stroke="var(--cream)" strokeWidth="1"/>
+            <circle cx="26" cy="26" r="13" stroke="var(--cream)" strokeWidth="1" opacity=".3"/>
+            <circle cx="26" cy="26" r="4.5" fill="var(--cream)"/>
+          </svg>
+        </div>
+
+        {/* Headline */}
+        <div style={{ fontSize:24, fontWeight:400, color:T.text, letterSpacing:-.3, marginBottom:12, textAlign:'center' }}>
+          Track your lifting.
+        </div>
+        <div style={{ fontSize:14, color:T.text2, lineHeight:1.7, textAlign:'center', marginBottom:32 }}>
+          The biggest needle mover for building muscle is progressive overload — knowing what you lifted last time and doing a little more. This tab handles that automatically.
+        </div>
+
+        {/* Three value props */}
+        {[
+          { icon:'↑', label:'Progressive overload', desc:'The app remembers your weights and reps so you always know what to beat.' },
+          { icon:'⇄', label:'Flexible mid-session', desc:'Swap or add exercises on the fly if equipment is unavailable or you want to change it up.' },
+          { icon:'◎', label:'Track progress over time', desc:'See your strength trending up by phase and rep range — no false regressions.' },
+        ].map((item, i) => (
+          <div key={i} style={{ display:'flex', gap:14, marginBottom:20, alignItems:'flex-start' }}>
+            <div style={{ width:36, height:36, borderRadius:10, background:T.surface, border:`0.5px solid ${T.border}`,
+              display:'flex', alignItems:'center', justifyContent:'center', fontSize:16, color:'var(--cream)', flexShrink:0 }}>
+              {item.icon}
+            </div>
+            <div>
+              <div style={{ fontSize:13, fontWeight:500, color:T.text, marginBottom:3 }}>{item.label}</div>
+              <div style={{ fontSize:12, color:T.text3, lineHeight:1.6 }}>{item.desc}</div>
+            </div>
+          </div>
+        ))}
+
+        <div style={{ height:'0.5px', background:T.border, margin:'24px 0' }} />
+
+        {/* CTAs */}
+        <div style={{ fontSize:13, color:T.text2, marginBottom:16, textAlign:'center', lineHeight:1.6 }}>
+          You can build your own program or use one that a coach has set up for you.
+        </div>
+        <button onClick={onNewProgram} style={{
+          width:'100%', padding:'14px', borderRadius:rr('md'), border:'none',
+          background:'var(--cream)', color:'var(--bg)',
+          fontSize:14, fontWeight:600, cursor:'pointer', marginBottom:10,
+        }}>Build a program</button>
+        <div style={{ fontSize:12, color:T.text3, textAlign:'center', lineHeight:1.6 }}>
+          Have a program from a coach? Ask them to add it to your account.
+        </div>
       </div>
     )
   }
