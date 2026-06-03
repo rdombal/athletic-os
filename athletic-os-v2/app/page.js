@@ -1131,7 +1131,7 @@ Variations:
 
   return (
     <div style={{ padding:'20px 20px' }}>
-      {true && <div>
+      <div>
       <PantryEditor pantry={pantry} onAdd={add} onRemove={remove} />
       <Divider />
       <PrefLabel>Effort level</PrefLabel>
