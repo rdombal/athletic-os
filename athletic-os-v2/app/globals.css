@@ -6,34 +6,47 @@
 }
 
 :root {
-  --bg:         #0B1120;
-  --surface:    #121D35;
-  --surface2:   #0E1628;
-  --surface3:   #162040;
-  --border:     #243660;
-  --border2:    #2E4470;
-  --text:       #E0E8F8;
-  --text2:      #9AB0D0;
-  --text3:      #7A90B8;
+  /* ─── Base surfaces — slate/charcoal ─────────────────────────── */
+  --bg:         #141618;
+  --surface:    #1c1f22;
+  --surface2:   #181b1e;
+  --surface3:   #202428;
+  --border:     #282c30;
+  --border2:    #32373c;
+  --text:       #eaecee;
+  --text2:      #8a949e;
+  --text3:      #5a6470;
 
-  --green-bg:   #0A2018;
-  --green:      #5DC48A;
-  --green-dim:  #3A8A58;
-  --blue-bg:    #0A1830;
-  --blue:       #6AAAF8;
-  --blue-dim:   #3A72C8;
-  --amber-bg:   #1E1205;
-  --amber:      #E8A030;
-  --amber-dim:  #B07820;
-  --coral-bg:   #201008;
-  --coral:      #F0907A;
-  --coral-dim:  #B04830;
-  --purple-bg:  #120E30;
-  --purple:     #9B93E8;
-  --purple-dim: #6050C0;
-  --pink-bg:    #1E0A18;
-  --pink:       #E890B8;
-  --pink-dim:   #B04880;
+  /* ─── Brand accent — warm cream/white ───────────────────────── */
+  --cream:      #e8e0d0;
+  --cream-dim:  #c8b898;
+  --cream-bg:   rgba(232,224,208,0.08);
+
+  /* ─── Functional — green (success, completed) ────────────────── */
+  --green-bg:   rgba(74,122,88,0.12);
+  --green:      #7aaa88;
+  --green-dim:  #4a7a58;
+
+  /* ─── Functional — amber (current/active state) ──────────────── */
+  --amber-bg:   rgba(200,160,80,0.1);
+  --amber:      #d4a843;
+  --amber-dim:  #b08828;
+
+  /* ─── Functional — coral (errors, delete) ────────────────────── */
+  --coral-bg:   rgba(200,100,80,0.1);
+  --coral:      #e08070;
+  --coral-dim:  #b05040;
+
+  /* ─── Content colors — Pillars, categories ───────────────────── */
+  --blue-bg:    rgba(90,110,180,0.1);
+  --blue:       #8899cc;
+  --blue-dim:   #5a6aaa;
+  --purple-bg:  rgba(120,100,180,0.1);
+  --purple:     #aa99cc;
+  --purple-dim: #7060aa;
+  --pink-bg:    rgba(180,100,140,0.1);
+  --pink:       #cc88aa;
+  --pink-dim:   #aa5878;
 
   --radius-sm:  8px;
   --radius-md:  12px;
