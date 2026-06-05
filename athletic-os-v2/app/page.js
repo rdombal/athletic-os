@@ -501,7 +501,6 @@ function LowEnergyCard({ onNav, onNavMove, onNavEat }) {
           {[
             { label:'5-min mobility flow',   sub:'Tap an area, get moving in seconds', action: ()=>{ onNavMove?.() || onNav('move'); setDismissed(true) } },
             { label:'Easy meal idea',         sub:'Low effort, simple, no stress',      action: ()=>{ onNavEat?.() || onNav('eat'); setDismissed(true) } },
-            { label:'Read a pillar',          sub:'Sometimes just learning counts',     action: ()=>{ onNav('pillars'); setDismissed(true) } },
           ].map((item,i) => (
             <div key={i} onClick={item.action}
               style={{ display:'flex', justifyContent:'space-between', alignItems:'center',
@@ -1295,57 +1294,109 @@ function DeepDiveScreen({ prompt, onBack }) {
 }
 
 function ProfileScreen({ userId, onSaved, onNav }) {
-  const [profile, setProfile] = useState({ name:'', goal:'Athletic performance', activity:'Very active (5+/week)', calories:'', protein:'', notes:'' })
+  const [profile, setProfile] = useState({
+    name:'', age:'', gender:'', location:'',
+    goal:'', activity:'', experience:'',
+    protein:'', calories:'',
+    sports:'', notes:''
+  })
   const [saved, setSaved] = useState(false)
   const [loading, setLoading] = useState(true)
-  useEffect(() => { if (userId) getProfile(userId).then(p=>{ setProfile(p); setLoading(false) }) }, [userId])
+  useEffect(() => { if (userId) getProfile(userId).then(p=>{ setProfile(p||{}); setLoading(false) }) }, [userId])
   const update = (key,val) => setProfile(p=>({ ...p, [key]:val }))
   const handleSave = async () => {
     await saveProfile(userId, profile)
     setSaved(true); setTimeout(()=>setSaved(false),2000)
     if (onSaved) onSaved(profile)
   }
-  const isFirstSave = !profile.goal && !profile.name
   if (loading) return <div style={{ padding:20 }}><LoadingDots /></div>
+
+  const Section = ({ label }) => (
+    <div style={{ fontSize:10, color:T.text3, letterSpacing:.6, textTransform:'uppercase', fontWeight:500, marginBottom:10, marginTop:22, paddingBottom:6, borderBottom:`0.5px solid ${T.border}` }}>{label}</div>
+  )
+
   return (
     <div style={{ padding:'20px 20px' }}>
-      <PrefLabel>Your name</PrefLabel>
-      <input value={profile.name} onChange={e=>update('name',e.target.value)} placeholder="First name" style={{ width:'100%', padding:'9px 12px', borderRadius:rr('sm'), fontSize:13, border:`0.5px solid ${T.border}`, background:T.surface, color:T.text, outline:'none', marginBottom:10 }} />
-      <PrefLabel>Who are you becoming?</PrefLabel>
-      <div style={{ display:'flex', flexDirection:'column', gap:6, marginBottom:14 }}>
-        {IDENTITY_STATEMENTS.map(s => (
-          <button key={s} onClick={()=>update('identity', profile.identity===s?'':s)} style={{
-            padding:'10px 14px', borderRadius:rr('sm'), fontSize:13, textAlign:'left',
-            border:`0.5px solid ${profile.identity===s?'var(--green-dim)':T.border}`,
-            background: profile.identity===s ? 'var(--green-bg)' : T.surface,
-            color: profile.identity===s ? 'var(--green)' : T.text2,
-            fontWeight: profile.identity===s ? 500 : 400,
-          }}>{s}</button>
+      <Section label="About you" />
+      <PrefLabel>First name</PrefLabel>
+      <input value={profile.name||''} onChange={e=>update('name',e.target.value)} placeholder="First name"
+        style={{ width:'100%', padding:'9px 12px', borderRadius:rr('sm'), fontSize:13, border:`0.5px solid ${T.border}`, background:T.surface, color:T.text, outline:'none', marginBottom:10 }} />
+
+      <div style={{ display:'flex', gap:10, marginBottom:10 }}>
+        <div style={{ flex:1 }}>
+          <PrefLabel>Age</PrefLabel>
+          <input type="number" value={profile.age||''} onChange={e=>update('age',e.target.value)} placeholder="e.g. 28"
+            style={{ width:'100%', padding:'9px 12px', borderRadius:rr('sm'), fontSize:13, border:`0.5px solid ${T.border}`, background:T.surface, color:T.text, outline:'none' }} />
+        </div>
+        <div style={{ flex:1 }}>
+          <PrefLabel>Location</PrefLabel>
+          <input value={profile.location||''} onChange={e=>update('location',e.target.value)} placeholder="City"
+            style={{ width:'100%', padding:'9px 12px', borderRadius:rr('sm'), fontSize:13, border:`0.5px solid ${T.border}`, background:T.surface, color:T.text, outline:'none' }} />
+        </div>
+      </div>
+
+      <PrefLabel>Gender (optional)</PrefLabel>
+      <div style={{ display:'flex', gap:6, marginBottom:14 }}>
+        {['Male','Female','Prefer not to say'].map(g => (
+          <button key={g} onClick={()=>update('gender', profile.gender===g?'':g)} style={{
+            padding:'7px 12px', borderRadius:20, fontSize:12, border:`0.5px solid ${T.border}`, cursor:'pointer',
+            background: profile.gender===g ? T.text : T.surface2,
+            color: profile.gender===g ? T.bg : T.text2,
+          }}>{g}</button>
         ))}
       </div>
-      <PrefLabel>Training focus (optional)</PrefLabel>
-      <ChipRow options={GOALS} selected={profile.goal} onSelect={v=>update('goal',v)} />
+
+      <Section label="Your training" />
+      <PrefLabel>Training goal</PrefLabel>
+      <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom:14 }}>
+        {GOALS.map(g => (
+          <button key={g} onClick={()=>update('goal', profile.goal===g?'':g)} style={{
+            padding:'7px 13px', borderRadius:20, fontSize:12, border:'none', cursor:'pointer',
+            background: profile.goal===g ? 'var(--cream)' : T.surface2,
+            color: profile.goal===g ? 'var(--bg)' : T.text2,
+            fontWeight: profile.goal===g ? 500 : 400,
+          }}>{g}</button>
+        ))}
+      </div>
+
       <PrefLabel>Activity level</PrefLabel>
-      <ChipRow options={ACTIVITY_LEVELS} selected={profile.activity} onSelect={v=>update('activity',v)} />
-      <PrefLabel>Daily calorie target (optional)</PrefLabel>
-      <input type="number" value={profile.calories} onChange={e=>update('calories',e.target.value)} placeholder="e.g. 2800" style={{ width:'100%', padding:'9px 12px', borderRadius:rr('sm'), fontSize:13, border:`0.5px solid ${T.border}`, background:T.surface, color:T.text, outline:'none', marginBottom:10 }} />
-      <PrefLabel>Daily protein target in grams (optional)</PrefLabel>
-      <input type="number" value={profile.protein} onChange={e=>update('protein',e.target.value)} placeholder="e.g. 160" style={{ width:'100%', padding:'9px 12px', borderRadius:rr('sm'), fontSize:13, border:`0.5px solid ${T.border}`, background:T.surface, color:T.text, outline:'none', marginBottom:10 }} />
-      <PrefLabel>Anything else the app should know?</PrefLabel>
-      <textarea value={profile.notes} onChange={e=>update('notes',e.target.value)} placeholder="e.g. I run and lift a lot, need to eat big." rows={3} style={{ width:'100%', background:T.surface, border:`0.5px solid ${T.border}`, borderRadius:rr('md'), padding:'10px 12px', fontSize:14, color:T.text, resize:'none', outline:'none' }} />
-      <PrimaryBtn onClick={handleSave}>{saved?'Profile saved ✓':'Save profile'}</PrimaryBtn>
-      {saved && (
-        <div style={{ marginTop:12, background:T.surface, borderRadius:rr('md'), padding:'14px 16px' }}>
-          <div style={{ fontSize:13, fontWeight:500, color:T.text, marginBottom:4 }}>Nice. Now let's find your first meal idea.</div>
-          <div style={{ fontSize:12, color:T.text2, marginBottom:10, lineHeight:1.6 }}>Your profile will shape recipe suggestions, portion sizes, and workout nutrition guidance from here on.</div>
-          <button onClick={()=>onNav&&onNav('eat')} style={{ width:'100%', padding:'9px', borderRadius:rr('sm'), border:'none', background:'var(--amber-dim)', color:'#fff', fontSize:13, fontWeight:500, cursor:'pointer' }}>
-            Find a meal →
-          </button>
+      <ChipRow options={ACTIVITY_LEVELS} selected={profile.activity||''} onSelect={v=>update('activity',v)} />
+
+      <PrefLabel>Training experience</PrefLabel>
+      <ChipRow options={['Beginner','Intermediate','Experienced']} selected={profile.experience||''} onSelect={v=>update('experience',v)} />
+
+      <PrefLabel>Sports or activities you do</PrefLabel>
+      <input value={profile.sports||''} onChange={e=>update('sports',e.target.value)} placeholder="e.g. golf, running, basketball"
+        style={{ width:'100%', padding:'9px 12px', borderRadius:rr('sm'), fontSize:13, border:`0.5px solid ${T.border}`, background:T.surface, color:T.text, outline:'none', marginBottom:14 }} />
+
+      <Section label="Nutrition targets (optional)" />
+      <div style={{ fontSize:12, color:T.text3, marginBottom:10, lineHeight:1.6 }}>
+        Used to personalize recipe suggestions and post-workout nutrition guidance.
+      </div>
+      <div style={{ display:'flex', gap:10, marginBottom:14 }}>
+        <div style={{ flex:1 }}>
+          <PrefLabel>Daily protein (g)</PrefLabel>
+          <input type="number" value={profile.protein||''} onChange={e=>update('protein',e.target.value)} placeholder="e.g. 160"
+            style={{ width:'100%', padding:'9px 12px', borderRadius:rr('sm'), fontSize:13, border:`0.5px solid ${T.border}`, background:T.surface, color:T.text, outline:'none' }} />
         </div>
-      )}
-      {!saved && <div style={{ marginTop:16, padding:'12px 14px', background:T.surface2, borderRadius:rr('md') }}>
-        <div style={{ fontSize:12, color:T.text3, lineHeight:1.7 }}>Your profile personalizes everything — recipes, portions, workout nutrition guidance.</div>
-      </div>}
+        <div style={{ flex:1 }}>
+          <PrefLabel>Daily calories</PrefLabel>
+          <input type="number" value={profile.calories||''} onChange={e=>update('calories',e.target.value)} placeholder="e.g. 2800"
+            style={{ width:'100%', padding:'9px 12px', borderRadius:rr('sm'), fontSize:13, border:`0.5px solid ${T.border}`, background:T.surface, color:T.text, outline:'none' }} />
+        </div>
+      </div>
+
+      <Section label="Anything else?" />
+      <textarea value={profile.notes||''} onChange={e=>update('notes',e.target.value)}
+        placeholder="Injuries, preferences, things the app should know about you..."
+        rows={3} style={{ width:'100%', background:T.surface, border:`0.5px solid ${T.border}`,
+          borderRadius:rr('md'), padding:'10px 12px', fontSize:13, color:T.text, resize:'none', outline:'none', marginBottom:14 }} />
+
+      <PrimaryBtn onClick={handleSave}>{saved?'Profile saved ✓':'Save profile'}</PrimaryBtn>
+
+      <div style={{ marginTop:16, padding:'12px 14px', background:T.surface2, borderRadius:rr('md') }}>
+        <div style={{ fontSize:12, color:T.text3, lineHeight:1.7 }}>Your profile personalizes recipe suggestions, workout nutrition guidance, and how the app talks to you.</div>
+      </div>
     </div>
   )
 }
@@ -1454,7 +1505,6 @@ function StackScreen({ items, onDelete, onRename }) {
 
 function MoreScreen({ onNav }) {
   const items = [
-    { tab:'pillars', label:'The Pillars',  sub:'What actually moves the needle'  },
     { tab:'stack',   label:'Your Rotation',     sub:'Your saved routines and recipes'  },
     { tab:'profile', label:'Profile',      sub:'Your profile'       },
   ]
@@ -1513,14 +1563,14 @@ const NAV = [
   { tab:'move',  label:'Move'  },
   { tab:'eat',   label:'Eat'   },
   { tab:'lift',  label:'Lift'  },
-  { tab:'more',  label:'Saved' },
+  { tab:'more',  label:'Me' },
 ]
 
 const TOPBAR = {
   move:    { title:'Move',        sub:'Mobility, warmups and recovery'                },
   eat:     { title:'Eat better',  sub:'New ideas, your ingredients'                   },
   lift:    { title:'Lift',        sub:'Your programs and sessions'                    },
-  more:    { title:'More',        sub:''                                              },
+  more:    { title:'Me',          sub:''                                              },
   pillars: { title:'The Pillars', sub:'The only things that actually move the needle' },
   stack:   { title:'Your Rotation',    sub:'Your saved routines and recipes'               },
   profile: { title:'Profile',     sub:'Your profile'                    },
