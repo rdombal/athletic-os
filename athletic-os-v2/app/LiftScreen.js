@@ -1468,7 +1468,113 @@ function WeeklyOverview({ programs, sessions, activeProgramId, lastWorkoutId, on
 }
 
 // ─── Programs list ────────────────────────────────────────────────────────────
-function ProgramsList({ programs, loading, activeProgramId, onSelectProgram, onNewProgram }) {
+
+// ─── Hale Foundation program template ────────────────────────────────────────
+const uid = () => Math.random().toString(36).slice(2, 9)
+const mkEx = (name, sets, reps, group, notes='') => ({
+  id:uid(), exerciseId:uid(), name, group, sets,
+  targetReps: typeof reps==='string' ? parseInt(reps)||10 : reps, notes
+})
+const mkW = (name, exercises) => ({ id:uid(), name, exercises })
+
+function buildFoundationProgram() {
+  const p1A = [
+    mkEx('Barbell Back Squat',3,10,'Legs','Sub: Goblet Squat or Leg Press. Focus on depth and control — find your working weight this phase.'),
+    mkEx('Barbell Bench Press',3,10,'Chest','Sub: Dumbbell Bench Press. Keep shoulder blades retracted and chest up throughout.'),
+    mkEx('Seated Cable Row',3,12,'Back','Sub: Dumbbell Row. Drive elbows back, pause at full contraction. Do not let shoulders round.'),
+    mkEx('Dumbbell Lateral Raise',3,15,'Shoulders','Light weight, full control. Slight forward lean, lead with elbows not wrists.'),
+    mkEx('Dead Bug',3,8,'Core','8 reps each side. Press lower back into floor throughout. Slow and controlled.'),
+  ]
+  const p1B = [
+    mkEx('Romanian Deadlift',3,10,'Legs','Sub: Dumbbell RDL. Hinge at hips, soft knee bend, feel the hamstring stretch. Bar stays close to legs.'),
+    mkEx('Overhead Press',3,10,'Shoulders','Sub: Dumbbell Shoulder Press. Brace core hard, avoid excessive lower back arch.'),
+    mkEx('Lat Pull Down',3,12,'Back','Sub: Pull Up. Pull to upper chest, lean back slightly. Full stretch at top each rep.'),
+    mkEx('Leg Curl',3,12,'Legs','Sub: Nordic Curl Negative. Control the eccentric — lower slowly, do not let hips come up.'),
+    mkEx('Hanging Knee Raise',3,12,'Core','Sub: Dumbbell Russian Twist. Tuck knees toward chest, avoid swinging. Pause at top.'),
+  ]
+  const p1C = [
+    mkEx('Bulgarian Split Squat',3,10,'Legs','10 each side. Sub: Reverse Lunge. Front foot far enough forward that knee tracks over toes.'),
+    mkEx('Incline Dumbbell Press',3,12,'Chest','30-45 degree incline. Full range of motion, controlled descent.'),
+    mkEx('Single Arm Dumbbell Row',3,12,'Back','12 each side. Brace on bench, full stretch at bottom, full row at top.'),
+    mkEx('Leg Press',3,15,'Legs','Sub: Goblet Squat. Feet shoulder width, full depth. Do not lock out knees at top.'),
+    mkEx('Bicep Curl',2,15,'Biceps','No swinging. Full supination at top. Control the lowering phase.'),
+    mkEx('Tricep Pushdown',2,15,'Triceps','Elbows pinned at sides. Full extension at bottom, do not flare elbows.'),
+  ]
+  const p2A = [
+    mkEx('Barbell Back Squat',4,6,'Legs','Increase weight from Phase 1. Same depth and control — load has gone up, form stays the same.'),
+    mkEx('Barbell Bench Press',4,6,'Chest','Heavier than Phase 1. Spot or use safeties — you are working closer to failure now.'),
+    mkEx('Seated Cable Row',3,10,'Back','Add weight from Phase 1. Drive elbows back hard, hold 1 second at contraction.'),
+    mkEx('Dumbbell Lateral Raise',3,15,'Shoulders','Same weight or slightly heavier. Quality over load on this one.'),
+    mkEx('Cable Chop',3,10,'Core','10 each side. Sub: Resistance band chop. Rotate from core not arms. Keep hips square.'),
+  ]
+  const p2B = [
+    mkEx('Trap Bar Deadlift',3,5,'Legs','Sub: Dumbbell Romanian Deadlift. Heavy strength lift — full 3-4 min rest between sets.'),
+    mkEx('Overhead Press',4,6,'Shoulders','Heavier than Phase 1. Brace hard, full lockout at top, controlled descent.'),
+    mkEx('Pull Up',3,8,'Back','Add weight if bodyweight is easy. Full dead hang at bottom, chin over bar at top.'),
+    mkEx('Leg Curl',3,10,'Legs','Add weight from Phase 1. Control the negative — 3 seconds down.'),
+    mkEx('Hanging Knee Raise',3,15,'Core','Add reps from Phase 1 or add ankle weight. No swinging.'),
+  ]
+  const p2C = [
+    mkEx('Bulgarian Split Squat',4,8,'Legs','8 each side. More weight than Phase 1. Controlled descent, drive through heel to stand.'),
+    mkEx('Incline Dumbbell Press',3,10,'Chest','Heavier than Phase 1. Pause 1 second at bottom for extra range of motion benefit.'),
+    mkEx('Single Arm Dumbbell Row',3,10,'Back','10 each side. Heavier than Phase 1. Row to hip not to chest.'),
+    mkEx('Leg Press',3,12,'Legs','Add weight from Phase 1. Push through full range — do not cut depth.'),
+    mkEx('Hammer Curl',3,12,'Biceps','Neutral grip. Trains brachialis and brachioradialis — adds thickness to the arm.'),
+    mkEx('Skull Crusher',3,12,'Triceps','Sub: Overhead Tricep Extension. Lower slowly, elbows stay pointed at ceiling.'),
+  ]
+  const p3A = [
+    mkEx('Barbell Back Squat',4,4,'Legs','Heaviest weights of the program. Full warmup before working sets — do not rush this.'),
+    mkEx('Barbell Bench Press',4,4,'Chest','Heaviest bench of the program. Use a spotter. This is your strength test.'),
+    mkEx('Seated Cable Row',4,8,'Back','Heavy. Full contraction every rep. No momentum.'),
+    mkEx('Dumbbell Lateral Raise',3,15,'Shoulders','Keep these controlled even as everything else gets heavier.'),
+    mkEx('Cable Chop',3,10,'Core','10 each side. Heavier than Phase 2 if you can maintain form.'),
+  ]
+  const p3B = [
+    mkEx('Trap Bar Deadlift',3,3,'Legs','Your heaviest deadlift of the program. 4 min rest between sets. Treat this lift seriously.'),
+    mkEx('Overhead Press',4,4,'Shoulders','Heaviest press of the program. Full lockout, tight core.'),
+    mkEx('Pull Up',4,6,'Back','Add weight if able. 4 sets this phase. Full range every rep.'),
+    mkEx('Leg Curl',3,10,'Legs','Controlled. 3 second negative each rep.'),
+    mkEx('Hanging Knee Raise',3,15,'Core','Add ankle weight or extend legs for more difficulty.'),
+  ]
+  const p3C = [
+    mkEx('Bulgarian Split Squat',4,6,'Legs','6 each side. Heaviest of the program. Full depth, controlled.'),
+    mkEx('Incline Dumbbell Press',4,8,'Chest','4 sets this phase. Heavy but controlled. Pause at bottom.'),
+    mkEx('Single Arm Dumbbell Row',4,8,'Back','8 each side. Heaviest of the program. Row from full stretch.'),
+    mkEx('Leg Press',3,10,'Legs','Heavy. Full depth. Slow controlled descent.'),
+    mkEx('Bicep Curl + Tricep Pushdown',3,12,'Full Body','Superset — curl then pushdown back to back, rest 60s.'),
+  ]
+  const dl = (exercises) => exercises.map(e => ({...e, id:uid(), exerciseId:uid(),
+    notes:'DELOAD — drop weight 40-50% from last week. Same reps, same form. Recovery not effort.'}))
+
+  return {
+    name: 'Hale Foundation',
+    useRpe: false,
+    phases: [
+      { id:uid(), name:'Phase 1 — Build the Base', weeks:4,
+        notes:'Higher reps, lower intensity. Establish movement patterns and find your working weights. Add 1 rep or small weight each week.',
+        workouts:[mkW('Workout A — Squat & Push/Pull',p1A),mkW('Workout B — Hinge & Vertical',p1B),mkW('Workout C — Unilateral & Accessories',p1C)]},
+      { id:uid(), name:'Phase 2 — Build Strength', weeks:4,
+        notes:'Reps drop, weight goes up. You built the pattern in Phase 1 — now load it. Focus on adding weight each week to your main lifts.',
+        workouts:[mkW('Workout A — Squat & Push/Pull',p2A),mkW('Workout B — Hinge & Vertical',p2B),mkW('Workout C — Unilateral & Accessories',p2C)]},
+      { id:uid(), name:'Phase 3 — Peak & Deload', weeks:4,
+        notes:'Weeks 9-11 are your heaviest. Week 12 is a full deload — drop weight 40-50%, keep the movement. Recovery is part of the program.',
+        workouts:[mkW('Workout A — Squat & Push/Pull',p3A),mkW('Workout B — Hinge & Vertical',p3B),mkW('Workout C — Unilateral & Accessories',p3C),
+          mkW('Workout A — Deload',dl(p3A)),mkW('Workout B — Deload',dl(p3B)),mkW('Workout C — Deload',dl(p3C))]},
+    ]
+  }
+}
+
+async function addFoundationProgram(userId) {
+  const program = buildFoundationProgram()
+  const { data, error } = await supabase
+    .from('lift_programs')
+    .insert({ user_id:userId, name:program.name, phases:program.phases, created_at:new Date().toISOString() })
+    .select()
+  if (error) throw error
+  return data[0]
+}
+
+function ProgramsList({ programs, loading, activeProgramId, onSelectProgram, onNewProgram, onAddFoundation }) {
   if (loading) return <div style={{ padding:20 }}><LoadingDots /></div>
   if (programs.length===0) {
     return (
@@ -1518,11 +1624,19 @@ function ProgramsList({ programs, loading, activeProgramId, onSelectProgram, onN
         <div style={{ fontSize:13, color:T.text2, marginBottom:16, textAlign:'center', lineHeight:1.6 }}>
           You can build your own program or use one that a coach has set up for you.
         </div>
-        <button onClick={onNewProgram} style={{
+        <button onClick={onAddFoundation} style={{
           width:'100%', padding:'14px', borderRadius:rr('md'), border:'none',
           background:'var(--cream)', color:'var(--bg)',
           fontSize:14, fontWeight:600, cursor:'pointer', marginBottom:10,
-        }}>Build a program</button>
+        }}>Start with Hale Foundation →</button>
+        <div style={{ fontSize:11, color:T.text3, textAlign:'center', marginBottom:20 }}>
+          12-week full body program. 3 workouts per week. Free.
+        </div>
+        <button onClick={onNewProgram} style={{
+          width:'100%', padding:'12px', borderRadius:rr('md'),
+          border:`0.5px solid ${T.border}`, background:'transparent',
+          color:T.text2, fontSize:13, cursor:'pointer', marginBottom:12,
+        }}>Build my own program</button>
         <div style={{ fontSize:12, color:T.text3, textAlign:'center', lineHeight:1.6 }}>
           Have a program from a coach? Ask them to add it to your account.
         </div>
