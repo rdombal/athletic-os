@@ -1470,7 +1470,6 @@ function WeeklyOverview({ programs, sessions, activeProgramId, lastWorkoutId, on
 // ─── Programs list ────────────────────────────────────────────────────────────
 
 // ─── Hale Foundation program template ────────────────────────────────────────
-const uid = () => Math.random().toString(36).slice(2, 9)
 const mkEx = (name, sets, reps, group, notes='') => ({
   id:uid(), exerciseId:uid(), name, group, sets,
   targetReps: typeof reps==='string' ? parseInt(reps)||10 : reps, notes
