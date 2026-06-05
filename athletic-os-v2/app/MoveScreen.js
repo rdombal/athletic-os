@@ -318,62 +318,116 @@ function AIRoutineCard({ text, onSave, saved }) {
   let current = null
   for (const line of lines) {
     const isNumbered = /^\d+\./.test(line)
-    const isBullet = /^[-•]/.test(line)
-    if (isNumbered || isBullet) {
+    if (isNumbered) {
       if (current) exercises.push(current)
-      current = { name: line.replace(/^\d+\.\s*|^[-•]\s*/, ''), cue: '', reps: '' }
+      current = { name: line.replace(/^\d+\.\s*/, ''), cue: '', why: '', reps: '' }
     } else if (current) {
-      const repsMatch = line.match(/(\d+\s*(reps?|sets?|sec|min|seconds?|minutes?|x\s*\d+))/i)
+      const repsMatch = line.match(/(\d+\s*(reps?|sets?|sec|min|seconds?|minutes?|rounds?|x\s*\d+))/i)
+      // "This releases/helps/reduces/loosens/improves..." → why line
+      const whyMatch = line.match(/^(this |these |it )/i)
       if (repsMatch && !current.reps) current.reps = line
+      else if (whyMatch && !current.why) current.why = line
       else if (!current.cue) current.cue = line
     }
   }
   if (current) exercises.push(current)
+
   if (exercises.length === 0) {
     return (
       <div style={{ marginTop:12, background:T.surface, border:`0.5px solid ${T.border}`, borderRadius:rr('md'), padding:14, fontSize:14, lineHeight:1.75, color:T.text, whiteSpace:'pre-wrap' }}>
         {text}
-        {onSave && <button onClick={onSave} style={{ display:'block', marginTop:10, width:'100%', padding:'8px', borderRadius:rr('sm'), border:`0.5px solid ${T.border}`, background:'transparent', color:saved?'var(--green)':T.text2, fontSize:13, cursor:'pointer' }}>{saved?'✓ Saved':'+ Save to My Stack'}</button>}
+        {onSave && <button onClick={onSave} style={{ display:'block', marginTop:10, width:'100%', padding:'8px', borderRadius:rr('sm'), border:`0.5px solid ${T.border}`, background:'transparent', color:saved?'var(--green)':T.text2, fontSize:13, cursor:'pointer' }}>{saved?'✓ Saved':'+ Save to rotation'}</button>}
       </div>
     )
   }
-  return <RoutineCard exercises={exercises} onSave={onSave} saved={saved} />
+
+  return (
+    <div style={{ marginTop:12, background:T.surface, border:`0.5px solid ${T.border}`, borderRadius:rr('md'), overflow:'hidden' }}>
+      {exercises.map((ex, i) => (
+        <div key={i} style={{ padding:'14px 16px', borderBottom: i < exercises.length-1 ? `0.5px solid ${T.border}` : 'none' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:6 }}>
+            <div style={{ width:22, height:22, borderRadius:'50%', background:T.surface2,
+              display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:600, color:T.text2, flexShrink:0 }}>{i+1}</div>
+            <div style={{ fontSize:14, fontWeight:500, color:T.text }}>{ex.name}</div>
+          </div>
+          {ex.cue && <div style={{ fontSize:13, color:T.text2, lineHeight:1.6, marginBottom:4, paddingLeft:30 }}>{ex.cue}</div>}
+          {ex.why && (
+            <div style={{ fontSize:11, color:'var(--cream-dim)', lineHeight:1.5, marginBottom:6, paddingLeft:30, fontStyle:'italic' }}>
+              {ex.why}
+            </div>
+          )}
+          {ex.reps && (
+            <div style={{ display:'inline-block', marginLeft:30, fontSize:11, fontWeight:500, color:T.text3,
+              background:T.surface2, borderRadius:20, padding:'2px 10px' }}>
+              {ex.reps}
+            </div>
+          )}
+        </div>
+      ))}
+      {onSave && (
+        <div style={{ padding:'12px 16px', borderTop:`0.5px solid ${T.border}` }}>
+          <button onClick={onSave} style={{ width:'100%', padding:'10px', borderRadius:rr('sm'), border:'none',
+            background:saved?T.surface2:'var(--cream)', color:saved?'var(--green)':'var(--bg)',
+            fontSize:13, fontWeight:500, cursor:'pointer' }}>
+            {saved ? '✓ Saved to your rotation' : '+ Save to rotation'}
+          </button>
+        </div>
+      )}
+    </div>
+  )
 }
 
 // ─── Source-informed prompts ──────────────────────────────────────────────────
 function buildMobilityPrompt(activity, focus, when, extra) {
-  const sourceMap = {
-    Golf: 'Apply TPI (Titleist Performance Institute) principles. Focus on hip dissociation, thoracic rotation, and posterior chain activation. Sequence like a TPI practitioner would.',
-    Running: 'Apply ATG (Ben Patrick/Knees Over Toes) tendon-preparation principles combined with Kelly Starrett movement quality approach. Emphasize joint preparation and landing mechanics.',
-    Lifting: 'Apply Squat University methodology (Dr. Aaron Horschig). Prioritize ankle mobility, thoracic extension, and hip capsule preparation. Address common restriction patterns.',
-    Basketball: 'Apply Mike Boyle athletic performance principles. Focus on reactive movement preparation, lateral mechanics, and jump-landing patterns.',
-    Tennis: 'Apply Boyle and FMS rotational movement principles. Prioritize shoulder preparation, rotational patterns, and lateral movement readiness.',
-    Pickleball: 'Focus on wrist and forearm preparation, lateral movement patterns, and cervical mobility for court tracking.',
+  // Area-specific context — what to address, kept simple
+  const focusGuide = {
+    Hips: 'Focus on hip flexors, glutes, and hip rotators. Include a hip flexor stretch, a glute stretch, and a hip rotation exercise.',
+    'Lower back': 'Focus on relieving lower back tension through hip mobility and gentle spinal movement. Avoid anything that loads the spine — use stretches and controlled movements only.',
+    Shoulders: 'Focus on opening the chest, loosening the upper back, and mobilizing the shoulder joint. Simple stretches and arm circles work well.',
+    Hamstrings: 'Focus on gentle hamstring lengthening through stretching and controlled movement. No aggressive stretching — slow and held.',
+    'Upper back': 'Focus on thoracic mobility — chest openers, upper back stretches, and gentle rotation.',
+    'Ankles and knees': 'Focus on ankle circles, calf stretching, and gentle knee mobilization. All exercises should be low-load and pain-free.',
+    Achilles: 'Focus on gentle calf and Achilles tendon relief. Use only low-load, non-aggressive movements — calf raises, calf stretches, and ankle mobility. Nothing that strains the tendon.',
+    Calves: 'Focus on calf stretching and ankle mobility. Slow, controlled movements only.',
+    Neck: 'Focus on gentle neck stretches and upper trap release. Slow, controlled movements — no aggressive rotation.',
+    Wrists: 'Focus on wrist circles, forearm stretching, and finger mobility. All gentle and pain-free.',
   }
-  const focusMap = {
-    Hips: 'Apply Kelly Starrett hip mobility principles — address both the hip capsule (joint) and surrounding soft tissue. Include hip flexor, glute, and rotational work.',
-    'Lower back': 'Apply McGill-informed principles — stabilization before mobilization. Address hip and thoracic mobility as root causes, not just the lower back symptoms.',
-    Shoulders: 'Apply Squat University shoulder principles — address thoracic extension, scapular positioning, and rotator cuff activation before mobility work.',
-    Hamstrings: 'Address both neural tension and muscular length. Include hip-hinge patterns not just passive stretching.',
-    'Upper back': 'Apply Starrett thoracic mobility principles — address thoracic extension and rotation, not just stretching.',
-    'Ankles and knees': 'Apply ATG/Ben Patrick principles — knee over toe progressions, tibialis work, and full ankle mobility range.',
-  }
-  const source = sourceMap[activity] || sourceMap[focus] || 'Apply Kelly Starrett The Ready State movement quality principles.'
-  const focusNote = focusMap[focus] || ''
-  return `You are a movement specialist and performance coach. Give exactly 5 specific exercises.
-${source}
-${focusNote}
-Activity: ${activity || 'general'}
-Focus area: ${focus || 'general'}
-Timing: ${when}
-Extra context: ${extra || 'none'}
+  const focusNote = focusGuide[focus] || `Focus on relieving tightness in the ${focus || 'area mentioned'} using simple, accessible movements.`
+  const timingNote = when === 'Before activity' ? 'Keep everything dynamic and movement-based — no long holds. This is preparation, not deep stretching.'
+    : when === 'After activity' ? 'Use longer holds (30-45 seconds) for the stretches. The body is warm so this is a good time for deeper relief.'
+    : 'Mix of gentle movement and held stretches. Keep it calm and accessible.'
 
-Format EXACTLY like this (no markdown, no bold):
+  return `You are a certified personal trainer and mobility coach. Someone needs help with a tight or sore area. Your job is to give them 5 simple exercises they can do right now — at home, on the floor, no equipment needed.
+
+READ THEIR NOTES CAREFULLY: "${extra || 'none'}" — adapt everything to what they actually told you. If they mention pain or soreness, keep everything gentle. If they mention timing (before bed, after a run, at work), adapt the exercises to fit that context. If they describe something specific, address it specifically.
+
+CRITICAL RULES:
+- Simple, familiar exercise names only. Good examples: "Standing calf stretch", "Seated hamstring stretch", "Hip flexor lunge stretch", "Lying glute stretch", "Ankle circles", "Child's pose", "Cat-cow stretch", "Doorway chest stretch", "Knee hug stretch", "Pigeon pose", "Supine twist".
+- No equipment, no jargon, no complex names. If someone's never been to a gym they should still understand it.
+- If the area is painful or injured, keep everything low-load and gentle. Nothing aggressive.
+- Based on Kelly Starrett, Dr. Aaron Horschig, and Ben Patrick principles — expressed in plain everyday language.
+
+Context:
+- Area: ${focus || extra || 'general tightness'}
+- Activity: ${activity || 'none'}
+- Timing: ${when}
+- ${focusNote}
+- ${timingNote}
+
+Format EXACTLY like this — 5 exercises, plain text only, no markdown:
+
 1. [Exercise name]
-[One precise coaching cue — what to feel, not just what to do]
-[Sets/reps or duration]
+[What to do — one clear sentence in plain English]
+[Why this helps — one short sentence explaining the benefit]
+[How long or how many reps]
 
-Be specific and evidence-informed. Each exercise should have a clear reason for being in this routine.`
+Example of perfect output:
+1. Standing calf stretch
+Step forward into a small lunge, back heel pressed flat to the floor, and hold.
+This releases tension in the calf muscle and takes load off the Achilles tendon.
+Hold 30 seconds each side, 2 rounds
+
+Every exercise must be this clear, this simple, and include the why.`
 }
 
 function buildSportPrompt(sport, type) {
@@ -558,7 +612,7 @@ function CustomRoutine({ onSave }) {
           </div>
           <div style={{ fontSize:12, color:T.text3, marginBottom:6 }}>Focus area</div>
           <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom:12 }}>
-            {['Hips','Lower back','Shoulders','Hamstrings','Upper back','Ankles and knees'].map(f => (
+            {['Hips','Lower back','Shoulders','Hamstrings','Upper back','Ankles and knees','Achilles','Calves','Neck','Wrists'].map(f => (
               <button key={f} onClick={()=>setFocus(focus===f?'':f)} style={{
                 padding:'5px 12px', borderRadius:20, fontSize:12, border:`0.5px solid ${T.border}`,
                 background: focus===f ? T.text : T.surface2,
@@ -577,7 +631,7 @@ function CustomRoutine({ onSave }) {
             ))}
           </div>
           <textarea value={extra} onChange={e=>setExtra(e.target.value)}
-            placeholder="Any extra detail..." rows={2}
+            placeholder="Tell me what's going on — e.g. my achilles is sore, I want to do this before bed..." rows={2}
             style={{ width:'100%', background:T.surface, border:`0.5px solid ${T.border}`, borderRadius:rr('md'), padding:'10px 12px', fontSize:13, color:T.text, resize:'none', outline:'none', marginBottom:8 }} />
           <button onClick={go} disabled={loading||(!activity&&!focus&&!extra)} style={{
             width:'100%', padding:'11px', borderRadius:rr('md'), border:'none',
@@ -609,7 +663,9 @@ export function PostLiftRecovery({ workoutName, exercises, onSave }) {
     setLoading(true); setShown(true)
     const muscleGroups = exercises.map(e => e.name).join(', ')
     try {
-      const text = await callAI(`You are a recovery specialist applying Kelly Starrett Ready State principles.
+      const text = await callAI(`You are a certified trainer helping someone recover after a workout. Give 5 simple recovery exercises they can do at home on a mat. Use only common exercise names that anyone would understand — like "Child's pose", "Lying quad stretch", "Seated hamstring stretch", "Hip flexor stretch", "Supine twist". No equipment needed, no jargon.
+
+Apply Kelly Starrett recovery principles but in plain language.
 The user just completed: ${workoutName} (${muscleGroups}).
 Give a 5-minute post-workout recovery flow targeting the primary muscles just trained.
 
