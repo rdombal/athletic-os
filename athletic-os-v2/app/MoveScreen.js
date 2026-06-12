@@ -1,8 +1,6 @@
 'use client'
 import { useState } from 'react'
 
-function addVote() { try { const v=parseInt(localStorage.getItem('identity_votes')||'0'); localStorage.setItem('identity_votes',String(v+1)) } catch {} }
-
 const T = {
   bg:'var(--bg)', surface:'var(--surface)', surface2:'var(--surface2)',
   border:'var(--border)', text:'var(--text)', text2:'var(--text2)', text3:'var(--text3)',
@@ -29,12 +27,20 @@ async function callAI(prompt, timeoutMs = 25000) {
   }
 }
 
+// ─── Shared warmup-type helper ────────────────────────────────────────────────
+export function getWarmupType(workoutName) {
+  const n = (workoutName||'').toLowerCase()
+  if (n.includes('lower') || n.includes('squat') || n.includes('deadlift') || n.includes('leg') || n.includes('hip')) return 'lower'
+  if (n.includes('upper') || n.includes('press') || n.includes('pull') || n.includes('bench') || n.includes('arm')) return 'upper'
+  return 'lower' // default to lower for full body
+}
+
 // ─── Pre-built sport library ──────────────────────────────────────────────────
 // Informed by TPI (golf), Kelly Starrett/The Ready State (mobility),
 // Squat University (lifting), Ben Patrick/ATG (running/durability),
 // Mike Boyle (athletic performance)
 
-const SPORT_LIBRARY = {
+export const SPORT_LIBRARY = {
   Golf: {
     warmup: {
       title: 'Golf Pre-Round Warmup',
@@ -462,7 +468,7 @@ Sequence matters — order these logically for warm-up progression or cool-down.
 }
 
 // ─── Quick relief section ─────────────────────────────────────────────────────
-function QuickRelief({ onSave }) {
+export function QuickRelief({ onSave }) {
   const [selected, setSelected] = useState(null)
   const [saved, setSaved] = useState(false)
   const areas = Object.keys(QUICK_RELIEF)
@@ -470,7 +476,6 @@ function QuickRelief({ onSave }) {
 
   const save = () => {
     onSave({ label: `${selected} relief`, text: JSON.stringify({ exercises: routine, title: `${selected} relief`, duration: '~5 min' }), type: 'routine' })
-    addVote()
     setSaved(true)
   }
 
@@ -520,7 +525,6 @@ function SportLibrary({ onSave }) {
   const save = () => {
     if (!routine) return
     onSave({ label: routine.title, text: JSON.stringify({ exercises: routine.exercises, title: routine.title, duration: routine.duration, source: routine.source }), type: 'routine' })
-    addVote()
     setSaved(true)
   }
 
