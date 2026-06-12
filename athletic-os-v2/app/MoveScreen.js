@@ -9,13 +9,24 @@ const T = {
 }
 function rr(s) { return s==='sm'?'8px':s==='lg'?'16px':'12px' }
 
-async function callAI(prompt) {
-  const res = await fetch('/api/claude', {
-    method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({ prompt })
-  })
-  const data = await res.json()
-  return data.text || ''
+async function callAI(prompt, timeoutMs = 25000) {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    const res = await fetch('/api/claude', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ prompt }),
+      signal: controller.signal,
+    })
+    const data = await res.json()
+    if (data.error) throw new Error(data.error)
+    return data.text || ''
+  } catch(e) {
+    if (e.name === 'AbortError') throw new Error('timeout')
+    throw e
+  } finally {
+    clearTimeout(timer)
+  }
 }
 
 // ─── Pre-built sport library ──────────────────────────────────────────────────
@@ -302,7 +313,7 @@ function RoutineCard({ exercises, title, duration, source, onSave, saved }) {
       {onSave && (
         <div style={{ padding:'10px 16px' }}>
           <button onClick={onSave} style={{ width:'100%', padding:'8px', borderRadius:rr('sm'), border:`0.5px solid ${T.border}`, background:'transparent', color:saved?'var(--green)':T.text2, fontSize:13, cursor:'pointer' }}>
-            {saved ? '✓ Saved to My Stack' : '+ Save to My Stack'}
+            {saved ? '✓ Saved to your rotation' : '+ Save to rotation'}
           </button>
         </div>
       )}
@@ -568,16 +579,21 @@ function CustomRoutine({ onSave }) {
   const [when, setWhen] = useState('Before activity')
   const [extra, setExtra] = useState('')
   const [resp, setResp] = useState('')
+  const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [saved, setSaved] = useState(false)
 
   const go = async () => {
     if (!activity && !focus && !extra) return
-    setLoading(true); setResp(''); setSaved(false)
+    setLoading(true); setResp(''); setError(''); setSaved(false)
     try {
       const text = await callAI(buildMobilityPrompt(activity, focus, when, extra))
       setResp(text)
-    } catch { setResp('Something went wrong. Try again.') }
+    } catch(e) {
+      setError(e.message === 'timeout'
+        ? 'Taking longer than usual. Check your connection and try again.'
+        : 'Something went wrong. Try again.')
+    }
     setLoading(false)
   }
 
@@ -645,7 +661,16 @@ function CustomRoutine({ onSave }) {
               <style>{"@keyframes blink{0%,80%,100%{opacity:.2}40%{opacity:1}}"}</style>
             </div>
           )}
-          {resp && !loading && <AIRoutineCard text={resp} onSave={save} saved={saved} />}
+          {error && !loading && (
+            <div style={{ marginTop:12, background:T.surface, borderRadius:rr('md'), padding:'14px 16px', border:`0.5px solid ${T.border}` }}>
+              <div style={{ fontSize:13, color:T.text2, marginBottom:12, lineHeight:1.6 }}>{error}</div>
+              <button onClick={go} style={{ padding:'9px 18px', borderRadius:rr('sm'), border:'none',
+                background:'var(--cream)', color:'var(--bg)', fontSize:13, fontWeight:500, cursor:'pointer' }}>
+                Try again
+              </button>
+            </div>
+          )}
+          {resp && !loading && !error && <AIRoutineCard text={resp} onSave={save} saved={saved} />}
         </div>
       )}
     </div>
@@ -658,9 +683,10 @@ export function PostLiftRecovery({ workoutName, exercises, onSave }) {
   const [loading, setLoading] = useState(false)
   const [saved, setSaved] = useState(false)
   const [shown, setShown] = useState(false)
+  const [failed, setFailed] = useState(false)
 
   const go = async () => {
-    setLoading(true); setShown(true)
+    setLoading(true); setShown(true); setFailed(false)
     const muscleGroups = exercises.map(e => e.name).join(', ')
     try {
       const text = await callAI(`You are a certified trainer helping someone recover after a workout. Give 5 simple recovery exercises they can do at home on a mat. Use only common exercise names that anyone would understand — like "Child's pose", "Lying quad stretch", "Seated hamstring stretch", "Hip flexor stretch", "Supine twist". No equipment needed, no jargon.
@@ -676,7 +702,7 @@ Format EXACTLY like this:
 
 5 movements max. Focus on tissue restoration, not more training stimulus.`)
       setResp(text)
-    } catch { setResp('') }
+    } catch { setResp(''); setFailed(true) }
     setLoading(false)
   }
 
@@ -704,6 +730,10 @@ Format EXACTLY like this:
         </div>
       ) : resp ? (
         <AIRoutineCard text={resp} onSave={save} saved={saved} />
+      ) : failed ? (
+        <button onClick={go} style={{ fontSize:12, color:T.text3, border:`0.5px solid ${T.border}`, borderRadius:rr('sm'), padding:'7px 14px', background:'transparent', cursor:'pointer' }}>
+          Couldn't load — try again
+        </button>
       ) : null}
     </div>
   )
@@ -738,7 +768,7 @@ export default function MoveScreen({ onSave, pendingSession, onClearPending, onS
   if (pendingSession) {
     const { warmupType, workoutName } = pendingSession
     const routineKey = `${warmupType}_warmup`
-    const routine = LIFT_ROUTINES[routineKey] || LIFT_ROUTINES['lower_warmup']
+    const routine = SPORT_LIBRARY.Lifting[routineKey] || SPORT_LIBRARY.Lifting.lower_warmup
     return (
       <div style={{ padding:'0' }}>
         <div style={{ padding:'16px 20px 12px', borderBottom:`0.5px solid ${T.border}` }}>
