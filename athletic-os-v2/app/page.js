@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from './supabase'
 import AuthScreen from './AuthScreen'
 import LiftScreen from './LiftScreen'
-import MoveScreen from './MoveScreen'
+import MoveScreen, { QuickRelief, getWarmupType } from './MoveScreen'
 import {
   getProfile, saveProfile,
   getPantry, savePantry,
@@ -126,8 +126,6 @@ const TIP_CATEGORIES  = ['sleep','nutrition','movement','recovery','mindset','pe
 const FACT_CATEGORIES = ['exercise science','nutrition science','sleep science','the human body','sports performance','longevity','mental health and exercise']
 
 // ─── API ──────────────────────────────────────────────────────────────────────
-function addVote() { try { const v=parseInt(localStorage.getItem('identity_votes')||'0'); localStorage.setItem('identity_votes',String(v+1)) } catch {} }
-
 async function callAI(prompt, timeoutMs = 25000) {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), timeoutMs)
@@ -568,13 +566,6 @@ function SomethingSmallCard({ onNav }) {
 
 
 // ─── Smart home card ──────────────────────────────────────────────────────────
-function getWarmupType(workoutName) {
-  const n = (workoutName||'').toLowerCase()
-  if (n.includes('lower') || n.includes('squat') || n.includes('deadlift') || n.includes('leg') || n.includes('hip')) return 'lower'
-  if (n.includes('upper') || n.includes('press') || n.includes('pull') || n.includes('bench') || n.includes('arm')) return 'upper'
-  return 'lower' // default to lower for full body
-}
-
 function SmartHomeCard({ programs, recentSessions, activeProgramId, onStartWarmup, onNav }) {
   if (!programs?.length) return null
 
@@ -856,56 +847,38 @@ function HaleLockup({ markSize = 28, wordSize = 22, color = 'var(--cream)', gap 
 }
 
 // ─── Screens ──────────────────────────────────────────────────────────────────
-function HomeScreen({ onNav, savedItems, profile, userId, programs, recentSessions, activeProgramId, onStartWarmup }) {
+function HomeScreen({ onNav, onSave, profile, userId, programs, recentSessions, activeProgramId, onStartWarmup }) {
   const hour = new Date().getHours()
   const greeting = hour<12?'Good morning':hour<17?'Good afternoon':'Good evening'
   const name = profile?.name?`, ${profile.name}`:''
-  const tiles = [
-    { tab:'move',    label:'Move',         desc:'Mobility & warmups',          iconColor:'var(--green)',   iconBg:'var(--green-bg)'   },
-    { tab:'eat',     label:'Eat',          desc:'Recipes, your ingredients',   iconColor:'var(--amber)',   iconBg:'var(--amber-bg)'   },
-    { tab:'lift',    label:'Lift',         desc:'Programs & sessions',         iconColor:'var(--cream)',    iconBg:'var(--cream-bg)'    },
-    { tab:'stack',   label:'Your Rotation',desc:'Saved meals & routines',      iconColor:'var(--purple)',  iconBg:'var(--purple-bg)'  },
-  ]
-
-  const TILE_ICONS = {
-    move: (color) => (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="12" cy="5" r="2"/><path d="M12 7v6M9 10l-2 4h10l-2-4"/><path d="M9 21l1-4h4l1 4"/>
-      </svg>
-    ),
-    eat: (color) => (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M18 8h1a4 4 0 010 8h-1"/><path d="M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8z"/>
-        <line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/>
-      </svg>
-    ),
-    lift: (color) => (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M6 4v16M18 4v16M2 9h4M18 9h4M2 15h4M18 15h4M6 12h12"/>
-      </svg>
-    ),
-    pillars: (color) => (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
-      </svg>
-    ),
-    stack: (color) => (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M19 11H5M19 6H5M19 16H5"/><circle cx="3" cy="6" r="1" fill={color}/><circle cx="3" cy="11" r="1" fill={color}/><circle cx="3" cy="16" r="1" fill={color}/>
-      </svg>
-    ),
-  }
   const day = new Date().getDate()
   const isNewUser = !profile?.goal && !profile?.name
+
+  // One daily card — tips and facts alternate by day instead of stacking two AI cards
+  const isTipDay = day % 2 === 0
+  const dailyProps = isTipDay
+    ? { cacheKey:'daily_tip', category:TIP_CATEGORIES[day%TIP_CATEGORIES.length], cardLabel:'Daily tip',
+        promptFn:cat=>'You are a knowledgeable health advisor. Give ONE practical tip about '+cat+'. 2-3 sentences. Specific and surprising. No fluff, no exclamation marks. Give a 2-4 word title. Format: TITLE: [title] TIP: [tip]',
+        fallback:'Consistency over intensity. Showing up three times a week for a year will outperform any extreme program you can only stick to for a month.' }
+    : { cacheKey:'daily_fact', category:FACT_CATEGORIES[day%FACT_CATEGORIES.length], cardLabel:'Daily fact',
+        promptFn:cat=>'You are a science communicator. Give ONE surprising fact about '+cat+'. 2-3 sentences. Make it feel worth sharing. No obvious facts. No fluff. Give a 2-4 word title. Format: TITLE: [title] FACT: [fact]',
+        fallback:'Your muscles grow during rest, not during the workout itself. The training session is just the signal — sleep and nutrition are where the actual adaptation happens.' }
+
   return (
     <div style={{ padding:'32px 20px 20px' }}>
       <div style={{ marginBottom:24 }}>
-        <div style={{ marginBottom:16 }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:18 }}>
           <HaleLockup markSize={24} wordSize={18} color="var(--cream-dim)" gap={8} />
+          <button onClick={()=>onNav('profile')} aria-label="Profile" style={{
+            width:34, height:34, borderRadius:'50%', border:`0.5px solid ${T.border}`,
+            background:T.surface, color:T.text2, cursor:'pointer',
+            display:'flex', alignItems:'center', justifyContent:'center' }}>
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+              <circle cx="12" cy="8" r="3.2"/><path d="M5 20c1.5-3.5 4-5 7-5s5.5 1.5 7 5"/>
+            </svg>
+          </button>
         </div>
-        <div style={{ fontSize:13, color:T.text3, marginBottom:6 }}>{greeting}</div>
-        <div style={{ fontSize:28, fontWeight:400, color:T.text, letterSpacing:-.5, lineHeight:1.2 }}>Good day{name}.</div>
-        <div style={{ fontSize:14, color:T.text2, marginTop:8 }}>Feel better without overthinking it.</div>
+        <div style={{ fontSize:28, fontWeight:400, color:T.text, letterSpacing:-.5, lineHeight:1.2 }}>{greeting}{name}.</div>
       </div>
 
       {isNewUser && (
@@ -918,31 +891,16 @@ function HomeScreen({ onNav, savedItems, profile, userId, programs, recentSessio
           </div>
         </div>
       )}
-      <SmartHomeCard programs={programs} recentSessions={recentSessions} activeProgramId={activeProgramId} onStartWarmup={onStartWarmup} onNav={onNav} />
-      <DailyCard userId={userId} cacheKey="daily_tip" category={TIP_CATEGORIES[day%TIP_CATEGORIES.length]} cardLabel="Daily tip"
-        promptFn={cat=>'You are a knowledgeable health advisor. Give ONE practical tip about '+cat+'. 2-3 sentences. Specific and surprising. No fluff, no exclamation marks. Give a 2-4 word title. Format: TITLE: [title] TIP: [tip]'}
-        fallback="Consistency over intensity. Showing up three times a week for a year will outperform any extreme program you can only stick to for a month." />
-      <DailyCard userId={userId} cacheKey="daily_fact" category={FACT_CATEGORIES[day%FACT_CATEGORIES.length]} cardLabel="Daily fact"
-        promptFn={cat=>'You are a science communicator. Give ONE surprising fact about '+cat+'. 2-3 sentences. Make it feel worth sharing. No obvious facts. No fluff. Give a 2-4 word title. Format: TITLE: [title] FACT: [fact]'}
-        fallback="Your muscles grow during rest, not during the workout itself. The training session is just the signal — sleep and nutrition are where the actual adaptation happens." />
-      <SomethingSmallCard onNav={onNav} />
-      <Eyebrow>Quick access</Eyebrow>
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(2,minmax(0,1fr))', gap:10, marginBottom:16 }}>
-        {tiles.map(t=>(
-          <button key={t.tab} onClick={()=>onNav(t.tab)} style={{ background:T.surface, borderRadius:rr('md'), padding:14, textAlign:'left', border:'none', cursor:'pointer' }}>
-            <div style={{ width:38, height:38, borderRadius:10, background:t.iconBg, display:'flex', alignItems:'center', justifyContent:'center', marginBottom:12 }}>
-              {TILE_ICONS[t.tab]?.(t.iconColor)}
-            </div>
-            <div style={{ fontSize:13, fontWeight:500, color:T.text, marginBottom:3 }}>{t.label}</div>
-            <div style={{ fontSize:11, color:T.text2, lineHeight:1.4 }}>{t.desc}</div>
-          </button>
-        ))}
-      </div>
 
+      {/* Move first — one tap to relief, per the worst-day principle */}
+      <QuickRelief onSave={onSave} />
+
+      <SmartHomeCard programs={programs} recentSessions={recentSessions} activeProgramId={activeProgramId} onStartWarmup={onStartWarmup} onNav={onNav} />
+      <DailyCard userId={userId} {...dailyProps} />
+      <SomethingSmallCard onNav={onNav} />
     </div>
   )
 }
-
 
 // ─── Curated restaurant data ──────────────────────────────────────────────────
 const CURATED_SPOTS = {
@@ -1180,7 +1138,6 @@ Variations:
     const recipeLines = resp.split('\n').map(l=>l.trim().replace(/^#+\s*/,'')).filter(Boolean)
     const recipeName = recipeLines[0] || `${meal} — ${cuisine||vibe||'recipe'}`
     onSave({ label:recipeName, text:resp, type:'recipe' })
-    addVote()
     setSaved(true)
   }
 
@@ -1405,6 +1362,10 @@ function ProfileScreen({ userId, onSaved, onNav }) {
       <div style={{ marginTop:16, padding:'12px 14px', background:T.surface2, borderRadius:rr('md') }}>
         <div style={{ fontSize:12, color:T.text3, lineHeight:1.7 }}>Your profile personalizes recipe suggestions, workout nutrition guidance, and how the app talks to you.</div>
       </div>
+
+      <div style={{ marginTop:20, paddingTop:16, borderTop:`0.5px solid ${T.border}` }}>
+        <button onClick={async()=>{ await supabase.auth.signOut() }} style={{ fontSize:13, color:'var(--coral)', border:'none', background:'none', cursor:'pointer', padding:0 }}>Sign out</button>
+      </div>
     </div>
   )
 }
@@ -1459,7 +1420,7 @@ function StackScreen({ items, onDelete, onRename }) {
 
       {filtered.length===0 ? (
         <div style={{ textAlign:'center', padding:'3rem 1rem' }}>
-          <div style={{ fontSize:15, fontWeight:500, color:T.text, marginBottom:8 }}>your rotation is empty for now.</div>
+          <div style={{ fontSize:15, fontWeight:500, color:T.text, marginBottom:8 }}>Your rotation is empty for now.</div>
           <div style={{ fontSize:13, color:T.text2, lineHeight:1.7 }}>
             {tab==='routines' ? 'Save any mobility or sport routine from the Move tab and it will live here.' : 'Save any recipe from the Eat tab and it will live here — easy to find next time.'}
           </div>
@@ -1507,26 +1468,11 @@ function StackScreen({ items, onDelete, onRename }) {
           </div>
         )
       })}
-    </div>
-  )
-}
-
-function MoreScreen({ onNav }) {
-  const items = [
-    { tab:'stack',   label:'Your Rotation',     sub:'Your saved routines and recipes'  },
-    { tab:'profile', label:'Profile',      sub:'Your profile'       },
-  ]
-  return (
-    <div style={{ padding:'20px 20px' }}>
-      {items.map(item=>(
-        <div key={item.tab} onClick={()=>onNav(item.tab)} style={{ background:T.surface, border:`0.5px solid ${T.border}`, borderRadius:rr('md'), padding:'14px 16px', marginBottom:8, display:'flex', justifyContent:'space-between', alignItems:'center', cursor:'pointer' }}>
-          <div><div style={{ fontSize:14, fontWeight:500, color:T.text }}>{item.label}</div><div style={{ fontSize:12, color:T.text3, marginTop:2 }}>{item.sub}</div></div>
-          <div style={{ fontSize:18, color:T.text3 }}>›</div>
+      {filtered.length > 0 && (
+        <div style={{ fontSize:12, color:T.text3, textAlign:'center', padding:'14px 0 4px', fontStyle:'italic', lineHeight:1.6 }}>
+          Every save here is a vote for who you're becoming.
         </div>
-      ))}
-      <div style={{ marginTop:20, padding:'14px 16px', background:T.surface2, borderRadius:rr('md') }}>
-        <button onClick={async()=>{ await supabase.auth.signOut() }} style={{ fontSize:13, color:'var(--coral)', border:'none', background:'none', cursor:'pointer', padding:0 }}>Sign out</button>
-      </div>
+      )}
     </div>
   )
 }
@@ -1559,9 +1505,9 @@ const NAV_ICONS = {
       <path d="M6 4v16M18 4v16M2 9h4M18 9h4M2 15h4M18 15h4M6 12h12"/>
     </svg>
   ),
-  more: (active) => (
+  stack: (active) => (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active?2:1.5} strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>
+      <path d="M19 11H5M19 6H5M19 16H5"/><circle cx="3" cy="6" r="1" fill="currentColor"/><circle cx="3" cy="11" r="1" fill="currentColor"/><circle cx="3" cy="16" r="1" fill="currentColor"/>
     </svg>
   ),
 }
@@ -1571,14 +1517,13 @@ const NAV = [
   { tab:'move',  label:'Move'  },
   { tab:'eat',   label:'Eat'   },
   { tab:'lift',  label:'Lift'  },
-  { tab:'more',  label:'Me' },
+  { tab:'stack', label:'Rotation' },
 ]
 
 const TOPBAR = {
   move:    { title:'Move',        sub:'Mobility, warmups and recovery'                },
   eat:     { title:'Eat better',  sub:'New ideas, your ingredients'                   },
   lift:    { title:'Lift',        sub:'Your programs and sessions'                    },
-  more:    { title:'Me',          sub:''                                              },
   pillars: { title:'The Pillars', sub:'The only things that actually move the needle' },
   stack:   { title:'Your Rotation',    sub:'Your saved routines and recipes'               },
   profile: { title:'Profile',     sub:'Your profile'                    },
@@ -1678,11 +1623,10 @@ export default function App() {
         </div>
       )}
       <div style={{ flex:1, overflowY:'auto', paddingBottom:80 }}>
-        {tab==='home'    && <HomeScreen onNav={setTab} savedItems={savedItems} profile={profile} userId={userId} programs={programs} recentSessions={recentSessions} activeProgramId={activeProgramId} onStartWarmup={(info)=>{ setPendingSession(info); setTab('move') }} />}
+        {tab==='home'    && <HomeScreen onNav={setTab} onSave={handleSave} profile={profile} userId={userId} programs={programs} recentSessions={recentSessions} activeProgramId={activeProgramId} onStartWarmup={(info)=>{ setPendingSession(info); setTab('move') }} />}
         {tab==='move'    && <MoveScreen onSave={handleSave} pendingSession={pendingSession} onClearPending={()=>setPendingSession(null)} onStartSession={(info)=>{ setPendingSession(null); setLiftDeepLink(info); setTab('lift') }} />}
         {tab==='eat'     && <EatScreen onSave={handleSave} userId={userId} />}
         {tab==='lift'    && <LiftScreen userId={userId} userProfile={profile} onGoEat={()=>setTab('eat')} onGoMove={()=>setTab('move')} deepLinkWorkout={liftDeepLink} onClearDeepLink={()=>setLiftDeepLink(null)} />}
-        {tab==='more'    && <MoreScreen onNav={setTab} />}
         {tab==='pillars' && !deepDive && <PillarsScreen onDeepDive={handleDeepDive} />}
         {tab==='pillars' && deepDive  && <DeepDiveScreen prompt={deepDive} onBack={()=>setDeepDive(null)} />}
         {tab==='stack'   && <StackScreen items={savedItems} onDelete={handleDelete} onRename={handleRename} />}
