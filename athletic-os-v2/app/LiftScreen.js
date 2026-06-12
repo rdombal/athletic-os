@@ -155,12 +155,24 @@ function useStopwatch() {
 }
 
 // ─── AI helper ────────────────────────────────────────────────────────────────
-async function callAI(prompt) {
+async function callAI(prompt, timeoutMs = 25000) {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
   try {
-    const res = await fetch('/api/claude', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ prompt }) })
+    const res = await fetch('/api/claude', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ prompt }),
+      signal: controller.signal,
+    })
     const data = await res.json()
+    if (data.error) throw new Error(data.error)
     return data.text || ''
-  } catch { return '' }
+  } catch(e) {
+    if (e.name === 'AbortError') throw new Error('timeout')
+    throw e
+  } finally {
+    clearTimeout(timer)
+  }
 }
 
 // ─── Exercise picker ──────────────────────────────────────────────────────────
@@ -243,7 +255,9 @@ Exercises: ${stats.exerciseNames.join(', ')}
 ${prText}
 
 Give 2-3 sentences max. Mention any PRs. Note one small win. No fluff, no exclamation point spam. Be real.`
-    callAI(prompt).then(text => { setAnalysis(text); setLoading(false) })
+    callAI(prompt)
+      .then(text => { setAnalysis(text); setLoading(false) })
+      .catch(() => { setAnalysis('Solid session — logged and in the books. Every one of these compounds.'); setLoading(false) })
   }, [])
 
   const nutritionNudge = buildNutritionNudge(profile, stats.workoutName)
@@ -1310,18 +1324,24 @@ function WeeklyOverview({ programs, sessions, activeProgramId, lastWorkoutId, on
 
   const getNextWorkout = (program) => {
     if (!program) return null
-    for (const ph of program.phases) {
-      if (!ph.workouts.length) continue
-      if (!lastWorkoutId) return { workout: ph.workouts[0], phase: ph }
-      const lastIdx = ph.workouts.findIndex(w => w.id === lastWorkoutId)
-      if (lastIdx >= 0) {
-        const next = ph.workouts[(lastIdx + 1) % ph.workouts.length]
-        return { workout: next, phase: ph }
+    const phases = program.phases || []
+    const firstWithWorkouts = phases.find(p => p.workouts?.length > 0)
+    if (!lastWorkoutId) return firstWithWorkouts ? { workout: firstWithWorkouts.workouts[0], phase: firstWithWorkouts } : null
+    for (let pi = 0; pi < phases.length; pi++) {
+      const workouts = phases[pi].workouts || []
+      const idx = workouts.findIndex(w => w.id === lastWorkoutId)
+      if (idx >= 0) {
+        // Next workout in this phase
+        if (idx + 1 < workouts.length) return { workout: workouts[idx + 1], phase: phases[pi] }
+        // Phase complete — advance to the next phase with workouts
+        for (let ni = pi + 1; ni < phases.length; ni++) {
+          if (phases[ni].workouts?.length > 0) return { workout: phases[ni].workouts[0], phase: phases[ni] }
+        }
+        // Program complete — cycle back to the start
+        return firstWithWorkouts ? { workout: firstWithWorkouts.workouts[0], phase: firstWithWorkouts } : null
       }
     }
-    return activeProgram?.phases?.[0]?.workouts?.[0]
-      ? { workout: activeProgram.phases[0].workouts[0], phase: activeProgram.phases[0] }
-      : null
+    return firstWithWorkouts ? { workout: firstWithWorkouts.workouts[0], phase: firstWithWorkouts } : null
   }
 
   // Recent sessions — last 7 days
