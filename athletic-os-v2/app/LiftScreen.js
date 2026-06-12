@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { EXERCISE_LIBRARY, EXERCISE_GROUPS } from './exercises'
 import { getPrograms, saveProgram, deleteProgram, getSessions, saveSession } from './db'
-import { PostLiftRecovery } from './MoveScreen'
+import { PostLiftRecovery, SPORT_LIBRARY, getWarmupType } from './MoveScreen'
 
 function buildNutritionNudge(profile, workoutType) {
   if (!profile?.goal) return ''
@@ -18,8 +18,6 @@ function buildNutritionNudge(profile, workoutType) {
   if (isFat) return 'Good session. Keep your next meal high protein, moderate carb to stay in a deficit while preserving muscle.'
   return 'Fuel recovery with a protein-rich meal within the next hour or two.'
 }
-
-function addVote() { try { const v=parseInt(localStorage.getItem('identity_votes')||'0'); localStorage.setItem('identity_votes',String(v+1)) } catch {} }
 
 function uid() { return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { const r = Math.random()*16|0; return (c==='x'?r:(r&0x3|0x8)).toString(16) }) }
 
@@ -572,43 +570,33 @@ function InlineSetRow({ setNum, initial, lastSet, prevSet, isCurrent, onSave, on
 
 
 // ─── Warmup suggestion ────────────────────────────────────────────────────────
+// Uses the same curated routines as the home-card warmup flow — instant, no AI call.
 function WarmupSuggestion({ workout }) {
   const [open, setOpen] = useState(false)
-  const [suggestion, setSuggestion] = useState('')
-  const [loading, setLoading] = useState(false)
-
-  const getSuggestion = async () => {
-    if (suggestion) { setOpen(true); return }
-    setLoading(true); setOpen(true)
-    const exercises = workout.exercises.map(e => e.name).join(', ')
-    try {
-      const res = await fetch('/api/claude', {
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ prompt: `You are a sports performance coach. Give a 5-minute warmup routine for someone about to do this workout: ${exercises}.
-
-Give 4-5 specific movements with duration. Focus on what actually prepares those muscles and joints. Be direct, no fluff.
-
-Format each as: [Movement] — [duration or reps]` })
-      })
-      const data = await res.json()
-      setSuggestion(data.text || '')
-    } catch { setSuggestion('Hip circles 30s, leg swings 10/side, arm circles 30s, light cardio 2 min, dynamic stretching 1 min.') }
-    setLoading(false)
-  }
+  const warmupType = getWarmupType(workout.name)
+  const routine = SPORT_LIBRARY.Lifting[`${warmupType}_warmup`] || SPORT_LIBRARY.Lifting.lower_warmup
 
   return (
     <div style={{ marginBottom:16 }}>
       {!open ? (
-        <button onClick={getSuggestion} style={{ fontSize:12, color:T.text3, border:`0.5px solid ${T.border}`, borderRadius:rr('sm'), padding:'6px 12px', background:'transparent', cursor:'pointer' }}>
-          Warmup suggestions
+        <button onClick={()=>setOpen(true)} style={{ fontSize:12, color:T.text3, border:`0.5px solid ${T.border}`, borderRadius:rr('sm'), padding:'6px 12px', background:'transparent', cursor:'pointer' }}>
+          Warmup · {routine.duration}
         </button>
       ) : (
         <div style={{ background:T.surface2, borderRadius:rr('md'), padding:'12px 14px' }}>
-          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8 }}>
-            <div style={{ fontSize:11, fontWeight:500, color:T.text3, letterSpacing:.5, textTransform:'uppercase' }}>Warmup</div>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:4 }}>
+            <div style={{ fontSize:11, fontWeight:500, color:T.text3, letterSpacing:.5, textTransform:'uppercase' }}>{routine.title}</div>
             <button onClick={()=>setOpen(false)} style={{ border:'none', background:'none', color:T.text3, fontSize:12, cursor:'pointer' }}>×</button>
           </div>
-          {loading ? <LoadingDots /> : <div style={{ fontSize:13, color:T.text2, lineHeight:1.7, whiteSpace:'pre-wrap' }}>{suggestion}</div>}
+          <div style={{ fontSize:11, color:T.text3, marginBottom:8 }}>{routine.duration} · {routine.source}</div>
+          {routine.exercises.map((ex, i) => (
+            <div key={i} style={{ padding:'8px 0', borderBottom: i < routine.exercises.length-1 ? `0.5px solid ${T.border}` : 'none' }}>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', gap:8 }}>
+                <div style={{ fontSize:13, fontWeight:500, color:T.text }}>{ex.name}</div>
+                <div style={{ fontSize:11, color:'var(--green)', fontWeight:500, flexShrink:0 }}>{ex.reps}</div>
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>
@@ -765,7 +753,6 @@ function SessionLogger({ workout, programId, phaseId, userId, profile, onGoEat, 
   const finishSession = async () => {
     const stats=buildStats()
     await saveSession(userId,{ programId, phaseId, workoutId:workout.id, workoutName:workout.name, exercises:loggedSets }).catch(()=>{})
-    addVote()
     setSessionStats(stats)
     setSessionComplete(true)
   }
