@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from './supabase'
 import AuthScreen from './AuthScreen'
 import LiftScreen from './LiftScreen'
-import MoveScreen, { SavedRoutineCard } from './MoveScreen'
+import MoveScreen from './MoveScreen'
 import {
   getProfile, saveProfile,
   getPantry, savePantry,
@@ -126,6 +126,8 @@ const TIP_CATEGORIES  = ['sleep','nutrition','movement','recovery','mindset','pe
 const FACT_CATEGORIES = ['exercise science','nutrition science','sleep science','the human body','sports performance','longevity','mental health and exercise']
 
 // ─── API ──────────────────────────────────────────────────────────────────────
+function addVote() { try { const v=parseInt(localStorage.getItem('identity_votes')||'0'); localStorage.setItem('identity_votes',String(v+1)) } catch {} }
+
 async function callAI(prompt, timeoutMs = 25000) {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), timeoutMs)
@@ -273,7 +275,7 @@ function Toast({ message, visible }) {
   if (!visible) return null
   return (
     <div style={{
-      position:'fixed', bottom:90, left:'50%', transform:'translateX(-50%)',
+      position:'fixed', bottom:154, left:'50%', transform:'translateX(-50%)',
       background:'var(--cream)', color:'var(--bg)', padding:'10px 20px',
       borderRadius:20, fontSize:13, fontWeight:500, zIndex:500,
       animation:'slideUp .2s ease-out',
@@ -376,7 +378,9 @@ function PantryEditor({ pantry, onAdd, onRemove }) {
   const [error, setError] = useState('')
   const [showQuick, setShowQuick] = useState(pantry.length === 0)
   const handleAdd = async (item) => {
-    const t = (item||input).trim().replace(/^\S+\s/, '') // strip emoji
+    // Quick-add chips carry an emoji prefix ("🥚 Eggs") — strip it.
+    // Typed input must be kept intact ("ground turkey" stays "ground turkey").
+    const t = item ? item.trim().replace(/^\S+\s/, '') : input.trim()
     if (!t) return
     const ok = await onAdd(t)
     if (ok) { setInput(''); setError('') } else setError('Already in your pantry')
@@ -524,13 +528,17 @@ function LowEnergyCard({ onNav, onNavMove, onNavEat }) {
 // ─── Something small card ─────────────────────────────────────────────────────
 function SomethingSmallCard({ onNav }) {
   const [dismissed, setDismissed] = useState(false)
-  const lastVisit = typeof window !== 'undefined' ? localStorage.getItem('last_home_visit') : null
-  const daysSince = lastVisit ? Math.floor((Date.now() - parseInt(lastVisit)) / (1000*60*60*24)) : 0
+  const [daysSince, setDaysSince] = useState(0)
 
-  // Update last visit
-  if (typeof window !== 'undefined') {
-    localStorage.setItem('last_home_visit', Date.now().toString())
-  }
+  // Read the gap once on mount, then record this visit.
+  // (Doing this during render made the card vanish on any re-render.)
+  useEffect(() => {
+    try {
+      const lastVisit = localStorage.getItem('last_home_visit')
+      if (lastVisit) setDaysSince(Math.floor((Date.now() - parseInt(lastVisit)) / (1000*60*60*24)))
+      localStorage.setItem('last_home_visit', Date.now().toString())
+    } catch {}
+  }, [])
 
   // Only show if it has been 4+ days since last visit and not dismissed
   if (daysSince < 4 || dismissed) return null
