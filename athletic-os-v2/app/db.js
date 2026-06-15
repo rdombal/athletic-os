@@ -100,11 +100,15 @@ function normalizeProgram(p) {
         exercises: (w.exercises || []).map(ex => ({
           ...ex,
           id: ex.id || Math.random().toString(36).slice(2,9),
-          // exerciseId falls back to id for older records
-          exerciseId: ex.exerciseId || ex.id,
+          // exerciseId must be STABLE across loads and match how sessions store it
+          // (normalizeSession falls back to name), so progress/history can match.
+          exerciseId: ex.exerciseId || ex.exercise_id || ex.id || ex.name,
           name: ex.name || 'Exercise',
           sets: ex.sets || 3,
-          targetReps: ex.targetReps || 8,
+          // Accept snake_case keys from hand-written SQL inserts
+          targetReps: ex.targetReps || ex.target_reps || 8,
+          targetRpe: ex.targetRpe || ex.target_rpe || null,
+          notes: ex.notes || ex.note || '',
           group: ex.group || 'Other',
         }))
       }))
