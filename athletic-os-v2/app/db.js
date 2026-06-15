@@ -165,7 +165,7 @@ export async function getSessions(userId, programId) {
 }
 
 export async function saveSession(userId, session) {
-  const { data } = await supabase.from('lift_sessions').insert({
+  const { data, error } = await supabase.from('lift_sessions').insert({
     user_id: userId,
     program_id: session.programId,
     phase_id: session.phaseId,
@@ -173,5 +173,10 @@ export async function saveSession(userId, session) {
     workout_name: session.workoutName,
     exercises: session.exercises,
   }).select().single()
+  if (error) {
+    console.error('saveSession failed:', error.message, error.details || '')
+    // Throw so the UI can show a retry path instead of silently losing the workout.
+    throw error
+  }
   return data
 }
