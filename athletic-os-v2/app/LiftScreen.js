@@ -237,10 +237,18 @@ function SetLogger({ set, lastSet, onSave, onClose }) {
 }
 
 // ─── Session complete modal ────────────────────────────────────────────────────
-function SessionCompleteModal({ stats, profile, onDone, onGoEat }) {
+function SessionCompleteModal({ stats, profile, onDone, onGoEat, saveState='saved', onRetrySave }) {
   const [analysis, setAnalysis] = useState('')
   const [loading, setLoading] = useState(true)
   const [showDetails, setShowDetails] = useState(false)
+
+  // Lock the page behind the modal so touch-scrolling stays inside the modal
+  // (prevents the "screen is frozen / won't move" feeling on mobile).
+  useEffect(() => {
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = prev }
+  }, [])
 
   useEffect(() => {
     const prText = stats.prs.length ? `PRs hit: ${stats.prs.map(p=>p.name+': '+p.weight+'lb'+(p.firstEver?' (first ever)':'')).join(', ')}. ` : ''
@@ -253,9 +261,11 @@ Exercises: ${stats.exerciseNames.join(', ')}
 ${prText}
 
 Give 2-3 sentences max. Mention any PRs. Note one small win. No fluff, no exclamation point spam. Be real.`
+    let cancelled = false
     callAI(prompt)
-      .then(text => { setAnalysis(text); setLoading(false) })
-      .catch(() => { setAnalysis('Solid session — logged and in the books. Every one of these compounds.'); setLoading(false) })
+      .then(text => { if(!cancelled){ setAnalysis(text); setLoading(false) } })
+      .catch(() => { if(!cancelled){ setAnalysis('Solid session — logged and in the books. Every one of these compounds.'); setLoading(false) } })
+    return () => { cancelled = true }
   }, [])
 
   const nutritionNudge = buildNutritionNudge(profile, stats.workoutName)
@@ -268,6 +278,19 @@ Give 2-3 sentences max. Mention any PRs. Note one small win. No fluff, no exclam
         </div>
 
         <div style={{ fontSize:13, color:T.text3, marginBottom:4 }}>{stats.workoutName}</div>
+
+        {saveState === 'error' ? (
+          <div style={{ background:'var(--coral-bg)', border:'0.5px solid var(--coral-dim)', borderRadius:rr('sm'), padding:'10px 12px', marginBottom:12 }}>
+            <div style={{ fontSize:12, color:'var(--coral)', fontWeight:500, marginBottom:6 }}>This session didn’t save</div>
+            <div style={{ fontSize:11, color:T.text2, lineHeight:1.6, marginBottom:8 }}>Your numbers are still here. Tap to try saving again — don’t close this screen until it saves.</div>
+            <button onClick={onRetrySave} style={{ fontSize:12, fontWeight:500, color:'var(--bg)', background:'var(--cream)', border:'none', borderRadius:rr('sm'), padding:'8px 16px', cursor:'pointer' }}>Retry save</button>
+          </div>
+        ) : saveState === 'saving' ? (
+          <div style={{ fontSize:11, color:T.text3, marginBottom:12 }}>Saving session…</div>
+        ) : (
+          <div style={{ fontSize:11, color:'var(--green)', marginBottom:12 }}>✓ Session saved</div>
+        )}
+
         <div style={{ fontSize:12, color:T.text3, fontStyle:'italic', marginBottom:16 }}>Strength is built gradually, session by session.</div>
 
         <div style={{ display:'flex', gap:8, marginBottom:14 }}>
@@ -333,7 +356,13 @@ Give 2-3 sentences max. Mention any PRs. Note one small win. No fluff, no exclam
           onSave={()=>{}}
         />
 
-        <button onClick={onDone} style={{
+        <button onClick={()=>{
+            if (saveState === 'error') {
+              const leave = window.confirm('This session hasn’t saved yet. Leave anyway? Your logged numbers will be lost.')
+              if (!leave) return
+            }
+            onDone()
+          }} style={{
           width:'100%', padding:'13px', borderRadius:rr('md'), border:'none',
           background:T.text, color:T.bg, fontSize:14, fontWeight:600,
           cursor:'pointer', marginTop:12, boxShadow:'0 1px 3px rgba(0,0,0,0.2)',
@@ -702,6 +731,7 @@ function SessionLogger({ workout, programId, phaseId, userId, profile, onGoEat, 
   const [addingExercise, setAddingExercise] = useState(false)
   const [sessionComplete, setSessionComplete] = useState(false)
   const [sessionStats, setSessionStats] = useState(null)
+  const [saveState, setSaveState] = useState('saving') // 'saving' | 'saved' | 'error'
   const [restActive, setRestActive] = useState(false)
   const [restKey, setRestKey] = useState(0)
   const { elapsed, formatted } = useStopwatch()
@@ -777,9 +807,25 @@ function SessionLogger({ workout, programId, phaseId, userId, profile, onGoEat, 
 
   const finishSession = async () => {
     const stats=buildStats()
-    await saveSession(userId,{ programId, phaseId, workoutId:workout.id, workoutName:workout.name, exercises:loggedSets }).catch(()=>{})
     setSessionStats(stats)
     setSessionComplete(true)
+    setSaveState('saving')
+    try {
+      await saveSession(userId,{ programId, phaseId, workoutId:workout.id, workoutName:workout.name, exercises:loggedSets })
+      setSaveState('saved')
+    } catch (e) {
+      setSaveState('error')
+    }
+  }
+
+  const retrySave = async () => {
+    setSaveState('saving')
+    try {
+      await saveSession(userId,{ programId, phaseId, workoutId:workout.id, workoutName:workout.name, exercises:loggedSets })
+      setSaveState('saved')
+    } catch (e) {
+      setSaveState('error')
+    }
   }
 
 
@@ -789,7 +835,7 @@ function SessionLogger({ workout, programId, phaseId, userId, profile, onGoEat, 
     {restActive && <RestTimer key={restKey} onDismiss={()=>setRestActive(false)} />}
     <div style={{ padding:'0 20px', paddingBottom:80 }}>
       {sessionComplete && sessionStats && (
-        <SessionCompleteModal stats={sessionStats} profile={profile} onGoEat={onGoEat} onDone={()=>onFinish(sessionStats)} />
+        <SessionCompleteModal stats={sessionStats} profile={profile} onGoEat={onGoEat} onDone={()=>onFinish(sessionStats)} saveState={saveState} onRetrySave={retrySave} />
       )}
       {(addingExercise || swappingIdx !== null) && (
         <ExercisePicker
