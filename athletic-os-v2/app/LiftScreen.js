@@ -358,6 +358,24 @@ function ExerciseEditor({ exercise, onChange, onRemove }) {
         <Stepper label="Sets" value={exercise.sets||3} onChange={v=>onChange({ ...exercise, sets:v })} min={1} max={10} />
         <Stepper label="Target reps" value={exercise.targetReps||8} onChange={v=>onChange({ ...exercise, targetReps:v })} min={1} max={100} />
       </div>
+      <div style={{ padding:'0 14px 12px' }}>
+        <div style={{ fontSize:11, color:T.text3, marginBottom:6 }}>Target RPE (optional)</div>
+        <div style={{ display:'flex', gap:6, marginBottom:10 }}>
+          {[6,7,8,9,10].map(r => (
+            <button key={r} onClick={()=>onChange({ ...exercise, targetRpe: exercise.targetRpe===r ? null : r })} style={{
+              flex:1, padding:'7px 0', borderRadius:rr('sm'), fontSize:12, cursor:'pointer',
+              border:`0.5px solid ${exercise.targetRpe===r ? 'var(--cream-dim)' : T.border}`,
+              background: exercise.targetRpe===r ? 'var(--cream-bg)' : T.surface2,
+              color: exercise.targetRpe===r ? 'var(--cream)' : T.text2,
+              fontWeight: exercise.targetRpe===r ? 500 : 400,
+            }}>{r}</button>
+          ))}
+        </div>
+        <div style={{ fontSize:11, color:T.text3, marginBottom:6 }}>Coach note (optional)</div>
+        <input value={exercise.notes||''} onChange={e=>onChange({ ...exercise, notes:e.target.value })}
+          placeholder="e.g. Pause at the bottom, control the negative"
+          style={{ width:'100%', padding:'9px 12px', borderRadius:rr('sm'), fontSize:12, border:`0.5px solid ${T.border}`, background:T.surface2, color:T.text, outline:'none' }} />
+      </div>
     </div>
   )
 }
@@ -471,7 +489,7 @@ function ProgramBuilder({ program, onSave, onBack, onDelete }) {
 
 
 // ─── Inline set row ───────────────────────────────────────────────────────────
-function InlineSetRow({ setNum, initial, lastSet, prevSet, isCurrent, onSave, onUndo, onRestStart, useRpe }) {
+function InlineSetRow({ setNum, initial, lastSet, prevSet, isCurrent, onSave, onUndo, onRestStart, useRpe, targetReps, targetRpe }) {
   // Pre-fill from last session on mount — so +5 buttons work immediately
   const defaultWeight = initial?.weight?.toString() || lastSet?.weight?.toString() || ''
   const defaultReps   = initial?.reps?.toString()   || lastSet?.reps?.toString()   || ''
@@ -547,12 +565,12 @@ function InlineSetRow({ setNum, initial, lastSet, prevSet, isCurrent, onSave, on
           style={bigInput} />
         <input type="number" inputMode="numeric" value={reps}
           onChange={e=>{ setReps(e.target.value); setSaved(false) }}
-          placeholder={lastSet?.reps?.toString() || '—'}
+          placeholder={lastSet?.reps?.toString() || (targetReps ? String(targetReps) : '—')}
           style={bigInput} />
         {useRpe && (
           <input type="number" inputMode="decimal" value={rpe}
             onChange={e=>{ setRpe(e.target.value); setSaved(false) }}
-            placeholder="RPE"
+            placeholder={targetRpe ? String(targetRpe) : 'RPE'}
             style={{ ...bigInput, width:58, flexShrink:0, fontSize:14 }} />
         )}
         <button onClick={saved ? handleUndo : handleSave} style={{
@@ -692,13 +710,18 @@ function SessionLogger({ workout, programId, phaseId, userId, profile, onGoEat, 
     if (userId) getSessions(userId, programId).then(s=>setSessions(s)).catch(()=>{})
   }, [programId])
 
-  const getLastSession = (exerciseId) => {
+  const getLastSession = (exerciseId, exerciseName) => {
     const prev = sessions
-      .filter(s=>s.program_id===programId||s.programId===programId)
+      .filter(s => {
+        const pid = s.program_id ?? s.programId
+        // Accept the program match, OR any session that logged this exercise
+        // (covers sessions saved with a null/mismatched program_id).
+        return !pid || pid===programId || (s.exercises||[]).some(e=>e.exerciseId===exerciseId||e.name===exerciseName)
+      })
       .sort((a,b)=>new Date(b.logged_at||b.date)-new Date(a.logged_at||a.date))
-      .find(s=>(s.exercises||[]).some(e=>e.exerciseId===exerciseId))
+      .find(s=>(s.exercises||[]).some(e=>e.exerciseId===exerciseId||e.name===exerciseName))
     if (!prev) return null
-    return prev.exercises.find(e=>e.exerciseId===exerciseId)
+    return prev.exercises.find(e=>e.exerciseId===exerciseId||e.name===exerciseName)
   }
 
   const logSet = (exIdx, setIdx, data) => {
@@ -723,7 +746,7 @@ function SessionLogger({ workout, programId, phaseId, userId, profile, onGoEat, 
     loggedSets.forEach((ex, idx) => {
       const exDef = currentExercises[idx]
       ex.sets.forEach(s=>{ totalVolume+=(s.weight||0)*(s.reps||0); totalSets++ })
-      const lastEx=getLastSession(ex.exerciseId)
+      const lastEx=getLastSession(ex.exerciseId, ex.name)
       const bestSet=ex.sets.reduce((b,s)=>(s.weight||0)*(s.reps||0)>(b.weight||0)*(b.reps||0)?s:b, {weight:0,reps:0})
       const myMax=ex.sets.reduce((b,s)=>Math.max(b,s.weight||0),0)
       const lastMax=lastEx?lastEx.sets.reduce((b,s)=>Math.max(b,s.weight||0),0):0
@@ -732,7 +755,9 @@ function SessionLogger({ workout, programId, phaseId, userId, profile, onGoEat, 
       // Progressive overload target: if hit all sets clean, suggest +5lb next time
       const targetSets = workout.exercises.find(e=>(e.exerciseId||e.id)===ex.exerciseId)?.sets || 3
       const allSetsHit = ex.sets.filter(Boolean).length >= targetSets
-      const targetReps = workout.exercises.find(e=>(e.exerciseId||e.id)===ex.exerciseId)?.targetReps || 8
+      const targetRepsRaw = workout.exercises.find(e=>(e.exerciseId||e.id)===ex.exerciseId)?.targetReps || 8
+      // Tolerate string targets like "8-12" or "10/side" — compare against the leading number
+      const targetReps = typeof targetRepsRaw === 'number' ? targetRepsRaw : (parseInt(targetRepsRaw) || 8)
       const avgReps = ex.sets.length ? ex.sets.reduce((a,s)=>a+(s.reps||0),0)/ex.sets.length : 0
       if (allSetsHit && myMax > 0) {
         const increment = avgReps >= targetReps ? 5 : 0
@@ -783,7 +808,7 @@ function SessionLogger({ workout, programId, phaseId, userId, profile, onGoEat, 
 
       {liveExercises.map((ex, exIdx) => {
         const logged = loggedSets[exIdx] || { sets:[] }
-        const lastSess = getLastSession(ex.exerciseId||ex.id)
+        const lastSess = getLastSession(ex.exerciseId||ex.id, ex.name)
         const targetSets = ex.sets || 3
         const isExpanded = expandedEx === exIdx
         const setsLogged = logged.sets.filter(Boolean).length
@@ -806,7 +831,7 @@ function SessionLogger({ workout, programId, phaseId, userId, profile, onGoEat, 
                   )}
                 </div>
                 <div style={{ fontSize:12, color:T.text3 }}>
-                  {targetSets} sets
+                  {targetSets} × {ex.targetReps || 8}{ex.targetRpe ? <span style={{ color:T.text3 }}> @ RPE {ex.targetRpe}</span> : ''}
                   {setsLogged > 0 && !allDone && <span style={{ color:'var(--cream)', marginLeft:6 }}>{setsLogged}/{targetSets} logged</span>}
                 </div>
               </div>
@@ -840,7 +865,7 @@ function SessionLogger({ workout, programId, phaseId, userId, profile, onGoEat, 
                   <div style={{ width:28, flexShrink:0 }} />
                   <div style={{ flex:1, fontSize:10, fontWeight:600, color:T.text3, letterSpacing:.6, textTransform:'uppercase', textAlign:'center' }}>Weight (lb)</div>
                   <div style={{ flex:1, fontSize:10, fontWeight:600, color:T.text3, letterSpacing:.6, textTransform:'uppercase', textAlign:'center' }}>Reps</div>
-                  {(ex.useRpe || workout.useRpe || program?.useRpe) && <div style={{ width:52, fontSize:10, fontWeight:600, color:T.text3, letterSpacing:.6, textTransform:'uppercase', textAlign:'center', flexShrink:0 }}>RPE</div>}
+                  {(ex.useRpe || workout.useRpe || program?.useRpe || ex.targetRpe) && <div style={{ width:52, fontSize:10, fontWeight:600, color:T.text3, letterSpacing:.6, textTransform:'uppercase', textAlign:'center', flexShrink:0 }}>RPE</div>}
                   <div style={{ width:42, flexShrink:0 }} />
                 </div>
 
@@ -860,7 +885,9 @@ function SessionLogger({ workout, programId, phaseId, userId, profile, onGoEat, 
                         onSave={data => logSet(exIdx, i, data)}
                         onUndo={()=>{ setLoggedSets(prev => { const next=[...prev]; const sets=[...next[exIdx].sets]; sets[i]=undefined; next[exIdx]={...next[exIdx],sets}; return next }) }}
                         onRestStart={()=>{ setRestActive(true); setRestKey(k=>k+1) }}
-                        useRpe={workout.useRpe || ex.useRpe || program?.useRpe || false}
+                        useRpe={workout.useRpe || ex.useRpe || program?.useRpe || !!ex.targetRpe || false}
+                        targetReps={ex.targetReps || 8}
+                        targetRpe={ex.targetRpe}
                       />
                     )
                   })}
@@ -905,23 +932,36 @@ function SessionLogger({ workout, programId, phaseId, userId, profile, onGoEat, 
 }
 
 // ─── Session history ──────────────────────────────────────────────────────────
-function SessionHistory({ userId, programId, onBack, onViewProgress }) {
-  const [sessions, setSessions] = useState([])
+function SessionHistory({ userId, program, programId, preloadedSessions, onBack, onViewProgress }) {
+  const [sessions, setSessions] = useState(null)
   const [loading, setLoading] = useState(true)
   const [expanded, setExpanded] = useState(null)
 
   useEffect(() => {
-    getSessions(userId, programId).then(s=>{ setSessions(s); setLoading(false) }).catch(()=>setLoading(false))
+    // If the program object is available, match across ALL sessions (resilient to
+    // null/mismatched program_id). Otherwise fall back to the strict program query.
+    if (program) {
+      const base = preloadedSessions
+        ? Promise.resolve(preloadedSessions)
+        : getSessions(userId)
+      base.then(all => {
+        setSessions((all || []).filter(s => sessionBelongsToProgram(s, program)))
+        setLoading(false)
+      }).catch(()=>{ setSessions([]); setLoading(false) })
+    } else {
+      getSessions(userId, programId).then(s=>{ setSessions(s); setLoading(false) }).catch(()=>{ setSessions([]); setLoading(false) })
+    }
   }, [])
 
   if (loading) return <div style={{ padding:20 }}><LoadingDots /></div>
+  const list = (sessions || []).slice().sort((a,b)=>new Date(b.logged_at||b.date)-new Date(a.logged_at||a.date))
 
   return (
     <div style={{ padding:'0 20px' }}>
       <BackBtn label="Back to program" onClick={onBack} />
-      <SectionHeader title="Session history" sub={`${sessions.length} session${sessions.length!==1?'s':''} logged`} />
-      {sessions.length===0 && <EmptyState message="No sessions logged yet." sub="Complete a workout to see your history." />}
-      {sessions.map((s,i) => {
+      <SectionHeader title="Session history" sub={`${list.length} session${list.length!==1?'s':''} logged`} />
+      {list.length===0 && <EmptyState message="No sessions logged yet." sub="Complete a workout to see your history." />}
+      {list.map((s,i) => {
         const date = new Date(s.logged_at||s.date).toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' })
         const isOpen = expanded===i
         const totalVol = (s.exercises||[]).reduce((sum,ex) => sum + ex.sets.reduce((a,set) => a+(set.weight||0)*(set.reps||0), 0), 0)
@@ -1147,10 +1187,24 @@ function ProgressSummary({ sessions, onViewExercise }) {
   )
 }
 
+// ─── Session ↔ program matching ───────────────────────────────────────────────
+// A session belongs to a program if its program_id matches, OR (fallback) the
+// workout it logged is one of this program's workouts. The fallback rescues
+// sessions saved with a null/mismatched program_id — common when a program was
+// (re)created via the SQL editor with a different UUID than the one logged under.
+function sessionBelongsToProgram(session, program) {
+  const pid = session.program_id ?? session.programId
+  if (pid && pid === program.id) return true
+  const wid = session.workout_id ?? session.workoutId
+  if (!wid) return false
+  return (program.phases || []).some(ph =>
+    (ph.workouts || []).some(w => w.id === wid))
+}
+
 // ─── Program progress (inside program detail) — phase-aware ──────────────────
 function ProgramProgress({ program, sessions, onViewExercise }) {
   const programSessions = sessions
-    .filter(s => s.program_id===program.id||s.programId===program.id)
+    .filter(s => sessionBelongsToProgram(s, program))
     .sort((a,b) => new Date(a.logged_at||a.date) - new Date(b.logged_at||b.date))
 
   if (!programSessions.length) return null
@@ -1989,7 +2043,7 @@ export default function LiftScreen({ userId, userProfile, onGoEat, onGoMove, dee
           onBack={()=>{ setActiveSession(null); setView('detail') }} />
       )}
       {view==='history' && selectedProgram && (
-        <SessionHistory userId={userId} programId={selectedProgram.id}
+        <SessionHistory userId={userId} program={selectedProgram} preloadedSessions={sessions}
           onBack={()=>setView('detail')}
           onViewProgress={(name,id)=>{ setProgressExercise({ name, id }); setView('progress') }} />
       )}
