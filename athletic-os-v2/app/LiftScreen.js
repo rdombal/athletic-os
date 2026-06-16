@@ -1413,10 +1413,18 @@ function WeeklyOverview({ programs, sessions, activeProgramId, lastWorkoutId, on
     if (!program) return null
     const phases = program.phases || []
     const firstWithWorkouts = phases.find(p => p.workouts?.length > 0)
-    if (!lastWorkoutId) return firstWithWorkouts ? { workout: firstWithWorkouts.workouts[0], phase: firstWithWorkouts } : null
+    // Derive "last workout" from the most recent LOGGED session for this program
+    // (database truth), so this matches the home card. The local-storage pointer
+    // is unreliable — it gets set on Start even if the session never saved.
+    const programWorkoutIds = new Set(phases.flatMap(p => (p.workouts||[]).map(w => w.id)))
+    const lastLogged = [...sessions]
+      .filter(s => programWorkoutIds.has(s.workoutId || s.workout_id))
+      .sort((a,b)=>new Date(b.logged_at||b.date)-new Date(a.logged_at||a.date))[0]
+    const effectiveLastId = (lastLogged?.workoutId || lastLogged?.workout_id) || null
+    if (!effectiveLastId) return firstWithWorkouts ? { workout: firstWithWorkouts.workouts[0], phase: firstWithWorkouts } : null
     for (let pi = 0; pi < phases.length; pi++) {
       const workouts = phases[pi].workouts || []
-      const idx = workouts.findIndex(w => w.id === lastWorkoutId)
+      const idx = workouts.findIndex(w => w.id === effectiveLastId)
       if (idx >= 0) {
         // Next workout in this phase
         if (idx + 1 < workouts.length) return { workout: workouts[idx + 1], phase: phases[pi] }
@@ -1854,7 +1862,15 @@ function ProgramDetail({ program, lastWorkoutId, sessions, onBack, onEdit, onSta
       const firstPhaseWithWorkouts = phases.find(p => (p.workouts||[]).length > 0)
       if (!firstPhaseWithWorkouts) return null
 
-      if (!lastWorkoutId) {
+      // Derive "last workout" from logged sessions (database truth) rather than the
+      // local-storage pointer, so this agrees with the home and Lift screens.
+      const programWorkoutIds = new Set(phases.flatMap(p => (p.workouts||[]).map(w => w.id)))
+      const lastLogged = [...(sessions||[])]
+        .filter(s => programWorkoutIds.has(s.workoutId || s.workout_id))
+        .sort((a,b)=>new Date(b.logged_at||b.date)-new Date(a.logged_at||a.date))[0]
+      const effectiveLastId = (lastLogged?.workoutId || lastLogged?.workout_id) || null
+
+      if (!effectiveLastId) {
         return { phaseId: firstPhaseWithWorkouts.id, workoutId: firstPhaseWithWorkouts.workouts[0].id }
       }
 
@@ -1878,7 +1894,7 @@ function ProgramDetail({ program, lastWorkoutId, sessions, onBack, onEdit, onSta
       for (let pi = 0; pi < phases.length; pi++) {
         const phase = phases[pi]
         const workouts = phase.workouts || []
-        const idx = workouts.findIndex(w => w.id === lastWorkoutId)
+        const idx = workouts.findIndex(w => w.id === effectiveLastId)
         if (idx >= 0) {
           // Check if this whole phase is complete
           if (isPhaseComplete(phase)) {
