@@ -467,6 +467,67 @@ List exactly 6 movements. Format EXACTLY like this:
 Sequence matters — order these logically for warm-up progression or cool-down. Total time under 15 minutes.`
 }
 
+// ─── Daily mobility section ───────────────────────────────────────────────────
+// A balanced, head-to-toe flow for off days — not for soreness in any one area,
+// but to keep the whole body moving well. Drawn from the same sources as the
+// rest of the library (ATG, Squat University, TPI, Starrett).
+const DAILY_MOBILITY = {
+  title: 'Daily Mobility',
+  duration: '10 min',
+  source: 'ATG + Squat University + Starrett-informed',
+  exercises: [
+    { name: 'Cat-cow flow', cue: 'On all fours, slowly alternate rounding and arching the spine, moving with your breath. Wakes up the whole spine from neck to pelvis before anything else.', reps: '8 slow reps' },
+    { name: 'World\u2019s greatest stretch', cue: 'Lunge forward, drop same-side elbow toward the floor, then rotate that arm to the ceiling. One movement that opens hips, groin, and thoracic spine together.', reps: '5 each side' },
+    { name: 'Hip CARs (controlled circles)', cue: 'On all fours or standing, draw the biggest slow circle you can with one knee, keeping the rest of the body still. Maintains the hip\u2019s full active range.', reps: '4 each direction each side' },
+    { name: 'Deep squat hold with pry', cue: 'Sink into a flat-foot deep squat, elbows inside knees, gently pry the knees open and shift side to side. ATG-style restoration of the position we evolved to rest in.', reps: '60 sec' },
+    { name: 'Cossack squat', cue: 'Wide stance, shift to one side keeping the other leg straight, stay tall. Opens the groin and hip capsule through a full lateral range.', reps: '6 each side' },
+    { name: 'Thoracic rotation (open book)', cue: 'Side-lying, knees bent, sweep the top arm across and open the chest to the floor behind you, following the hand with your eyes. Restores rotation to the mid-back.', reps: '8 each side' },
+    { name: 'Shoulder CARs', cue: 'Slow, full-range shoulder circles, one arm at a time, moving through the largest path you can control. Keeps the shoulder joint healthy and mobile.', reps: '4 each direction each arm' },
+    { name: 'Ankle rock + calf raise', cue: 'Knee drives forward over the toes with the heel flat, then rise onto the ball of the foot. Ankles feed everything below the hips \u2014 keep them free.', reps: '10 rocks + 10 raises each side' },
+    { name: 'Standing forward fold to halfway', cue: 'Fold forward with soft knees, hang, then lift to a flat back with hands on shins, alternating slowly. Gently lengthens the whole posterior chain.', reps: '8 reps' },
+    { name: 'Walkout to plank reach', cue: 'From the fold, walk hands out to a plank, reach one arm forward, hold a beat, walk back. Integrates the whole body and finishes warm and switched-on.', reps: '5 reps' },
+  ]
+}
+
+// ─── Daily mobility component ─────────────────────────────────────────────────
+export function DailyMobility({ onSave, defaultOpen=false }) {
+  const [open, setOpen] = useState(defaultOpen)
+  const [saved, setSaved] = useState(false)
+
+  const save = () => {
+    onSave({ label: DAILY_MOBILITY.title, text: JSON.stringify({ exercises: DAILY_MOBILITY.exercises, title: DAILY_MOBILITY.title, duration: DAILY_MOBILITY.duration }), type: 'routine' })
+    setSaved(true)
+  }
+
+  return (
+    <div style={{ marginBottom:20 }}>
+      <div style={{ fontSize:11, color:T.text3, letterSpacing:.6, textTransform:'uppercase', marginBottom:10 }}>Daily mobility — 10 min</div>
+      {!open ? (
+        <button onClick={()=>setOpen(true)} style={{
+          width:'100%', textAlign:'left', display:'flex', justifyContent:'space-between', alignItems:'center',
+          padding:'14px 16px', borderRadius:rr('md'), border:`0.5px solid ${T.border}`,
+          background:T.surface, cursor:'pointer',
+        }}>
+          <div>
+            <div style={{ fontSize:14, fontWeight:500, color:T.text, marginBottom:2 }}>Full-body flow</div>
+            <div style={{ fontSize:12, color:T.text3 }}>Not sore anywhere — just keep moving well</div>
+          </div>
+          <div style={{ fontSize:13, color:T.text3, flexShrink:0, marginLeft:12 }}>10 min ›</div>
+        </button>
+      ) : (
+        <>
+          <RoutineCard exercises={DAILY_MOBILITY.exercises} title={DAILY_MOBILITY.title} duration={DAILY_MOBILITY.duration} source={DAILY_MOBILITY.source} onSave={save} saved={saved} />
+          {saved && (
+            <div style={{ fontSize:12, color:T.text3, textAlign:'center', padding:'6px 0', fontStyle:'italic' }}>
+              An easy day done well. Added to your rotation.
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  )
+}
+
 // ─── Quick relief section ─────────────────────────────────────────────────────
 export function QuickRelief({ onSave }) {
   const [selected, setSelected] = useState(null)
@@ -816,6 +877,7 @@ export default function MoveScreen({ onSave, pendingSession, onClearPending, onS
         </div>
       </div>
       <QuickRelief onSave={onSave} />
+      <DailyMobility onSave={onSave} />
       <div style={{ height:'0.5px', background:T.border, margin:'20px 0' }} />
       <SportLibrary onSave={onSave} />
       <div style={{ height:'0.5px', background:T.border, margin:'20px 0' }} />
