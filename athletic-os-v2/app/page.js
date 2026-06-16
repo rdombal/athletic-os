@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from './supabase'
 import AuthScreen from './AuthScreen'
 import LiftScreen from './LiftScreen'
-import MoveScreen, { QuickRelief, getWarmupType } from './MoveScreen'
+import MoveScreen, { QuickRelief, DailyMobility, getWarmupType } from './MoveScreen'
 import {
   getProfile, saveProfile,
   getPantry, savePantry,
@@ -894,6 +894,7 @@ function HomeScreen({ onNav, onSave, profile, userId, programs, recentSessions, 
 
       {/* Move first — one tap to relief, per the worst-day principle */}
       <QuickRelief onSave={onSave} />
+      <DailyMobility onSave={onSave} />
 
       <SmartHomeCard programs={programs} recentSessions={recentSessions} activeProgramId={activeProgramId} onStartWarmup={onStartWarmup} onNav={onNav} />
       <DailyCard userId={userId} {...dailyProps} />
