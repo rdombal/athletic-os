@@ -18,6 +18,11 @@ import {
   getPrograms, getSessions,
 } from './db'
 
+// A password reset or invite link signs the person in. Read the URL at load, before
+// Supabase strips it, so the app asks for a new password instead of going to Home.
+const ARRIVED_TO_SET_PASSWORD = typeof window !== 'undefined' &&
+  /type=(recovery|invite)|setPassword=true/.test(window.location.search + window.location.hash)
+
 const T = {
   bg:'var(--bg)', surface:'var(--surface)', surface2:'var(--surface2)', surface3:'var(--surface3)',
   border:'var(--border)', border2:'var(--border2)',
@@ -1126,7 +1131,7 @@ function DeepDiveScreen({ prompt, onBack }) {
 
 function ProfileScreen({ userId, onSaved, onNav }) {
   const [profile, setProfile] = useState({
-    name:'', age:'', gender:'', location:'',
+    name:'', age:'', gender:'',
     goal:'', activity:'', experience:'',
     protein:'', calories:'',
     sports:'', notes:''
@@ -1154,10 +1159,7 @@ function ProfileScreen({ userId, onSaved, onNav }) {
       <Section title="About you">
         <UICard style={group}>
           <Field label="First name" htmlFor="pf-name"><TextInput id="pf-name" value={profile.name} onChange={v=>update('name',v)} placeholder="First name" autoComplete="given-name" /></Field>
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(2, minmax(0,1fr))', gap:12 }}>
-            <Field label="Age" htmlFor="pf-age"><TextInput id="pf-age" type="number" inputMode="numeric" value={profile.age} onChange={v=>update('age',v)} placeholder="28" /></Field>
-            <Field label="City" htmlFor="pf-loc"><TextInput id="pf-loc" value={profile.location} onChange={v=>update('location',v)} placeholder="San Diego" autoComplete="address-level2" /></Field>
-          </div>
+          <Field label="Age" htmlFor="pf-age"><TextInput id="pf-age" type="number" inputMode="numeric" value={profile.age} onChange={v=>update('age',v)} placeholder="28" style={{ maxWidth:140 }} /></Field>
           <Field label="Gender (optional)">{pick('gender', ['Male','Female','Prefer not to say'])}</Field>
         </UICard>
       </Section>
@@ -1335,13 +1337,15 @@ export default function App() {
     }
   }, [])
   const [profile, setProfile] = useState(null)
+  const [settingPassword, setSettingPassword] = useState(ARRIVED_TO_SET_PASSWORD)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session)
       setAuthLoading(false)
     })
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY') setSettingPassword(true)
       setSession(session)
       setAuthLoading(false)
     })
@@ -1431,6 +1435,7 @@ export default function App() {
     )
   }
 
+  if (settingPassword) return <AuthScreen initialMode="setpassword" onPasswordSet={()=>setSettingPassword(false)} />
   if (!session) return <AuthScreen />
   if (showOnboarding) return <OnboardingFlow userId={session.user.id} onComplete={(profile) => {
     try { localStorage.setItem(`hale_onboarded_${session.user.id}`, '1') } catch {}

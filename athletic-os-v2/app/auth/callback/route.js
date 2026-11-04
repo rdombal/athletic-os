@@ -16,8 +16,8 @@ export async function GET(request) {
     )
     const { error } = await supabase.auth.exchangeCodeForSession(code)
     if (!error) {
-      // If this is an invite, redirect to set password
-      if (type === 'invite') {
+      // Invite and password-reset links both land on the set-password screen
+      if (type === 'invite' || type === 'recovery') {
         return NextResponse.redirect(`${origin}/?setPassword=true`)
       }
       return NextResponse.redirect(`${origin}${next}`)

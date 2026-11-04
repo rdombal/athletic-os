@@ -3,8 +3,10 @@ import { useState, useEffect } from 'react'
 import { supabase } from './supabase'
 import { Button, Field, TextInput, HaleMark } from './ui'
 
-export default function AuthScreen() {
-  const [mode, setMode] = useState('signin') // signin | signup | setpassword | forgot
+// initialMode 'setpassword' is used when someone arrives from a reset or invite link.
+// onPasswordSet tells the app the new password is saved, so it can continue into Hale.
+export default function AuthScreen({ initialMode = 'signin', onPasswordSet }) {
+  const [mode, setMode] = useState(initialMode) // signin | signup | setpassword | forgot
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -57,9 +59,10 @@ export default function AuthScreen() {
     const { data, error } = await supabase.auth.updateUser({ password })
     if (error) { setError(error.message); setLoading(false); return }
     window.history.replaceState({}, '', '/')
-    // Session is already active after updateUser — onAuthStateChange will fire
-    setMessage('Password set. Getting you in...')
+    setMessage('Password saved. Taking you in.')
     setLoading(false)
+    // The session is already active; release the app from the set-password screen
+    if (onPasswordSet) setTimeout(onPasswordSet, 900)
   }
 
   const handleForgotPassword = async () => {
