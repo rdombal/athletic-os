@@ -7,6 +7,7 @@ import AuthScreen from './AuthScreen'
 import LiftScreen from './LiftScreen'
 import MoveScreen, { QuickRelief, getWarmupType } from './MoveScreen'
 import { ExerciseList } from './ui/Routine'
+import { PILLAR_SOURCES } from './pillarSources'
 import { Toast, TabBar, ScreenHeader, HaleMark as HaleLogo, Button, IconButton, Card as UICard, Row, Skeleton, Icon,
   Chip as UIChip, ChipRow as UIChipRow, Section, Field, TextInput, TextArea, Segmented, OptionCards, Token, Disclosure, Hairline, ChoiceList, StepProgress } from './ui'
 import {
@@ -1082,7 +1083,9 @@ function PillarCard({ p, onDeepDive }) {
               <p className="t-subhead c-2">{p.skip}</p>
             </div>
           </div>
-          <Button variant="secondary" size="md" full iconAfter="arrowRight" onClick={()=>onDeepDive(p.prompt)}>Go deeper</Button>
+          <Button variant="secondary" size="md" full iconAfter="arrowRight" onClick={()=>onDeepDive(p.prompt)}>
+            Go deeper{PILLAR_SOURCES[p.num]?.length ? ` · ${PILLAR_SOURCES[p.num].length} sources` : ''}
+          </Button>
         </div>
       )}
       <Disclosure open={expanded} onToggle={()=>setExpanded(v=>!v)}>
@@ -1100,30 +1103,128 @@ function PillarsScreen({ onDeepDive }) {
   )
 }
 
+// Grounds the answer in the pillar's curated sources so the AI never invents citations.
+function buildDeepDivePrompt(pillar, sources, question) {
+  const list = sources.map(x => `- ${x.title} (${x.from}): ${x.why}`).join('\n')
+  return `You are writing for Hale, a calm, guilt-free health app for busy active adults.
+Pillar: ${pillar.title}
+Question: ${question}
+
+Base everything ONLY on the ideas in these sources. Do not mention, cite or invent any other studies, statistics, people or products:
+${list}
+
+Write in plain, warm language. No markdown, no asterisks, no em dashes, no exclamation marks.
+Use exactly this format:
+RESEARCH:
+Two short paragraphs on what the research and these experts say.
+THIS WEEK:
+- one small, specific action
+- one small, specific action
+- one small, specific action`
+}
+
+function parseDeepDive(text) {
+  const clean = text.replace(/\*\*/g, '')
+  const m = clean.split(/THIS WEEK:?/i)
+  const research = (m[0] || '').replace(/RESEARCH:?/i, '').split(/\n{2,}|\n(?=\S)/).map(t => t.trim()).filter(Boolean)
+  const actions = m[1] ? m[1].split('\n').map(t => t.replace(/^[-•*\d.)\s]+/, '').trim()).filter(Boolean) : []
+  return { research, actions }
+}
+
+const SOURCE_ICON = { podcast:'podcast', video:'video', article:'article', study:'study' }
+
+function SourceRow({ src }) {
+  return (
+    <a href={src.url} target="_blank" rel="noopener noreferrer" className="pressable"
+      style={{ display:'flex', gap:12, alignItems:'flex-start', padding:'14px 0', textDecoration:'none', color:'var(--c-text)' }}>
+      <span style={{ width:40, height:40, borderRadius:12, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', background:'var(--c-muted)', color:'var(--c-accent-text)' }}>
+        <Icon name={SOURCE_ICON[src.type] || 'article'} size={20} />
+      </span>
+      <span style={{ flex:1, minWidth:0, display:'flex', flexDirection:'column', gap:2 }}>
+        <span className="t-callout" style={{ fontWeight:600 }}>{src.title}</span>
+        <span className="t-footnote c-2" style={{ fontWeight:400 }}>{src.from}</span>
+        <span className="t-subhead c-2" style={{ marginTop:2 }}>{src.why}</span>
+      </span>
+      <Icon name="external" size={16} style={{ color:'var(--c-text-3)', marginTop:4 }} label="Opens in a new tab" />
+    </a>
+  )
+}
+
+function SourceGroup({ title, items }) {
+  if (!items.length) return null
+  return (
+    <Section title={title}>
+      <UICard style={{ padding:'4px 20px' }}>
+        {items.map((src, i) => (
+          <div key={src.url} style={{ borderTop: i ? '1px solid var(--c-line)' : 'none' }}><SourceRow src={src} /></div>
+        ))}
+      </UICard>
+    </Section>
+  )
+}
+
 function DeepDiveScreen({ prompt, onBack }) {
   const [resp, setResp] = useState('')
   const [loading, setLoading] = useState(true)
+  const [failed, setFailed] = useState(false)
   const pillar = PILLARS.find(p => p.prompt === prompt)
-  useEffect(() => {
-    callAI(prompt+'\n\nBe conversational, practical, and concise. No fluff.')
+  const sources = (pillar && PILLAR_SOURCES[pillar.num]) || []
+  const load = () => {
+    setLoading(true); setFailed(false)
+    const ask = pillar && sources.length ? buildDeepDivePrompt(pillar, sources, prompt) : prompt + '\n\nBe conversational, practical, and concise. No fluff.'
+    callAI(ask)
       .then(setResp)
-      .catch(e => setResp(e.message === 'timeout'
-        ? 'Taking a bit longer than usual. Go back and try again.'
-        : 'Something went wrong. Go back and try again.'))
-      .finally(()=>setLoading(false))
-  }, [prompt])
-  const paragraphs = resp.replace(/\*\*/g,'').split(/\n{2,}/).map(t=>t.trim()).filter(Boolean)
+      .catch(() => setFailed(true))
+      .finally(() => setLoading(false))
+  }
+  useEffect(load, [prompt])
+  const { research, actions } = parseDeepDive(resp)
+  const listen = sources.filter(x => x.type === 'podcast' || x.type === 'video')
+  const read = sources.filter(x => x.type === 'study' || x.type === 'article')
+
   return (
     <>
-      <ScreenHeader title={pillar ? pillar.title : 'Go deeper'} subtitle={pillar ? 'Going deeper' : null} onBack={onBack} backLabel="Back to Pillars" />
-      <div style={{ padding:'0 var(--edge)' }}>
-        <UICard>
-          {loading
-            ? <Skeleton lines={6} label="Writing your answer" />
-            : <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
-                {paragraphs.map((t,i)=><p key={i} className="t-body" style={{ whiteSpace:'pre-wrap' }}>{t}</p>)}
-              </div>}
-        </UICard>
+      <ScreenHeader title={pillar ? pillar.title : 'Go deeper'} subtitle={pillar ? pillar.identity : null} onBack={onBack} backLabel="Back to Pillars" />
+      <div style={{ padding:'0 var(--edge)', display:'flex', flexDirection:'column', gap:28 }}>
+        <Section title="What the research says">
+          <UICard>
+            {loading ? <Skeleton lines={6} label="Writing your summary" />
+              : failed ? (
+                <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+                  <p className="t-body c-2">Couldn't load the summary. The sources below are still worth a look.</p>
+                  <Button size="md" variant="secondary" onClick={load} style={{ alignSelf:'flex-start' }}>Try again</Button>
+                </div>
+              ) : (
+                <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+                  {research.map((t, i) => <p key={i} className="t-body">{t}</p>)}
+                </div>
+              )}
+          </UICard>
+        </Section>
+
+        {!loading && actions.length > 0 && (
+          <Section title="Try this week">
+            <UICard tone="inverse" style={{ display:'flex', flexDirection:'column', gap:14 }}>
+              {actions.slice(0, 3).map((a, i) => (
+                <div key={i} style={{ display:'flex', gap:12, alignItems:'flex-start' }}>
+                  <span style={{ width:24, height:24, borderRadius:12, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', background:'var(--c-accent)', color:'#1A1A1E' }}>
+                    <Icon name="check" size={14} strokeWidth={2.4} />
+                  </span>
+                  <span className="t-body" style={{ color:'#F2EDE4' }}>{a}</span>
+                </div>
+              ))}
+            </UICard>
+          </Section>
+        )}
+
+        <SourceGroup title="Listen and watch" items={listen} />
+        <SourceGroup title="Read the research" items={read} />
+
+        {sources.length > 0 && (
+          <p className="t-footnote c-3" style={{ fontWeight:400, textAlign:'center', padding:'0 12px' }}>
+            Summaries are written only from the sources above. General information, not medical advice.
+          </p>
+        )}
       </div>
     </>
   )

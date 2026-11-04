@@ -25,6 +25,11 @@ const PATHS = {
   timer:       <><circle cx="12" cy="13" r="7.5" /><path d="M12 9v4l2.5 2M9.5 3h5" /></>,
   edit:        <path d="M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4" />,
   trash:       <path d="M5 7h14M10 7V4h4v3M7 7l1 13h8l1-13" />,
+  podcast:     <><rect x="9" y="3" width="6" height="11" rx="3" /><path d="M5.5 11a6.5 6.5 0 0013 0M12 17.5V21" /></>,
+  video:       <><rect x="3" y="5" width="18" height="14" rx="3" /><path d="M10 9.5v5l4.5-2.5z" /></>,
+  article:     <path d="M6 3h9l4 4v14H6zM14 3v5h5M9 12h7M9 16h7" />,
+  study:       <path d="M9 3h6M10 3v6l-5 9a2 2 0 001.7 3h10.6a2 2 0 001.7-3l-5-9V3M7.5 15h9" />,
+  external:    <path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 01-1 1H5a1 1 0 01-1-1V7a1 1 0 011-1h5" />,
 }
 
 export default function Icon({ name, size = 22, strokeWidth = 1.7, label, style, className }) {
