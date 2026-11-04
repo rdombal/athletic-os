@@ -1,23 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { supabase } from './supabase'
-
-const T = {
-  bg:'var(--bg)', surface:'var(--surface)', surface2:'var(--surface2)',
-  border:'var(--border)', text:'var(--text)', text2:'var(--text2)', text3:'var(--text3)',
-}
-function rr(s) { return s==='sm'?'8px':s==='lg'?'16px':'12px' }
-
-function Input({ value, onChange, placeholder, type='text' }) {
-  return (
-    <input type={type} value={value} onChange={e=>onChange(e.target.value)}
-      placeholder={placeholder} style={{
-        width:'100%', padding:'13px', borderRadius:rr('sm'), fontSize:16,
-        border:`1px solid ${T.border}`, background:T.surface,
-        color:T.text, outline:'none', marginBottom:12,
-      }} />
-  )
-}
+import { Button, Field, TextInput, HaleMark } from './ui'
 
 export default function AuthScreen() {
   const [mode, setMode] = useState('signin') // signin | signup | setpassword | forgot
@@ -89,107 +73,68 @@ export default function AuthScreen() {
     setLoading(false)
   }
 
-  return (
-    <div style={{ maxWidth:430, margin:'0 auto', minHeight:'100dvh', background:T.bg,
-      display:'flex', flexDirection:'column', justifyContent:'center', padding:'40px 24px' }}>
+  const switchTo = m => { setMode(m); setError(''); setMessage('') }
+  const titles = {
+    signin:      ['Welcome back.', 'Sign in to pick up where you left off.'],
+    signup:      ['Create your account.', 'Feel better without overthinking it.'],
+    setpassword: ['Set your password.', 'Choose a password to secure your account.'],
+    forgot:      ['Reset your password.', "Enter your email and we'll send a link."],
+  }
+  const [title, sub] = titles[mode]
+  const submit = { signin:handleSignIn, signup:handleSignUp, setpassword:handleSetPassword, forgot:handleForgotPassword }[mode]
+  const cta = {
+    signin:      loading ? 'Signing in' : 'Sign in',
+    signup:      loading ? 'Creating your account' : 'Create account',
+    setpassword: loading ? 'Saving' : 'Set password and continue',
+    forgot:      loading ? 'Sending' : 'Send reset link',
+  }[mode]
+  const linkBtn = { border:'none', background:'none', padding:0, minHeight:44, color:'var(--c-accent-text)', fontSize:15, fontWeight:500 }
 
-      <div style={{ marginBottom:40 }}>
-        <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:10, marginBottom:32 }}>
-          <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
-            <circle cx="24" cy="24" r="20" stroke="var(--cream)" strokeWidth="1"/>
-            <circle cx="24" cy="24" r="12" stroke="var(--cream)" strokeWidth="1" opacity=".3"/>
-            <circle cx="24" cy="24" r="4" fill="var(--cream)"/>
-          </svg>
-          <div style={{ fontFamily:"'Outfit', sans-serif", fontWeight:200, fontSize:24,
-            letterSpacing:'0.22em', textTransform:'uppercase', color:'var(--cream)', paddingLeft:'0.22em' }}>
-            Hale
-          </div>
-        </div>
-        <div style={{ fontSize:24, fontWeight:500, color:T.text, letterSpacing:-.5, marginBottom:6 }}>
-          {mode === 'setpassword' ? 'Set your password' : mode === 'signup' ? 'Create account' : 'Welcome back.'}
-        </div>
-        <div style={{ fontSize:14, color:T.text2 }}>
-          {mode === 'setpassword' ? 'Choose a password to secure your account.'
-            : mode === 'forgot' ? 'Enter your email and we will send a reset link.'
-            : mode === 'signup' ? 'Join and start feeling better.'
-            : 'Sign in to continue.'}
+  return (
+    <div style={{ maxWidth:'var(--app-max)', margin:'0 auto', minHeight:'100dvh', display:'flex', flexDirection:'column', justifyContent:'center', padding:'48px var(--edge)' }}>
+      <div style={{ display:'flex', flexDirection:'column', gap:24, marginBottom:32 }}>
+        <HaleMark size={48} />
+        <div>
+          <h1 className="t-title1">{title}</h1>
+          <p className="t-body c-2" style={{ marginTop:8 }}>{sub}</p>
         </div>
       </div>
 
       {message && (
-        <div style={{ background:'var(--green-bg)', border:`0.5px solid var(--green-dim)`, borderRadius:rr('sm'),
-          padding:'10px 12px', fontSize:13, color:'var(--green)', marginBottom:16 }}>
-          {message}
-        </div>
+        <div role="status" className="t-subhead" style={{ background:'var(--c-done-soft)', color:'var(--c-done)', borderRadius:'var(--r-input)', padding:'12px 14px', marginBottom:16 }}>{message}</div>
       )}
       {error && (
-        <div style={{ background:'var(--coral-bg)', border:`0.5px solid var(--coral-dim)`, borderRadius:rr('sm'),
-          padding:'10px 12px', fontSize:13, color:'var(--coral)', marginBottom:16 }}>
-          {error}
-        </div>
+        <div role="alert" className="t-subhead" style={{ background:'var(--c-danger-soft)', color:'var(--c-danger)', borderRadius:'var(--r-input)', padding:'12px 14px', marginBottom:16 }}>{error}</div>
       )}
 
-      {/* Sign in */}
-      {mode === 'signin' && <>
-        <Input value={email} onChange={setEmail} placeholder="Email" type="email" />
-        <Input value={password} onChange={setPassword} placeholder="Password" type="password" />
-        <button onClick={handleSignIn} disabled={loading} style={{
-          width:'100%', padding:'13px', borderRadius:rr('md'), border:'none',
-          background:loading?T.surface2:T.text, color:loading?T.text3:T.bg,
-          fontSize:14, fontWeight:600, marginBottom:12, cursor:'pointer',
-        }}>{loading ? 'Signing in...' : 'Sign in'}</button>
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-          <button onClick={()=>{ setMode('forgot'); setError(''); setMessage('') }}
-            style={{ background:'none', border:'none', color:T.text3, fontSize:13, cursor:'pointer', padding:0 }}>
-            Forgot password?
-          </button>
-          <button onClick={()=>{ setMode('signup'); setError(''); setMessage('') }}
-            style={{ background:'none', border:'none', color:T.text3, fontSize:13, cursor:'pointer', padding:0 }}>
-            Create account
-          </button>
-        </div>
-      </>}
+      <form onSubmit={e=>{ e.preventDefault(); submit() }} style={{ display:'flex', flexDirection:'column', gap:16 }}>
+        {mode !== 'setpassword' && (
+          <Field label="Email" htmlFor="auth-email">
+            <TextInput id="auth-email" type="email" value={email} onChange={setEmail} autoComplete="email" inputMode="email" placeholder="you@example.com" />
+          </Field>
+        )}
+        {mode !== 'forgot' && (
+          <Field label={mode==='setpassword' ? 'New password' : 'Password'} htmlFor="auth-pw">
+            <TextInput id="auth-pw" type="password" value={password} onChange={setPassword}
+              autoComplete={mode==='signin' ? 'current-password' : 'new-password'} />
+          </Field>
+        )}
+        {(mode === 'signup' || mode === 'setpassword') && (
+          <Field label="Confirm password" htmlFor="auth-pw2" hint="At least 6 characters.">
+            <TextInput id="auth-pw2" type="password" value={confirmPassword} onChange={setConfirmPassword} autoComplete="new-password" />
+          </Field>
+        )}
+        <Button type="submit" full disabled={loading} style={{ marginTop:8 }}>{cta}</Button>
+      </form>
 
-      {/* Sign up */}
-      {mode === 'signup' && <>
-        <Input value={email} onChange={setEmail} placeholder="Email" type="email" />
-        <Input value={password} onChange={setPassword} placeholder="Password" type="password" />
-        <Input value={confirmPassword} onChange={setConfirmPassword} placeholder="Confirm password" type="password" />
-        <button onClick={handleSignUp} disabled={loading} style={{
-          width:'100%', padding:'13px', borderRadius:rr('md'), border:'none',
-          background:loading?T.surface2:'var(--green-dim)', color:'#fff',
-          fontSize:14, fontWeight:600, marginBottom:12, cursor:'pointer',
-        }}>{loading ? 'Creating account...' : 'Create account'}</button>
-        <button onClick={()=>{ setMode('signin'); setError(''); setMessage('') }}
-          style={{ background:'none', border:'none', color:T.text3, fontSize:13, cursor:'pointer', padding:0 }}>
-          Already have an account? Sign in
-        </button>
-      </>}
-
-      {/* Set password (invited users or password reset) */}
-      {mode === 'setpassword' && <>
-        <Input value={password} onChange={setPassword} placeholder="Choose a password" type="password" />
-        <Input value={confirmPassword} onChange={setConfirmPassword} placeholder="Confirm password" type="password" />
-        <button onClick={handleSetPassword} disabled={loading} style={{
-          width:'100%', padding:'13px', borderRadius:rr('md'), border:'none',
-          background:loading?T.surface2:'var(--green-dim)', color:'#fff',
-          fontSize:14, fontWeight:600, cursor:'pointer',
-        }}>{loading ? 'Setting password...' : 'Set password and get started'}</button>
-      </>}
-
-      {/* Forgot password */}
-      {mode === 'forgot' && <>
-        <Input value={email} onChange={setEmail} placeholder="Email" type="email" />
-        <button onClick={handleForgotPassword} disabled={loading} style={{
-          width:'100%', padding:'13px', borderRadius:rr('md'), border:'none',
-          background:loading?T.surface2:T.text, color:loading?T.text3:T.bg,
-          fontSize:14, fontWeight:600, marginBottom:12, cursor:'pointer',
-        }}>{loading ? 'Sending...' : 'Send reset link'}</button>
-        <button onClick={()=>{ setMode('signin'); setError(''); setMessage('') }}
-          style={{ background:'none', border:'none', color:T.text3, fontSize:13, cursor:'pointer', padding:0 }}>
-          Back to sign in
-        </button>
-      </>}
+      <div style={{ display:'flex', justifyContent: mode==='signin' ? 'space-between' : 'center', marginTop:12 }}>
+        {mode === 'signin' && <>
+          <button type="button" style={linkBtn} onClick={()=>switchTo('forgot')}>Forgot password?</button>
+          <button type="button" style={linkBtn} onClick={()=>switchTo('signup')}>Create account</button>
+        </>}
+        {mode === 'signup' && <button type="button" style={linkBtn} onClick={()=>switchTo('signin')}>Already have an account? Sign in</button>}
+        {mode === 'forgot' && <button type="button" style={linkBtn} onClick={()=>switchTo('signin')}>Back to sign in</button>}
+      </div>
     </div>
   )
 }

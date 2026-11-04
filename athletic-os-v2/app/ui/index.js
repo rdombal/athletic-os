@@ -155,3 +155,105 @@ export function ScreenHeader({ title, subtitle, onBack, backLabel = 'Back', righ
     </>
   )
 }
+
+// ─── Form fields ──────────────────────────────────────────────────────────────
+export function Field({ label, hint, error, htmlFor, children, style }) {
+  return (
+    <div className={s.field} style={style}>
+      {label && <label className={s.fieldLabel} htmlFor={htmlFor}>{label}</label>}
+      {children}
+      {hint && !error && <span className={s.fieldHint}>{hint}</span>}
+      {error && <span className={s.fieldError} role="alert">{error}</span>}
+    </div>
+  )
+}
+export function TextInput({ value, onChange, className, ...rest }) {
+  return <input className={cx(s.input, className)} value={value ?? ''} onChange={e => onChange?.(e.target.value)} {...rest} />
+}
+export function TextArea({ value, onChange, rows = 3, className, ...rest }) {
+  return <textarea className={cx(s.input, className)} rows={rows} value={value ?? ''} onChange={e => onChange?.(e.target.value)} {...rest} />
+}
+
+// ─── Segmented control ────────────────────────────────────────────────────────
+// options: [{ key, label }]
+export function Segmented({ options, value, onChange, label, style }) {
+  return (
+    <div className={s.segmented} role="tablist" aria-label={label} style={style}>
+      {options.map(o => (
+        <button key={o.key} role="tab" aria-selected={value === o.key}
+          className={cx(s.segment, value === o.key && s['segment-on'])} onClick={() => onChange(o.key)}>
+          {o.label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+// ─── Option cards: a single choice where each option needs a short description ─
+// options: [{ key, label, desc }]
+export function OptionCards({ options, value, onChange, label }) {
+  return (
+    <div className={s.options} role="radiogroup" aria-label={label}>
+      {options.map(o => (
+        <button key={o.key} role="radio" aria-checked={value === o.key}
+          className={cx(s.option, value === o.key && s['option-on'])} onClick={() => onChange(o.key)}>
+          <span className={s.optionTitle}>{o.label}</span>
+          {o.desc && <span className={s.optionDesc}>{o.desc}</span>}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+// ─── Removable token ──────────────────────────────────────────────────────────
+export function Token({ children, onRemove, removeLabel }) {
+  return (
+    <span className={s.token}>
+      {children}
+      <button className={s.tokenX} onClick={onRemove} aria-label={removeLabel || `Remove ${children}`}>
+        <Icon name="close" size={14} strokeWidth={2} />
+      </button>
+    </span>
+  )
+}
+
+// ─── Disclosure row ───────────────────────────────────────────────────────────
+export function Disclosure({ open, onToggle, children, trailing }) {
+  return (
+    <button className={s.disclosure} aria-expanded={!!open} onClick={onToggle}>
+      <span style={{ flex: 1, minWidth: 0 }}>{children}</span>
+      {trailing}
+      <Icon name="chevronDown" size={18} strokeWidth={2} className={cx(s.disclosureIcon, open && s['disclosureIcon-open'])} />
+    </button>
+  )
+}
+
+export function Hairline({ style }) { return <hr className={s.hairline} style={style} /> }
+
+// ─── Choice list ──────────────────────────────────────────────────────────────
+export function ChoiceList({ options, value, onChange, label }) {
+  return (
+    <div className={s.choices} role="radiogroup" aria-label={label}>
+      {options.map(o => {
+        const key = typeof o === 'string' ? o : o.key
+        const text = typeof o === 'string' ? o : o.label
+        const on = value === key
+        return (
+          <button key={key} role="radio" aria-checked={on} className={cx(s.choice, on && s['choice-on'])} onClick={() => onChange(key)}>
+            <span>{text}</span>
+            <span className={s.choiceMark}><Icon name="check" size={14} strokeWidth={2.4} /></span>
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+// ─── Step progress ────────────────────────────────────────────────────────────
+export function StepProgress({ total, current, label }) {
+  return (
+    <div className={s.steps} role="progressbar" aria-label={label} aria-valuemin={1} aria-valuemax={total} aria-valuenow={current}>
+      {Array.from({ length: total }).map((_, i) => <span key={i} className={cx(s.step, i < current && s['step-on'])} />)}
+    </div>
+  )
+}

@@ -1,12 +1,8 @@
 'use client'
 import { useState } from 'react'
-import { Chip, ChipRow } from './ui'
+import { Chip, ChipRow, Card, Button, Row, Section, Segmented, Field, TextArea, Skeleton, Disclosure, ScreenHeader } from './ui'
+import { RoutineCard, ExerciseList } from './ui/Routine'
 
-const T = {
-  bg:'var(--bg)', surface:'var(--surface)', surface2:'var(--surface2)',
-  border:'var(--border)', text:'var(--text)', text2:'var(--text2)', text3:'var(--text3)',
-}
-function rr(s) { return s==='sm'?'8px':s==='lg'?'16px':'12px' }
 
 async function callAI(prompt, timeoutMs = 25000) {
   const controller = new AbortController()
@@ -297,37 +293,6 @@ const QUICK_RELIEF = {
 }
 
 // ─── Routine card renderer ────────────────────────────────────────────────────
-function RoutineCard({ exercises, title, duration, source, onSave, saved }) {
-  return (
-    <div style={{ marginTop:14, background:T.surface, borderRadius:rr('md'), overflow:'hidden' }}>
-      <div style={{ height:3, background:'var(--green-dim)' }} />
-      {title && (
-        <div style={{ padding:'14px 16px 12px', borderBottom:`0.5px solid ${T.border}` }}>
-          <div style={{ fontSize:17, fontWeight:500, color:T.text }}>{title}</div>
-          <div style={{ display:'flex', gap:10, marginTop:4 }}>
-            {duration && <span style={{ fontSize:12, color:T.text3 }}>{duration}</span>}
-            {source && <span style={{ fontSize:12, color:T.text3 }}>· {source}</span>}
-          </div>
-        </div>
-      )}
-      {exercises.map((ex, i) => (
-        <div key={i} style={{ padding:'12px 16px', borderBottom:`0.5px solid ${T.border}` }}>
-          <div style={{ fontSize:13, fontWeight:500, color:T.text, marginBottom:3 }}>{ex.name}</div>
-          {ex.reps && <div style={{ fontSize:12, color:'var(--green)', fontWeight:500, marginBottom:4 }}>{ex.reps}</div>}
-          {ex.cue && <div style={{ fontSize:12, color:T.text2, lineHeight:1.55 }}>{ex.cue}</div>}
-        </div>
-      ))}
-      {onSave && (
-        <div style={{ padding:'10px 16px' }}>
-          <button onClick={onSave} style={{ width:'100%', padding:'8px', borderRadius:rr('sm'), border:`0.5px solid ${T.border}`, background:'transparent', color:saved?'var(--green)':T.text2, fontSize:13, cursor:'pointer' }}>
-            {saved ? '✓ Saved to your rotation' : '+ Save to rotation'}
-          </button>
-        </div>
-      )}
-    </div>
-  )
-}
-
 // ─── AI routine card (parses AI text into structured cards) ───────────────────
 function AIRoutineCard({ text, onSave, saved }) {
   if (!text) return null
@@ -356,47 +321,14 @@ function AIRoutineCard({ text, onSave, saved }) {
 
   if (exercises.length === 0) {
     return (
-      <div style={{ marginTop:12, background:T.surface, border:`0.5px solid ${T.border}`, borderRadius:rr('md'), padding:14, fontSize:14, lineHeight:1.75, color:T.text, whiteSpace:'pre-wrap' }}>
-        {text}
-        {onSave && <button onClick={onSave} style={{ display:'block', marginTop:10, width:'100%', padding:'8px', borderRadius:rr('sm'), border:`0.5px solid ${T.border}`, background:'transparent', color:saved?'var(--green)':T.text2, fontSize:13, cursor:'pointer' }}>{saved?'✓ Saved':'+ Save to rotation'}</button>}
-      </div>
+      <Card style={{ marginTop:12 }}>
+        <p className="t-body" style={{ whiteSpace:'pre-wrap' }}>{text}</p>
+        {onSave && <Button size="md" full variant={saved?'secondary':'primary'} icon={saved?'check':'plus'} aria-disabled={saved} onClick={saved?undefined:onSave} style={{ marginTop:12 }}>{saved?'Saved to your rotation':'Save to rotation'}</Button>}
+      </Card>
     )
   }
-
-  return (
-    <div style={{ marginTop:12, background:T.surface, border:`0.5px solid ${T.border}`, borderRadius:rr('md'), overflow:'hidden' }}>
-      {exercises.map((ex, i) => (
-        <div key={i} style={{ padding:'14px 16px', borderBottom: i < exercises.length-1 ? `0.5px solid ${T.border}` : 'none' }}>
-          <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:6 }}>
-            <div style={{ width:22, height:22, borderRadius:'50%', background:T.surface2,
-              display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:600, color:T.text2, flexShrink:0 }}>{i+1}</div>
-            <div style={{ fontSize:14, fontWeight:500, color:T.text }}>{ex.name}</div>
-          </div>
-          {ex.cue && <div style={{ fontSize:13, color:T.text2, lineHeight:1.6, marginBottom:4, paddingLeft:30 }}>{ex.cue}</div>}
-          {ex.why && (
-            <div style={{ fontSize:12, color:'var(--cream-dim)', lineHeight:1.5, marginBottom:6, paddingLeft:30, fontStyle:'italic' }}>
-              {ex.why}
-            </div>
-          )}
-          {ex.reps && (
-            <div style={{ display:'inline-block', marginLeft:30, fontSize:12, fontWeight:500, color:T.text3,
-              background:T.surface2, borderRadius:20, padding:'2px 10px' }}>
-              {ex.reps}
-            </div>
-          )}
-        </div>
-      ))}
-      {onSave && (
-        <div style={{ padding:'12px 16px', borderTop:`0.5px solid ${T.border}` }}>
-          <button onClick={onSave} style={{ width:'100%', padding:'10px', borderRadius:rr('sm'), border:'none',
-            background:saved?T.surface2:'var(--cream)', color:saved?'var(--green)':'var(--bg)',
-            fontSize:13, fontWeight:500, cursor:'pointer' }}>
-            {saved ? '✓ Saved to your rotation' : '+ Save to rotation'}
-          </button>
-        </div>
-      )}
-    </div>
-  )
+  const merged = exercises.map(ex => ({ ...ex, cue: [ex.cue, ex.why].filter(Boolean).join(' ') }))
+  return <RoutineCard exercises={merged} onSave={onSave} saved={saved} style={{ marginTop:12 }} />
 }
 
 // ─── Source-informed prompts ──────────────────────────────────────────────────
@@ -498,38 +430,15 @@ const DAILY_MOBILITY = {
 export function DailyMobility({ onSave, defaultOpen=false }) {
   const [open, setOpen] = useState(defaultOpen)
   const [saved, setSaved] = useState(false)
-
   const save = () => {
     onSave({ label: DAILY_MOBILITY.title, text: JSON.stringify({ exercises: DAILY_MOBILITY.exercises, title: DAILY_MOBILITY.title, duration: DAILY_MOBILITY.duration }), type: 'routine' })
     setSaved(true)
   }
-
+  if (open) {
+    return <RoutineCard exercises={DAILY_MOBILITY.exercises} title="Full-body flow" duration={DAILY_MOBILITY.duration} source={DAILY_MOBILITY.source} onSave={save} saved={saved} />
+  }
   return (
-    <div style={{ marginBottom:20 }}>
-      <div style={{ fontSize:12, color:T.text3, letterSpacing:.6, textTransform:'uppercase', marginBottom:10 }}>Daily mobility — 10 min</div>
-      {!open ? (
-        <button onClick={()=>setOpen(true)} style={{
-          width:'100%', textAlign:'left', display:'flex', justifyContent:'space-between', alignItems:'center',
-          padding:'14px 16px', borderRadius:rr('md'), border:`0.5px solid ${T.border}`,
-          background:T.surface, cursor:'pointer',
-        }}>
-          <div>
-            <div style={{ fontSize:14, fontWeight:500, color:T.text, marginBottom:2 }}>Full-body flow</div>
-            <div style={{ fontSize:12, color:T.text3 }}>Not sore anywhere — just keep moving well</div>
-          </div>
-          <div style={{ fontSize:13, color:T.text3, flexShrink:0, marginLeft:12 }}>10 min ›</div>
-        </button>
-      ) : (
-        <>
-          <RoutineCard exercises={DAILY_MOBILITY.exercises} title={DAILY_MOBILITY.title} duration={DAILY_MOBILITY.duration} source={DAILY_MOBILITY.source} onSave={save} saved={saved} />
-          {saved && (
-            <div style={{ fontSize:12, color:T.text3, textAlign:'center', padding:'6px 0', fontStyle:'italic' }}>
-              An easy day done well. Added to your rotation.
-            </div>
-          )}
-        </>
-      )}
-    </div>
+    <Row icon="sparkle" title="Full-body flow" subtitle="10 min. Not sore anywhere, just keep moving well." onClick={()=>setOpen(true)} />
   )
 }
 
@@ -541,7 +450,7 @@ export function QuickRelief({ onSave, bare }) {
   const routine = selected ? QUICK_RELIEF[selected] : null
 
   const save = () => {
-    onSave({ label: `${selected} relief`, text: JSON.stringify({ exercises: routine, title: `${selected} relief`, duration: '~5 min' }), type: 'routine' })
+    onSave({ label: `${selected} relief`, text: JSON.stringify({ exercises: routine, title: `${selected} relief`, duration: 'About 5 min' }), type: 'routine' })
     setSaved(true)
   }
 
@@ -554,12 +463,7 @@ export function QuickRelief({ onSave, bare }) {
         ))}
       </ChipRow>
       {routine && (
-        <RoutineCard exercises={routine} title={`${selected} relief`} duration="~5 min" onSave={save} saved={saved} />
-      )}
-      {saved && (
-        <div style={{ fontSize:12, color:T.text3, textAlign:'center', padding:'6px 0', fontStyle:'italic' }}>
-          Taking care of your body today matters. Added to your rotation.
-        </div>
+        <RoutineCard exercises={routine} title={`${selected} relief`} duration="About 5 min" onSave={save} saved={saved} style={bare ? { padding:0, boxShadow:'none' } : undefined} />
       )}
     </div>
   )
@@ -590,48 +494,19 @@ function SportLibrary({ onSave }) {
   }
 
   return (
-    <div style={{ marginBottom:20 }}>
-      <div style={{ fontSize:12, color:T.text3, letterSpacing:.6, textTransform:'uppercase', marginBottom:10 }}>Sport routines</div>
-      <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom:10 }}>
-        {sports.map(s => (
-          <button key={s} onClick={()=>{ setSport(sport===s?null:s); setSaved(false) }} style={{
-            padding:'7px 14px', borderRadius:20, fontSize:12, border:`0.5px solid ${T.border}`,
-            background: sport===s ? T.text : T.surface2,
-            color: sport===s ? T.bg : T.text2,
-          }}>{s}</button>
-        ))}
-      </div>
+    <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+      <ChipRow>
+        {sports.map(sp => <Chip key={sp} small selected={sport===sp} onClick={()=>{ setSport(sport===sp?null:sp); setSaved(false) }}>{sp}</Chip>)}
+      </ChipRow>
       {sport === 'Lifting' && (
-        <div style={{ display:'flex', gap:6, marginBottom:10 }}>
-          {[['lower','Lower body'],['upper','Upper body']].map(([k,l]) => (
-            <button key={k} onClick={()=>{ setLiftType(k); setSaved(false) }} style={{
-              flex:1, padding:'8px', borderRadius:rr('sm'), fontSize:12, fontWeight: liftType===k ? 600 : 400,
-              border: liftType===k ? `1px solid ${T.border2}` : `0.5px solid ${T.border}`,
-              background: liftType===k ? T.text : 'transparent',
-              color: liftType===k ? T.bg : T.text2,
-              cursor:'pointer',
-            }}>{l}</button>
-          ))}
-        </div>
+        <Segmented label="Body" value={liftType} onChange={k=>{ setLiftType(k); setSaved(false) }}
+          options={[{ key:'lower', label:'Lower body' }, { key:'upper', label:'Upper body' }]} />
       )}
       {sport && (
-        <div style={{ display:'flex', gap:6, marginBottom:12 }}>
-          {['warmup','recovery'].map(t => (
-            <button key={t} onClick={()=>{ setType(t); setSaved(false) }} style={{
-              flex:1, padding:'8px', borderRadius:rr('sm'), fontSize:12,
-              border: type===t ? 'none' : `0.5px solid ${T.border}`,
-              background: type===t ? T.text : 'transparent',
-              color: type===t ? T.bg : T.text2, textTransform:'capitalize',
-            }}>{t === 'warmup' ? 'Warmup' : 'Recovery'}</button>
-          ))}
-        </div>
+        <Segmented label="Timing" value={type} onChange={t=>{ setType(t); setSaved(false) }}
+          options={[{ key:'warmup', label:'Warmup' }, { key:'recovery', label:'Recovery' }]} />
       )}
       {routine && <RoutineCard exercises={routine.exercises} title={routine.title} duration={routine.duration} source={routine.source} onSave={save} saved={saved} />}
-      {saved && (
-        <div style={{ fontSize:12, color:T.text3, textAlign:'center', padding:'6px 0', fontStyle:'italic' }}>
-          Added to your rotation. This is what consistent people do.
-        </div>
-      )}
     </div>
   )
 }
@@ -667,78 +542,40 @@ function CustomRoutine({ onSave }) {
     setSaved(true)
   }
 
+  const ready = !!(activity || focus || extra)
   return (
-    <div>
-      <button onClick={()=>setOpen(!open)} style={{
-        width:'100%', padding:'10px 14px', borderRadius:rr('md'),
-        border:`0.5px solid ${T.border}`, background:'transparent',
-        color:T.text2, fontSize:13, textAlign:'left', cursor:'pointer',
-        display:'flex', justifyContent:'space-between', alignItems:'center',
-      }}>
-        <span>Custom routine</span>
-        <span style={{ fontSize:12, color:T.text3 }}>{open ? '∧' : '∨'}</span>
-      </button>
-
+    <Card style={{ padding:'4px 20px' }}>
+      <Disclosure open={open} onToggle={()=>setOpen(!open)}>
+        <span className="t-callout" style={{ fontWeight:600 }}>Build your own</span>
+        <span className="t-footnote c-2" style={{ display:'block', fontWeight:400 }}>Tell it what's going on, get a routine for it</span>
+      </Disclosure>
       {open && (
-        <div style={{ marginTop:12 }}>
-          <div style={{ fontSize:12, color:T.text3, marginBottom:6 }}>Activity</div>
-          <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom:12 }}>
-            {['Golf','Running','Lifting','Basketball','Tennis','Pickleball'].map(a => (
-              <button key={a} onClick={()=>setActivity(activity===a?'':a)} style={{
-                padding:'5px 12px', borderRadius:20, fontSize:12, border:`0.5px solid ${T.border}`,
-                background: activity===a ? T.text : T.surface2,
-                color: activity===a ? T.bg : T.text2,
-              }}>{a}</button>
-            ))}
-          </div>
-          <div style={{ fontSize:12, color:T.text3, marginBottom:6 }}>Focus area</div>
-          <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom:12 }}>
-            {['Hips','Lower back','Shoulders','Hamstrings','Upper back','Ankles and knees','Achilles','Calves','Neck','Wrists'].map(f => (
-              <button key={f} onClick={()=>setFocus(focus===f?'':f)} style={{
-                padding:'5px 12px', borderRadius:20, fontSize:12, border:`0.5px solid ${T.border}`,
-                background: focus===f ? T.text : T.surface2,
-                color: focus===f ? T.bg : T.text2,
-              }}>{f}</button>
-            ))}
-          </div>
-          <div style={{ fontSize:12, color:T.text3, marginBottom:6 }}>When</div>
-          <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom:12 }}>
-            {['Before activity','After activity','General relief'].map(w => (
-              <button key={w} onClick={()=>setWhen(w)} style={{
-                padding:'5px 12px', borderRadius:20, fontSize:12, border:`0.5px solid ${T.border}`,
-                background: when===w ? T.text : T.surface2,
-                color: when===w ? T.bg : T.text2,
-              }}>{w}</button>
-            ))}
-          </div>
-          <textarea value={extra} onChange={e=>setExtra(e.target.value)}
-            placeholder="Tell me what's going on — e.g. my achilles is sore, I want to do this before bed..." rows={2}
-            style={{ width:'100%', background:T.surface, border:`0.5px solid ${T.border}`, borderRadius:rr('md'), padding:'10px 12px', fontSize:16, color:T.text, resize:'none', outline:'none', marginBottom:8 }} />
-          <button onClick={go} disabled={loading||(!activity&&!focus&&!extra)} style={{
-            width:'100%', padding:'11px', borderRadius:rr('md'), border:'none',
-            background:loading||(!activity&&!focus&&!extra)?T.surface2:T.text,
-            color:loading||(!activity&&!focus&&!extra)?T.text3:T.bg,
-            fontSize:14, fontWeight:500, cursor:'pointer',
-          }}>{loading ? 'Building routine...' : 'Get custom routine'}</button>
-          {loading && (
-            <div style={{ display:'flex', gap:5, padding:'10px 0', alignItems:'center' }}>
-              {[0,1,2].map(i=><div key={i} style={{ width:6,height:6,borderRadius:'50%',background:T.text3,animation:'blink 1.2s infinite',animationDelay:i*.2+'s' }} />)}
-              <style>{"@keyframes blink{0%,80%,100%{opacity:.2}40%{opacity:1}}"}</style>
-            </div>
-          )}
+        <div style={{ display:'flex', flexDirection:'column', gap:18, padding:'8px 0 20px' }}>
+          <Field label="Activity">
+            <ChipRow>{['Golf','Running','Lifting','Basketball','Tennis','Pickleball'].map(a => <Chip key={a} small selected={activity===a} onClick={()=>setActivity(activity===a?'':a)}>{a}</Chip>)}</ChipRow>
+          </Field>
+          <Field label="Focus area">
+            <ChipRow>{['Hips','Lower back','Shoulders','Hamstrings','Upper back','Ankles and knees','Achilles','Calves','Neck','Wrists'].map(f => <Chip key={f} small selected={focus===f} onClick={()=>setFocus(focus===f?'':f)}>{f}</Chip>)}</ChipRow>
+          </Field>
+          <Field label="When">
+            <Segmented label="When" value={when} onChange={setWhen}
+              options={[{ key:'Before activity', label:'Before' }, { key:'After activity', label:'After' }, { key:'General relief', label:'Anytime' }]} />
+          </Field>
+          <Field label="Anything else?">
+            <TextArea value={extra} onChange={setExtra} rows={2} placeholder="My achilles is sore, I want this before bed" aria-label="Anything else" />
+          </Field>
+          <Button full onClick={go} disabled={loading || !ready}>{loading ? 'Building your routine' : 'Build routine'}</Button>
+          {loading && <Skeleton lines={4} label="Building your routine" />}
           {error && !loading && (
-            <div style={{ marginTop:12, background:T.surface, borderRadius:rr('md'), padding:'14px 16px', border:`0.5px solid ${T.border}` }}>
-              <div style={{ fontSize:13, color:T.text2, marginBottom:12, lineHeight:1.6 }}>{error}</div>
-              <button onClick={go} style={{ padding:'9px 18px', borderRadius:rr('sm'), border:'none',
-                background:'var(--cream)', color:'var(--bg)', fontSize:13, fontWeight:500, cursor:'pointer' }}>
-                Try again
-              </button>
+            <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+              <p className="t-subhead c-2">{error}</p>
+              <Button size="md" variant="secondary" onClick={go} style={{ alignSelf:'flex-start' }}>Try again</Button>
             </div>
           )}
           {resp && !loading && !error && <AIRoutineCard text={resp} onSave={save} saved={saved} />}
         </div>
       )}
-    </div>
+    </Card>
   )
 }
 
@@ -777,29 +614,15 @@ Format EXACTLY like this:
   }
 
   if (!shown) {
-    return (
-      <button onClick={go} style={{
-        width:'100%', marginTop:10, padding:'10px', borderRadius:rr('md'),
-        border:`0.5px solid var(--green-dim)`, background:'var(--green-bg)',
-        color:'var(--green)', fontSize:13, cursor:'pointer',
-      }}>Recovery flow for this session →</button>
-    )
+    return <Button variant="secondary" size="md" full iconAfter="arrowRight" onClick={go} style={{ marginTop:10 }}>Recovery flow for this session</Button>
   }
-
   return (
-    <div style={{ marginTop:10 }}>
-      <div style={{ fontSize:12, color:T.text2, marginBottom:8 }}>Recovery flow</div>
-      {loading ? (
-        <div style={{ display:'flex', gap:5, padding:'8px 0', alignItems:'center' }}>
-          {[0,1,2].map(i=><div key={i} style={{ width:6,height:6,borderRadius:'50%',background:T.text3,animation:'blink 1.2s infinite',animationDelay:i*.2+'s' }} />)}
-        </div>
-      ) : resp ? (
-        <AIRoutineCard text={resp} onSave={save} saved={saved} />
-      ) : failed ? (
-        <button onClick={go} style={{ fontSize:12, color:T.text3, border:`0.5px solid ${T.border}`, borderRadius:rr('sm'), padding:'7px 14px', background:'transparent', cursor:'pointer' }}>
-          Couldn't load — try again
-        </button>
-      ) : null}
+    <div style={{ marginTop:12, display:'flex', flexDirection:'column', gap:8 }}>
+      <span className="t-footnote c-2" style={{ fontWeight:600 }}>Recovery flow</span>
+      {loading ? <Skeleton lines={4} label="Building your recovery flow" />
+        : resp ? <AIRoutineCard text={resp} onSave={save} saved={saved} />
+        : failed ? <Button variant="secondary" size="sm" onClick={go} style={{ alignSelf:'flex-start' }}>Couldn't load it. Try again</Button>
+        : null}
     </div>
   )
 }
@@ -829,58 +652,37 @@ export function SavedRoutineCard({ item }) {
 // ─── Main MoveScreen ──────────────────────────────────────────────────────────
 export default function MoveScreen({ onSave, pendingSession, onClearPending, onStartSession }) {
 
-  // ─── Pending session warmup flow ─────────────────────────────────────────────
+  // ─── Pre-session warmup: the step between Home's "Start" and the lift ─────────
   if (pendingSession) {
     const { warmupType, workoutName } = pendingSession
-    const routineKey = `${warmupType}_warmup`
-    const routine = SPORT_LIBRARY.Lifting[routineKey] || SPORT_LIBRARY.Lifting.lower_warmup
+    const routine = SPORT_LIBRARY.Lifting[`${warmupType}_warmup`] || SPORT_LIBRARY.Lifting.lower_warmup
     return (
-      <div style={{ padding:'0' }}>
-        <div style={{ padding:'16px 20px 12px', borderBottom:`0.5px solid ${T.border}` }}>
-          <button onClick={onClearPending} style={{ border:'none', background:'none', color:T.text3, fontSize:12, padding:0, cursor:'pointer', marginBottom:10 }}>← Back</button>
-          <div style={{ fontSize:12, color:'var(--green)', fontWeight:600, letterSpacing:.5, textTransform:'uppercase', marginBottom:4 }}>Pre-session warmup</div>
-          <div style={{ fontSize:20, fontWeight:500, color:T.text, marginBottom:2 }}>{routine.title}</div>
-          <div style={{ fontSize:12, color:T.text3 }}>{routine.duration} · Before {workoutName}</div>
-        </div>
-        <div style={{ padding:'8px 20px' }}>
-          {routine.exercises.map((ex, i) => (
-            <div key={i} style={{ padding:'12px 0', borderBottom: i < routine.exercises.length-1 ? `0.5px solid ${T.border}` : 'none' }}>
-              <div style={{ fontSize:14, fontWeight:500, color:T.text, marginBottom:3 }}>{ex.name}</div>
-              {ex.reps && <div style={{ fontSize:12, color:'var(--green)', fontWeight:500, marginBottom:4 }}>{ex.reps}</div>}
-              {ex.cue && <div style={{ fontSize:12, color:T.text2, lineHeight:1.6 }}>{ex.cue}</div>}
-            </div>
-          ))}
-        </div>
-        <div style={{ padding:'16px 20px 40px', borderTop:`0.5px solid ${T.border}` }}>
-          <div style={{ fontSize:13, color:T.text3, marginBottom:14, textAlign:'center' }}>Warmup done? Time to lift.</div>
-          <button onClick={()=>onStartSession(pendingSession)}
-            style={{ width:'100%', padding:'14px', borderRadius:rr('md'), border:'none',
-              background:'var(--green-dim)', color:'#fff', fontSize:15, fontWeight:600,
-              cursor:'pointer', marginBottom:10, boxShadow:'0 2px 8px rgba(58,138,88,0.35)' }}>
-            Start {workoutName} →
-          </button>
-          <button onClick={()=>{ onSave({ label:`${routine.title} · Pre-session`, text: JSON.stringify(routine), type:'routine' }); onClearPending() }}
-            style={{ width:'100%', padding:'10px', borderRadius:rr('md'), border:`0.5px solid ${T.border}`,
-              background:'transparent', color:T.text3, fontSize:13, cursor:'pointer' }}>
-            Save warmup to rotation
-          </button>
+      <>
+      <ScreenHeader title={routine.title} subtitle={`Before ${workoutName} · ${routine.duration}`} onBack={onClearPending} />
+      <div style={{ padding:'0 var(--edge)', display:'flex', flexDirection:'column', gap:16 }}>
+        <Card style={{ padding:'4px 20px' }}><ExerciseList exercises={routine.exercises} /></Card>
+        <div style={{ display:'flex', flexDirection:'column', gap:8, paddingTop:8 }}>
+          <Button full iconAfter="arrowRight" onClick={()=>onStartSession(pendingSession)}>Warmed up. Start {workoutName}</Button>
+          <Button variant="quiet" full onClick={()=>{ onSave({ label:`${routine.title} · Pre-session`, text: JSON.stringify(routine), type:'routine' }); onClearPending() }}>
+            Save this warmup to rotation
+          </Button>
         </div>
       </div>
+      </>
     )
   }
 
   return (
-    <div style={{ padding:'20px 20px' }}>
-      <div style={{ marginBottom:20 }}>
-        <div style={{ fontSize:13, color:T.text2, lineHeight:1.6 }}>
-          Pick an area and get a 5-minute targeted routine instantly. No setup needed.
-        </div>
-      </div>
-      <QuickRelief onSave={onSave} />
-      <DailyMobility onSave={onSave} />
-      <div style={{ height:'0.5px', background:T.border, margin:'20px 0' }} />
-      <SportLibrary onSave={onSave} />
-      <div style={{ height:'0.5px', background:T.border, margin:'20px 0' }} />
+    <div style={{ padding:'0 var(--edge)', display:'flex', flexDirection:'column', gap:32 }}>
+      <Section title="What feels tight? 5 minutes, no setup">
+        <QuickRelief onSave={onSave} bare />
+      </Section>
+      <Section title="Daily mobility">
+        <DailyMobility onSave={onSave} />
+      </Section>
+      <Section title="Warmups and recovery for your sport">
+        <SportLibrary onSave={onSave} />
+      </Section>
       <CustomRoutine onSave={onSave} />
     </div>
   )

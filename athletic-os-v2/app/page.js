@@ -6,7 +6,9 @@ import { supabase } from './supabase'
 import AuthScreen from './AuthScreen'
 import LiftScreen from './LiftScreen'
 import MoveScreen, { QuickRelief, getWarmupType } from './MoveScreen'
-import { Toast, TabBar, ScreenHeader, HaleMark as HaleLogo, Button, IconButton, Card as UICard, Row, Skeleton, Icon } from './ui'
+import { ExerciseList } from './ui/Routine'
+import { Toast, TabBar, ScreenHeader, HaleMark as HaleLogo, Button, IconButton, Card as UICard, Row, Skeleton, Icon,
+  Chip as UIChip, ChipRow as UIChipRow, Section, Field, TextInput, TextArea, Segmented, OptionCards, Token, Disclosure, Hairline, ChoiceList, StepProgress } from './ui'
 import {
   getProfile, saveProfile,
   getPantry, savePantry,
@@ -198,75 +200,44 @@ function buildNutritionNudge(profile, workoutType) {
 
 // ─── UI primitives ────────────────────────────────────────────────────────────
 function rr(s) { return s==='sm'?'8px':s==='lg'?'16px':'12px' }
+// Legacy helpers, now thin wrappers over app/ui so older call sites match the system.
 function Eyebrow({ children, style }) {
-  return <div style={{ fontSize:12, letterSpacing:.7, textTransform:'uppercase', color:T.text3, fontWeight:500, marginBottom:8, ...style }}>{children}</div>
+  return <div className="t-footnote c-2" style={{ marginBottom:8, ...style }}>{children}</div>
 }
 function PrefLabel({ children }) {
-  return <div style={{ fontSize:12, color:T.text3, marginBottom:6, letterSpacing:.2 }}>{children}</div>
+  return <div className="t-footnote c-2" style={{ fontWeight:600, marginBottom:8 }}>{children}</div>
 }
 function Chip({ label, selected, onClick }) {
-  return (
-    <button onClick={onClick} style={{
-      padding:'6px 13px', borderRadius:20, fontSize:12, border:'none',
-      background:selected?T.text:T.surface2, color:selected?T.bg:T.text2,
-      fontWeight:selected?500:400, transition:'all .15s',
-    }}>{label}</button>
-  )
+  return <UIChip small selected={selected} onClick={onClick}>{label}</UIChip>
 }
 function ChipRow({ options, selected, onSelect }) {
   return (
-    <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom:12 }}>
-      {options.map(o=><Chip key={o} label={o} selected={selected===o} onClick={()=>onSelect(o)} />)}
-    </div>
+    <UIChipRow style={{ marginBottom:20 }}>
+      {options.map(o=><UIChip key={o} small selected={selected===o} onClick={()=>onSelect(o)}>{o}</UIChip>)}
+    </UIChipRow>
   )
 }
 function PrimaryBtn({ children, onClick, disabled }) {
-  return (
-    <button onClick={onClick} disabled={disabled} style={{
-      width:'100%', marginTop:10, padding:'12px 16px', borderRadius:rr('md'),
-      border:'none', background:disabled?T.surface2:T.text,
-      color:disabled?T.text3:T.bg, fontSize:14, fontWeight:500,
-    }}>{children}</button>
-  )
+  return <Button variant="primary" full onClick={onClick} disabled={disabled} style={{ marginTop:12 }}>{children}</Button>
 }
 function SecondaryBtn({ children, onClick, style }) {
-  return (
-    <button onClick={onClick} style={{
-      width:'100%', marginTop:8, padding:'9px 16px', borderRadius:rr('md'),
-      border:`0.5px solid ${T.border}`, background:'transparent',
-      color:T.text2, fontSize:13, ...style,
-    }}>{children}</button>
-  )
+  return <Button variant="secondary" size="md" full onClick={onClick} style={{ marginTop:8, ...style }}>{children}</Button>
 }
 function LoadingDots() {
-  return (
-    <div style={{ display:'flex', gap:5, padding:'10px 0', alignItems:'center' }}>
-      {[0,1,2].map(i=>(
-        <div key={i} style={{ width:6, height:6, borderRadius:'50%', background:T.text3,
-          animation:'blink 1.2s infinite', animationDelay:`${i*.2}s` }} />
-      ))}
-      <style>{`@keyframes blink{0%,80%,100%{opacity:.2}40%{opacity:1}}`}</style>
-    </div>
-  )
+  return <Skeleton lines={3} />
 }
 function ResponseBox({ text, loading }) {
   if (!loading && !text) return null
   return (
-    <div style={{ marginTop:12, background:T.surface, border:`0.5px solid ${T.border}`,
-      borderRadius:rr('md'), padding:16, fontSize:14, lineHeight:1.75, color:T.text, whiteSpace:'pre-wrap' }}>
-      {loading?<LoadingDots />:text}
-    </div>
+    <UICard style={{ marginTop:12 }}>
+      {loading ? <Skeleton lines={4} /> : <div className="t-body" style={{ whiteSpace:'pre-wrap', lineHeight:1.7 }}>{text}</div>}
+    </UICard>
   )
 }
 function Card({ children, style }) {
-  return (
-    <div style={{ background:T.surface, border:`0.5px solid ${T.border}`,
-      borderRadius:rr('md'), padding:'14px 16px', marginBottom:10, ...style }}>
-      {children}
-    </div>
-  )
+  return <UICard style={{ marginBottom:12, ...style }}>{children}</UICard>
 }
-function Divider() { return <div style={{ height:'0.5px', background:T.border, margin:'12px 0' }} /> }
+function Divider() { return <Hairline style={{ margin:'20px 0' }} /> }
 
 
 // ─── Toast notification ───────────────────────────────────────────────────────
@@ -343,10 +314,10 @@ function usePantry(userId) {
 
 // ─── Pantry editor ────────────────────────────────────────────────────────────
 const QUICK_ADD = [
-  '🥚 Eggs','🍗 Chicken','🥩 Ground beef','🐟 Salmon','🍖 Steak',
-  '🍚 Rice','🍝 Pasta','🥔 Potatoes','🫘 Beans','🌽 Corn',
-  '🥦 Broccoli','🥬 Spinach','🍅 Tomatoes','🧀 Cheese','🥛 Greek yogurt',
-  '🍌 Banana','🫐 Blueberries','🍠 Sweet potato','🥑 Avocado','🧇 Oats',
+  'Eggs','Chicken','Ground beef','Salmon','Steak',
+  'Rice','Pasta','Potatoes','Beans','Corn',
+  'Broccoli','Spinach','Tomatoes','Cheese','Greek yogurt',
+  'Banana','Blueberries','Sweet potato','Avocado','Oats',
 ]
 
 function PantryEditor({ pantry, onAdd, onRemove }) {
@@ -354,57 +325,40 @@ function PantryEditor({ pantry, onAdd, onRemove }) {
   const [error, setError] = useState('')
   const [showQuick, setShowQuick] = useState(pantry.length === 0)
   const handleAdd = async (item) => {
-    // Quick-add chips carry an emoji prefix ("🥚 Eggs") — strip it.
-    // Typed input must be kept intact ("ground turkey" stays "ground turkey").
-    const t = item ? item.trim().replace(/^\S+\s/, '') : input.trim()
+    const t = (item ?? input).trim()
     if (!t) return
     const ok = await onAdd(t)
     if (ok) { setInput(''); setError('') } else setError('Already in your pantry')
   }
-  const quickAvailable = QUICK_ADD.filter(q => {
-    const name = q.replace(/^\S+\s/, '').toLowerCase()
-    return !pantry.map(p=>p.toLowerCase()).includes(name)
-  })
+  const have = pantry.map(p=>p.toLowerCase())
+  const quickAvailable = QUICK_ADD.filter(q => !have.includes(q.toLowerCase()))
   return (
-    <div style={{ marginBottom:14 }}>
-      {/* Current pantry */}
-      {pantry.length > 0 && (
-        <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom:10 }}>
-          {pantry.map(ing=>(
-            <div key={ing} style={{ display:'flex', alignItems:'center', gap:5, padding:'6px 10px', borderRadius:20, fontSize:13, background:T.surface2, color:T.text }}>
-              <span>{ing}</span>
-              <button onClick={()=>onRemove(ing)} style={{ border:'none', background:'none', color:T.text3, fontSize:14, padding:0, lineHeight:1, cursor:'pointer' }}>×</button>
-            </div>
+    <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+      {pantry.length > 0
+        ? <div style={{ display:'flex', flexWrap:'wrap', gap:8 }}>
+            {pantry.map(ing => <Token key={ing} onRemove={()=>onRemove(ing)}>{ing}</Token>)}
+          </div>
+        : <p className="t-subhead c-2">Add a few things you have. One good recipe comes back, built from them.</p>}
+
+      <form onSubmit={e=>{ e.preventDefault(); handleAdd() }} style={{ display:'flex', gap:8 }}>
+        <TextInput value={input} onChange={v=>{ setInput(v); setError('') }} placeholder="Add an ingredient"
+          aria-label="Add an ingredient" enterKeyHint="done" style={{ flex:1 }} />
+        <Button type="submit" variant="secondary" size="lg" disabled={!input.trim()} style={{ padding:'0 20px' }}>Add</Button>
+      </form>
+      {error && <span className="t-footnote" style={{ color:'var(--c-danger)', fontWeight:400 }} role="alert">{error}</span>}
+
+      {showQuick && quickAvailable.length > 0 && (
+        <div style={{ display:'flex', flexWrap:'wrap', gap:8 }}>
+          {quickAvailable.slice(0,12).map(q=>(
+            <UIChip key={q} small onClick={()=>handleAdd(q)}>
+              <Icon name="plus" size={14} strokeWidth={2} style={{ color:'var(--c-text-3)', marginLeft:-4 }} />{q}
+            </UIChip>
           ))}
         </div>
       )}
-
-      {/* Quick add chips */}
-      {showQuick && quickAvailable.length > 0 && (
-        <div style={{ marginBottom:10 }}>
-          <div style={{ fontSize:12, color:T.text3, marginBottom:6 }}>Quick add</div>
-          <div style={{ display:'flex', flexWrap:'wrap', gap:5 }}>
-            {quickAvailable.slice(0,12).map(q=>(
-              <button key={q} onClick={()=>handleAdd(q)} style={{
-                padding:'5px 11px', borderRadius:20, fontSize:12, cursor:'pointer',
-                border:`0.5px solid ${T.border}`, background:T.surface, color:T.text2,
-              }}>{q}</button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Text input */}
-      <div style={{ display:'flex', gap:6 }}>
-        <input value={input} onChange={e=>{ setInput(e.target.value); setError('') }}
-          onKeyDown={e=>e.key==='Enter'&&handleAdd()} placeholder="Add anything else..."
-          style={{ flex:1, padding:'9px 12px', borderRadius:rr('sm'), fontSize:16, border:`0.5px solid ${T.border}`, background:T.surface, color:T.text, outline:'none' }} />
-        <button onClick={()=>handleAdd()} style={{ padding:'9px 14px', borderRadius:rr('sm'), fontSize:13, border:'none', background:T.text, color:T.bg, fontWeight:500, cursor:'pointer' }}>Add</button>
-      </div>
-      {error && <div style={{ fontSize:12, color:'var(--coral)', marginTop:4 }}>{error}</div>}
       {pantry.length > 0 && (
-        <button onClick={()=>setShowQuick(v=>!v)} style={{ marginTop:8, border:'none', background:'none', color:T.text3, fontSize:12, padding:0, cursor:'pointer' }}>
-          {showQuick ? 'Hide suggestions' : '+ Quick add more'}
+        <button onClick={()=>setShowQuick(v=>!v)} className="t-subhead c-accent" style={{ alignSelf:'flex-start', minHeight:36, border:'none', background:'none', padding:0, fontWeight:500 }}>
+          {showQuick ? 'Hide suggestions' : 'Show suggestions'}
         </button>
       )}
     </div>
@@ -415,12 +369,14 @@ function PantryEditor({ pantry, onAdd, onRemove }) {
 function RecipeCard({ text, onAdjust, adjusting }) {
   const [showMacros, setShowMacros] = useState(false)
   if (!text) return null
-  const lines = text.split('\n').map(l=>l.trim().replace(/^#+\s*/,'')).filter(Boolean)
+  const lines = text.split('\n').map(l=>l.trim().replace(/^#+\s*/,'').replace(/\*\*/g,'')).filter(Boolean)
   const name = lines[0]||''
   const ingStart  = lines.findIndex(l=>l.toLowerCase().startsWith('ingredient'))
-  const stepStart = lines.findIndex(l=>l.toLowerCase().match(/^steps?:?$|^directions?:?$/))
+  const stepStart = lines.findIndex(l=>l.toLowerCase().match(/^steps?:?$|^directions?:?$|^instructions?:?$/))
   const macroStart= lines.findIndex(l=>l.toLowerCase().match(/^macros?|^nutrition/))
   const varStart  = lines.findIndex(l=>l.toLowerCase().match(/^variations?:?$/))
+  const firstSection = [ingStart,stepStart,macroStart,varStart].filter(i=>i>0)
+  const intro = firstSection.length ? lines.slice(1, Math.min(...firstSection)) : []
   const slice = (from,tos) => { const ends=tos.filter(t=>t>from); const end=ends.length?Math.min(...ends):undefined; return lines.slice(from+1,end).filter(l=>l) }
   const ingredients = ingStart>=0  ? slice(ingStart,[stepStart,macroStart,varStart]) : []
   const steps       = stepStart>=0 ? slice(stepStart,[macroStart,varStart])          : []
@@ -428,29 +384,83 @@ function RecipeCard({ text, onAdjust, adjusting }) {
   const varLines    = varStart>=0  ? slice(varStart,[])                              : []
   const macros = {}
   macroLines.forEach(l=>{ const nums=l.match(/\d+/g)||[]; const num=nums.length?nums.reduce((a,b)=>a.length>=b.length?a:b):''; const low=l.toLowerCase(); if(low.includes('calorie')||low.includes('kcal'))macros.cal=num; else if(low.includes('protein'))macros.protein=num; else if(low.includes('carb'))macros.carbs=num; else if(low.includes('fat'))macros.fat=num })
+  const macroList = [['cal','Calories',''],['protein','Protein','g'],['carbs','Carbs','g'],['fat','Fat','g']].filter(([k])=>macros[k])
+  const clean = l => l.replace(/^\d+[\.\)]\s*/,'').replace(/^[-*•]\s*/,'')
+
   return (
-    <div style={{ marginTop:14, background:T.surface, border:`0.5px solid ${T.border}`, borderRadius:rr('md'), overflow:'hidden' }}>
-      <div style={{ padding:'16px 16px 12px', borderBottom:`0.5px solid ${T.border}` }}>
-        <div style={{ fontSize:18, fontWeight:500, color:T.text }}>{name}</div>
+    <UICard style={{ padding:0, overflow:'hidden' }}>
+      <div style={{ padding:'24px 20px 20px' }}>
+        <h2 className="t-title2" style={{ fontSize:26, lineHeight:1.15 }}>{name}</h2>
+        {intro.length > 0 && <p className="t-subhead c-2" style={{ marginTop:8 }}>{intro.join(' ')}</p>}
       </div>
-      {ingredients.length>0&&<div style={{ padding:'12px 16px', borderBottom:`0.5px solid ${T.border}` }}><div style={{ fontSize:12, fontWeight:500, color:T.text3, letterSpacing:.6, textTransform:'uppercase', marginBottom:8 }}>Ingredients</div>{ingredients.map((ing,i)=><div key={i} style={{ fontSize:13, color:T.text2, paddingBottom:5, lineHeight:1.4 }}>- {ing.replace(/^[-*]\s*/,'')}</div>)}</div>}
-      {steps.length>0&&<div style={{ padding:'12px 16px', borderBottom:`0.5px solid ${T.border}` }}><div style={{ fontSize:12, fontWeight:500, color:T.text3, letterSpacing:.6, textTransform:'uppercase', marginBottom:8 }}>Steps</div>{steps.map((step,i)=><div key={i} style={{ display:'flex', gap:10, marginBottom:8, alignItems:'flex-start' }}><div style={{ width:20, height:20, borderRadius:'50%', background:T.surface2, display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:500, color:T.text2, flexShrink:0 }}>{i+1}</div><div style={{ fontSize:13, color:T.text, lineHeight:1.5 }}>{step.replace(/^\d+[\.\)]\s*/,'').replace(/^[-*]\s*/,'')}</div></div>)}</div>}
-      {Object.keys(macros).length>0&&<div style={{ padding:'10px 16px', borderBottom:varLines.length>0||onAdjust?`0.5px solid ${T.border}`:'none' }}>
-        <button onClick={()=>setShowMacros(v=>!v)} style={{ background:'none', border:'none', color:T.text3, fontSize:12, padding:0, cursor:'pointer', display:'flex', alignItems:'center', gap:6 }}>
-          <span>Macros</span>
-          <span style={{ fontSize:12 }}>{showMacros?'▲':'▼'}</span>
-        </button>
-        {showMacros && <div style={{ display:'flex', gap:8, marginTop:10 }}>{macros.cal&&<div style={{ flex:1, background:T.surface2, borderRadius:rr('sm'), padding:'8px 6px', textAlign:'center' }}><div style={{ fontSize:15, fontWeight:500, color:T.text }}>{macros.cal}</div><div style={{ fontSize:12, color:T.text3, marginTop:2 }}>cal</div></div>}{macros.protein&&<div style={{ flex:1, background:T.surface2, borderRadius:rr('sm'), padding:'8px 6px', textAlign:'center' }}><div style={{ fontSize:15, fontWeight:500, color:T.text }}>{macros.protein}g</div><div style={{ fontSize:12, color:T.text3, marginTop:2 }}>protein</div></div>}{macros.carbs&&<div style={{ flex:1, background:T.surface2, borderRadius:rr('sm'), padding:'8px 6px', textAlign:'center' }}><div style={{ fontSize:15, fontWeight:500, color:T.text }}>{macros.carbs}g</div><div style={{ fontSize:12, color:T.text3, marginTop:2 }}>carbs</div></div>}{macros.fat&&<div style={{ flex:1, background:T.surface2, borderRadius:rr('sm'), padding:'8px 6px', textAlign:'center' }}><div style={{ fontSize:15, fontWeight:500, color:T.text }}>{macros.fat}g</div><div style={{ fontSize:12, color:T.text3, marginTop:2 }}>fat</div></div>}</div>}
-      </div>}
-      {varLines.length>0&&<div style={{ padding:'12px 16px', background:T.surface2, borderBottom:onAdjust?`0.5px solid ${T.border}`:'none' }}><div style={{ fontSize:12, fontWeight:500, color:T.text3, letterSpacing:.6, textTransform:'uppercase', marginBottom:8 }}>Quick variations</div>{varLines.map((v,i)=><div key={i} style={{ fontSize:12, color:T.text2, paddingBottom:5, lineHeight:1.5 }}>{v.replace(/^[-*]\s*/,'')}</div>)}</div>}
-      {onAdjust&&<div style={{ padding:'12px 16px' }}><div style={{ fontSize:12, fontWeight:500, color:T.text3, letterSpacing:.6, textTransform:'uppercase', marginBottom:8 }}>Adjust this meal</div>{adjusting?<div style={{ padding:'8px 0' }}><LoadingDots /></div>:<div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>{ADJUST_BUTTONS.map(b=><button key={b.key} onClick={()=>onAdjust(b.key,name,text)} style={{ padding:'6px 12px', borderRadius:20, fontSize:12, border:`0.5px solid ${T.border}`, background:T.surface2, color:T.text2, cursor:'pointer' }}>{b.label}</button>)}</div>}</div>}
-    </div>
+
+      {ingredients.length>0 && (
+        <div style={{ padding:'0 20px 20px' }}>
+          <h3 className="t-footnote c-2" style={{ fontWeight:600, marginBottom:10 }}>Ingredients</h3>
+          <ul style={{ listStyle:'none', display:'flex', flexDirection:'column', gap:8 }}>
+            {ingredients.map((ing,i)=>(
+              <li key={i} className="t-body" style={{ display:'flex', gap:10, alignItems:'baseline' }}>
+                <span aria-hidden="true" style={{ width:5, height:5, borderRadius:3, background:'var(--c-accent)', flexShrink:0, transform:'translateY(-3px)' }} />
+                {clean(ing)}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {steps.length>0 && (
+        <div style={{ padding:'20px', background:'var(--c-muted)' }}>
+          <h3 className="t-footnote c-2" style={{ fontWeight:600, marginBottom:12 }}>Steps</h3>
+          <ol style={{ listStyle:'none', display:'flex', flexDirection:'column', gap:14 }}>
+            {steps.map((step,i)=>(
+              <li key={i} style={{ display:'flex', gap:14, alignItems:'flex-start' }}>
+                <span className="t-num" style={{ fontFamily:'var(--font-display)', fontSize:22, fontWeight:300, lineHeight:1.1, color:'var(--c-accent-text)', minWidth:18 }}>{i+1}</span>
+                <span className="t-body">{clean(step)}</span>
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
+
+      {(macroList.length>0 || varLines.length>0) && (
+        <div style={{ padding:'4px 20px' }}>
+          {macroList.length>0 && (
+            <>
+              <Disclosure open={showMacros} onToggle={()=>setShowMacros(v=>!v)}>Macros</Disclosure>
+              {showMacros && (
+                <div style={{ display:'grid', gridTemplateColumns:`repeat(${macroList.length}, minmax(0,1fr))`, gap:8, paddingBottom:16 }}>
+                  {macroList.map(([k,label,unit])=>(
+                    <div key={k} style={{ background:'var(--c-muted)', borderRadius:'var(--r-input)', padding:'10px 6px', textAlign:'center' }}>
+                      <div className="t-headline t-num">{macros[k]}{unit}</div>
+                      <div className="t-caption c-2">{label}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+          {varLines.length>0 && (
+            <div style={{ padding:'12px 0 16px', borderTop: macroList.length ? '1px solid var(--c-line)' : 'none' }}>
+              <h3 className="t-footnote c-2" style={{ fontWeight:600, marginBottom:8 }}>Easy variations</h3>
+              {varLines.map((v,i)=><p key={i} className="t-subhead c-2" style={{ marginBottom:6 }}>{clean(v)}</p>)}
+            </div>
+          )}
+        </div>
+      )}
+
+      {onAdjust && (
+        <div style={{ padding:'16px 20px 20px', borderTop:'1px solid var(--c-line)' }}>
+          <h3 className="t-footnote c-2" style={{ fontWeight:600, marginBottom:10 }}>Adjust it</h3>
+          {adjusting
+            ? <Skeleton lines={2} label="Adjusting the recipe" />
+            : <div style={{ display:'flex', flexWrap:'wrap', gap:8 }}>
+                {ADJUST_BUTTONS.map(b=><UIChip key={b.key} small onClick={()=>onAdjust(b.key,name,text)}>{b.label}</UIChip>)}
+              </div>}
+        </div>
+      )}
+    </UICard>
   )
 }
-
-
-
-
 
 // ─── Low energy / real life mode ─────────────────────────────────────────────
 function LowEnergyCard({ onNav, onNavMove, onNavEat }) {
@@ -537,207 +547,70 @@ function OnboardingFlow({ userId, onComplete }) {
   const [goal, setGoal] = useState('')
   const [activity, setActivity] = useState('')
   const [saving, setSaving] = useState(false)
+  const TOTAL = 4 // questions after the welcome screen
 
-  const steps = [
-    // Step 0 — Welcome
-    {
-      eyebrow: null,
-      title: 'Feel better without\noverthinking it.',
-      sub: 'A few quick questions to personalize your experience.',
-      content: null,
-      cta: 'Get started',
-    },
-    // Step 1 — Name
-    {
-      eyebrow: 'Step 1 of 3',
-      title: "What's your name?",
-      sub: null,
-      content: (
-        <input value={name} onChange={e=>setName(e.target.value)}
-          placeholder="First name"
-          autoFocus
-          style={{ width:'100%', padding:'14px', borderRadius:rr('md'), fontSize:16,
-            border:`1px solid ${T.border2}`, background:T.surface, color:T.text,
-            outline:'none', marginBottom:8 }} />
-      ),
-      cta: 'Continue',
-      canSkip: true,
-    },
-    // Step 2 — Identity
-    {
-      eyebrow: 'Step 2 of 3',
-      title: 'Who are you becoming?',
-      sub: 'Pick the one that resonates most.',
-      content: (
-        <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-          {IDENTITY_STATEMENTS.map(s => (
-            <button key={s} onClick={()=>setIdentity(s)} style={{
-              padding:'13px 16px', borderRadius:rr('md'), fontSize:14, textAlign:'left',
-              border:`1px solid ${identity===s?'var(--cream-dim)':T.border}`,
-              background: identity===s ? 'var(--cream-bg)' : T.surface,
-              color: identity===s ? 'var(--cream)' : T.text2,
-              fontWeight: identity===s ? 500 : 400, cursor:'pointer',
-              transition:'all .15s',
-            }}>{s}</button>
-          ))}
-        </div>
-      ),
-      cta: 'Continue',
-      canSkip: true,
-    },
-    // Step 3 — Goal + Activity
-    {
-      eyebrow: 'Step 3 of 3',
-      title: 'What are you focused on?',
-      sub: null,
-      content: (
-        <div>
-          <div style={{ fontSize:12, color:T.text3, marginBottom:8, letterSpacing:.2 }}>Training goal</div>
-          <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom:20 }}>
-            {GOALS.map(g => (
-              <button key={g} onClick={()=>setGoal(g)} style={{
-                padding:'8px 14px', borderRadius:20, fontSize:13, border:'none', cursor:'pointer',
-                background: goal===g ? 'var(--cream)' : T.surface2,
-                color: goal===g ? 'var(--bg)' : T.text2,
-                fontWeight: goal===g ? 500 : 400,
-              }}>{g}</button>
-            ))}
-          </div>
-          <div style={{ fontSize:12, color:T.text3, marginBottom:8, letterSpacing:.2 }}>How active are you?</div>
-          <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
-            {ACTIVITY_LEVELS.map(a => (
-              <button key={a} onClick={()=>setActivity(a)} style={{
-                padding:'12px 14px', borderRadius:rr('md'), fontSize:13, textAlign:'left',
-                border:`1px solid ${activity===a?'var(--cream-dim)':T.border}`,
-                background: activity===a ? 'var(--cream-bg)' : T.surface,
-                color: activity===a ? 'var(--cream)' : T.text2,
-                cursor:'pointer',
-              }}>{a}</button>
-            ))}
-          </div>
-        </div>
-      ),
-      cta: "Let's go",
-      canSkip: false,
-    },
+  const questions = [
+    null, // welcome
+    { title:"What should we call you?", sub:null, skippable:true,
+      body: <TextInput value={name} onChange={setName} placeholder="First name" autoFocus autoComplete="given-name" aria-label="First name" enterKeyHint="next"
+              onKeyDown={e=>{ if (e.key==='Enter') next() }} /> },
+    { title:'Who are you becoming?', sub:'Pick the one that sounds most like you.', skippable:true,
+      body: <ChoiceList label="Who are you becoming" options={IDENTITY_STATEMENTS} value={identity} onChange={setIdentity} /> },
+    { title:"What's the main goal right now?", sub:'You can change this any time.', skippable:true,
+      body: <ChoiceList label="Main goal" options={GOALS} value={goal} onChange={setGoal} /> },
+    { title:'How often do you train?', sub:null, skippable:false,
+      body: <ChoiceList label="How often you train" options={ACTIVITY_LEVELS} value={activity} onChange={setActivity} /> },
   ]
 
-  const handleNext = async () => {
-    if (step < steps.length - 1) {
-      setStep(s => s + 1)
-      return
-    }
-    // Final step — save and complete
+  async function next() {
+    if (step < TOTAL) { setStep(s => s + 1); return }
     setSaving(true)
     await saveProfile(userId, { name, identity, goal, activity })
     setSaving(false)
     onComplete({ name, identity, goal, activity })
   }
 
-  const current = steps[step]
-  const canProceed = step === 0 || step === 3 ? true :
-    step === 1 ? true : // name is optional
-    step === 2 ? true : true // identity optional
+  const shell = { maxWidth:'var(--app-max)', margin:'0 auto', minHeight:'100dvh', display:'flex', flexDirection:'column', padding:'0 var(--edge)' }
+  const footer = { position:'sticky', bottom:0, padding:'16px 0 calc(24px + env(safe-area-inset-bottom))', background:'linear-gradient(to top, var(--c-bg) 70%, transparent)', display:'flex', flexDirection:'column', gap:4 }
 
-  return (
-    <div style={{ maxWidth:430, margin:'0 auto', minHeight:'100dvh', background:T.bg,
-      display:'flex', flexDirection:'column', padding:'0 24px' }}>
-
-      {/* Progress bar */}
-      {step > 0 && (
-        <div style={{ display:'flex', gap:4, padding:'52px 0 0' }}>
-          {[1,2,3].map(i => (
-            <div key={i} style={{ flex:1, height:2, borderRadius:2,
-              background: i <= step ? 'var(--cream)' : T.border,
-              transition:'background .3s' }} />
-          ))}
-        </div>
-      )}
-
-      <div style={{ flex:1, display:'flex', flexDirection:'column', justifyContent: step===0 ? 'center' : 'flex-start',
-        paddingTop: step===0 ? 0 : 32 }}>
-
-        {/* Eyebrow */}
-        {current.eyebrow && (
-          <div style={{ fontSize:12, color:T.text3, letterSpacing:.5, textTransform:'uppercase',
-            marginBottom:12, fontWeight:500 }}>{current.eyebrow}</div>
-        )}
-
-        {/* Title */}
-        <div style={{ fontSize: step===0 ? 32 : 26, fontWeight:400, color:T.text,
-          letterSpacing:-.5, lineHeight:1.25, marginBottom:current.sub?10:24,
-          whiteSpace:'pre-line' }}>{current.title}</div>
-
-        {/* Sub */}
-        {current.sub && (
-          <div style={{ fontSize:14, color:T.text2, marginBottom:24, lineHeight:1.6 }}>{current.sub}</div>
-        )}
-
-        {/* Content */}
-        {current.content && (
-          <div style={{ marginBottom:24 }}>{current.content}</div>
-        )}
-
-        {/* Welcome screen mark */}
-        {step === 0 && (
-          <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:12, marginBottom:48 }}>
-            <HaleMark size={72} />
-            <HaleWordmark size={28} />
+  if (step === 0) {
+    return (
+      <div style={shell}>
+        <div style={{ flex:1, display:'flex', flexDirection:'column', justifyContent:'center', alignItems:'flex-start', gap:28, paddingTop:48 }}>
+          <HaleLogo size={64} />
+          <div>
+            <h1 className="t-display" style={{ fontSize:44 }}>Feel better without overthinking it.</h1>
+            <p className="t-body c-2" style={{ marginTop:14 }}>Four quick questions so Hale fits your life. About thirty seconds.</p>
           </div>
-        )}
+        </div>
+        <div style={footer}><Button full onClick={next}>Get started</Button></div>
       </div>
+    )
+  }
 
-      {/* Bottom actions */}
-      <div style={{ paddingBottom:48 }}>
-        <button onClick={handleNext} disabled={saving} style={{
-          width:'100%', padding:'14px', borderRadius:rr('md'), border:'none',
-          background:'var(--cream)', color:'var(--bg)',
-          fontSize:15, fontWeight:600, cursor:'pointer', marginBottom:12,
-          opacity: saving ? .7 : 1,
-        }}>{saving ? 'Saving...' : current.cta}</button>
-
-        {current.canSkip && step > 0 && (
-          <button onClick={handleNext} style={{ width:'100%', padding:'10px', borderRadius:rr('md'),
-            border:'none', background:'none', color:T.text3, fontSize:13, cursor:'pointer' }}>
-            Skip
-          </button>
-        )}
+  const q = questions[step]
+  return (
+    <div style={shell}>
+      <div style={{ display:'flex', alignItems:'center', gap:8, paddingTop:'calc(env(safe-area-inset-top) + 8px)', height:'calc(env(safe-area-inset-top) + 60px)' }}>
+        <IconButton icon="chevronLeft" label="Back" onClick={()=>setStep(s=>s-1)} style={{ marginLeft:-12 }} />
+        <div style={{ flex:1 }}><StepProgress total={TOTAL} current={step} label={`Question ${step} of ${TOTAL}`} /></div>
+        <div style={{ width:32 }} />
+      </div>
+      <div key={step} className="screen-enter" style={{ flex:1, paddingTop:24, display:'flex', flexDirection:'column', gap:24 }}>
+        <div>
+          <h1 className="t-title1">{q.title}</h1>
+          {q.sub && <p className="t-body c-2" style={{ marginTop:8 }}>{q.sub}</p>}
+        </div>
+        {q.body}
+      </div>
+      <div style={footer}>
+        <Button full onClick={next} disabled={saving}>{saving ? 'Saving' : step === TOTAL ? 'Done' : 'Continue'}</Button>
+        {q.skippable && <Button variant="quiet" full onClick={next}>Skip</Button>}
       </div>
     </div>
   )
 }
 
-
-// ─── Hale brand components ────────────────────────────────────────────────────
-function HaleMark({ size = 40, color = 'var(--cream)' }) {
-  const r1 = size * 0.42, r2 = size * 0.25, r3 = size * 0.087
-  const cx = size / 2, cy = size / 2
-  return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} fill="none">
-      <circle cx={cx} cy={cy} r={r1} stroke={color} strokeWidth="1"/>
-      <circle cx={cx} cy={cy} r={r2} stroke={color} strokeWidth="1" opacity=".3"/>
-      <circle cx={cx} cy={cy} r={r3} fill={color}/>
-    </svg>
-  )
-}
-
-function HaleWordmark({ size = 32, color = 'var(--cream)' }) {
-  return (
-    <div style={{ fontFamily:"'Outfit', sans-serif", fontWeight:200, fontSize:size,
-      letterSpacing:'0.22em', textTransform:'uppercase', color, paddingLeft:'0.22em', lineHeight:1 }}>
-      Hale
-    </div>
-  )
-}
-
-function HaleLockup({ markSize = 28, wordSize = 22, color = 'var(--cream)', gap = 10 }) {
-  return (
-    <div style={{ display:'flex', alignItems:'center', gap }}>
-      <HaleMark size={markSize} color={color} />
-      <HaleWordmark size={wordSize} color={color} />
-    </div>
-  )
-}
 
 // ─── Screens ──────────────────────────────────────────────────────────────────
 function HomeScreen({ onNav, onSave, profile, userId, programs, recentSessions, activeProgramId, onStartWarmup }) {
@@ -983,6 +856,7 @@ function EatScreen({ onSave, userId }) {
   const [saved, setSaved] = useState(false)
   const [attempts, setAttempts] = useState(0)
   const [suggestedNames, setSuggestedNames] = useState([])
+  const [editing, setEditing] = useState(false)
 
   const ASSUMED_STAPLES = 'olive oil, butter, garlic, onion, salt, pepper, cumin, paprika, chili flakes, Italian seasoning, soy sauce, hot sauce, lemon, lime, vinegar, chicken broth, mustard, honey, Worcestershire sauce'
   const TECHNIQUES = ['pan sear and sauce', 'sheet pan roast', 'stir fry', 'skillet scramble', 'soup or stew', 'marinate and grill', 'stuffed or wrapped', 'rice bowl with sauce', 'fried rice', 'frittata or egg bake']
@@ -1099,99 +973,123 @@ Variations:
     setSaved(true)
   }
 
+  const hasRecipe = resp && !loading && !resp.startsWith('Taking longer') && !resp.startsWith('Something went wrong')
+  const hasError  = resp && !loading && (resp.startsWith('Taking longer') || resp.startsWith('Something went wrong'))
+  const formOpen = editing || (!hasRecipe && !loading)
+  const effortLabel = EFFORT_LEVELS.find(e=>e.key===effort)?.label
+
   return (
-    <div style={{ padding:'20px 20px' }}>
-      <div>
-      <PantryEditor pantry={pantry} onAdd={add} onRemove={remove} />
-      <Divider />
-      <PrefLabel>Effort level</PrefLabel>
-      <div style={{ display:'flex', gap:8, marginBottom:14 }}>
-        {EFFORT_LEVELS.map(e=><button key={e.key} onClick={()=>setEffort(e.key)} style={{ flex:1, padding:'10px 6px', borderRadius:rr('sm'), fontSize:12, textAlign:'center', border:effort===e.key?'none':`0.5px solid ${T.border}`, background:effort===e.key?T.text:T.surface, color:effort===e.key?T.bg:T.text2 }}><div style={{ fontWeight:500, marginBottom:2, fontSize:12 }}>{e.label}</div><div style={{ opacity:.7, lineHeight:1.3 }}>{e.desc}</div></button>)}
-      </div>
-      <PrefLabel>Meal type</PrefLabel>
-      <ChipRow options={['Breakfast','Lunch','Dinner','Snack']} selected={meal} onSelect={setMeal} />
-      <PrefLabel>Cuisine (optional)</PrefLabel>
-      <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom:14 }}>
-        {CUISINES.map(cu=><button key={cu} onClick={()=>setCuisine(cuisine===cu?'':cu)} style={{ padding:'5px 12px', borderRadius:20, fontSize:12, border:`0.5px solid ${T.border}`, background:cuisine===cu?T.text:T.surface2, color:cuisine===cu?T.bg:T.text2 }}>{cu}</button>)}
-      </div>
-      <PrefLabel>What's the vibe?</PrefLabel>
-      <textarea value={vibe} onChange={e=>setVibe(e.target.value)} placeholder="high protein, comforting, fresh, post-workout..." rows={2} style={{ width:'100%', background:T.surface, border:`0.5px solid ${T.border}`, borderRadius:rr('md'), padding:'10px 12px', fontSize:16, color:T.text, resize:'none', outline:'none', marginBottom:8 }} />
-      <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom:4 }}>
-        {VIBE_SUGGESTIONS.map(v=><button key={v} onClick={()=>setVibe(vibe===v?'':v)} style={{ padding:'4px 10px', borderRadius:20, fontSize:12, border:`0.5px solid ${T.border}`, background:vibe===v?T.text:T.surface2, color:vibe===v?T.bg:T.text3 }}>{v}</button>)}
-      </div>
-      <PrimaryBtn onClick={()=>go(false)} disabled={loading||pantry.length===0}>{loading?'Finding a great recipe...':'Get recipe ideas'}</PrimaryBtn>
-      {loading&&<div style={{ marginTop:12 }}><LoadingDots /></div>}
-      {resp&&!loading&&!resp.startsWith('Taking longer')&&!resp.startsWith('Something went wrong')&&<RecipeCard text={resp} onAdjust={adjust} adjusting={adjusting} />}
-      {resp&&!loading&&(resp.startsWith('Taking longer')||resp.startsWith('Something went wrong'))&&(
-        <div style={{ marginTop:16, background:T.surface, borderRadius:rr('md'), padding:'16px', border:`0.5px solid ${T.border}` }}>
-          <div style={{ fontSize:14, fontWeight:500, color:T.text, marginBottom:6 }}>
-            {resp.startsWith('Taking longer') ? 'Taking a moment...' : 'Something went wrong'}
-          </div>
-          <div style={{ fontSize:13, color:T.text2, marginBottom:14, lineHeight:1.6 }}>{resp}</div>
-          <button onClick={()=>go(false)} style={{ padding:'10px 20px', borderRadius:rr('sm'), border:'none',
-            background:'var(--cream)', color:'var(--bg)', fontSize:13, fontWeight:500, cursor:'pointer' }}>
-            Try again
-          </button>
-        </div>
+    <div style={{ padding:'0 var(--edge)', display:'flex', flexDirection:'column', gap:24 }}>
+      {!formOpen && (
+        <UICard flat tone="muted" style={{ padding:'4px 16px' }}>
+          <Disclosure open={false} onToggle={()=>setEditing(true)}>
+            <span className="t-callout">{meal}{cuisine ? ` · ${cuisine}` : ''} · {effortLabel}</span>
+            <span className="t-footnote c-2" style={{ display:'block', fontWeight:400 }}>{pantry.length} ingredient{pantry.length!==1?'s':''}{vibe ? ` · ${vibe}` : ''}</span>
+          </Disclosure>
+        </UICard>
       )}
-      {resp&&!loading&&!resp.startsWith('Taking longer')&&!resp.startsWith('Something went wrong')&&(
-        <div style={{ marginTop:12 }}>
-          <div style={{ display:'flex', gap:8, marginBottom:8 }}>
-            <button onClick={save} disabled={saved} style={{
-              flex:1, padding:'12px', borderRadius:rr('md'), border:'none',
-              background:saved?T.surface2:'var(--cream)', color:saved?'var(--green)':'var(--bg)',
-              fontSize:14, fontWeight:500, cursor:saved?'default':'pointer',
-            }}>
-              {saved ? '✓ Saved' : '＋ Save'}
-            </button>
-            <button onClick={()=>go(true)} style={{
-              flex:1, padding:'12px', borderRadius:rr('md'),
-              border:`0.5px solid ${T.border}`, background:'transparent',
-              color:T.text2, fontSize:13, cursor:'pointer',
-            }}>Try another</button>
-          </div>
-          {saved && <div style={{ fontSize:12, color:T.text3, textAlign:'center', fontStyle:'italic' }}>Added to your rotation.</div>}
-        </div>
+
+      {formOpen && (
+        <>
+          <Section title="What you have"><PantryEditor pantry={pantry} onAdd={add} onRemove={remove} /></Section>
+          <Section title="Meal">
+            <Segmented label="Meal" value={meal} onChange={setMeal}
+              options={['Breakfast','Lunch','Dinner','Snack'].map(m=>({ key:m, label:m }))} />
+          </Section>
+          <Section title="Effort">
+            <OptionCards label="Effort" value={effort} onChange={setEffort}
+              options={EFFORT_LEVELS.map(e=>({ key:e.key, label:e.label, desc:e.desc }))} />
+          </Section>
+          <Section title="Cuisine, if you have one in mind">
+            <UIChipRow>
+              {CUISINES.map(cu=><UIChip key={cu} small selected={cuisine===cu} onClick={()=>setCuisine(cuisine===cu?'':cu)}>{cu}</UIChip>)}
+            </UIChipRow>
+          </Section>
+          <Section title="Anything specific?">
+            <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+              <TextInput value={vibe} onChange={setVibe} placeholder="High protein, comforting, post-workout" aria-label="Anything specific" />
+              <div style={{ display:'flex', flexWrap:'wrap', gap:8 }}>
+                {VIBE_SUGGESTIONS.slice(0,6).map(v=><UIChip key={v} small selected={vibe===v} onClick={()=>setVibe(vibe===v?'':v)}>{v}</UIChip>)}
+              </div>
+            </div>
+          </Section>
+          <Button full onClick={()=>{ setEditing(false); go(false) }} disabled={loading||pantry.length===0}>
+            {hasRecipe ? 'Get a new recipe' : 'Get a recipe'}
+          </Button>
+          {pantry.length===0 && <p className="t-footnote c-2" style={{ textAlign:'center', fontWeight:400, marginTop:-12 }}>Add at least one ingredient first.</p>}
+        </>
       )}
-      </div>
+
+      {loading && (
+        <UICard style={{ display:'flex', flexDirection:'column', gap:14 }}>
+          <span className="t-footnote c-accent">Finding something good</span>
+          <Skeleton lines={5} label="Finding a recipe" />
+        </UICard>
+      )}
+
+      {hasError && (
+        <UICard style={{ display:'flex', flexDirection:'column', gap:12 }}>
+          <h2 className="t-headline">{resp.startsWith('Taking longer') ? 'Taking a moment' : 'Something went wrong'}</h2>
+          <p className="t-subhead c-2">{resp}</p>
+          <Button size="md" onClick={()=>go(false)} style={{ alignSelf:'flex-start' }}>Try again</Button>
+        </UICard>
+      )}
+
+      {hasRecipe && (
+        <>
+          <RecipeCard text={resp} onAdjust={adjust} adjusting={adjusting} />
+          <div style={{ display:'flex', gap:8 }}>
+            <Button full variant={saved ? 'secondary' : 'primary'} onClick={saved ? undefined : save} aria-disabled={saved} icon={saved ? 'check' : 'plus'}>{saved ? 'Saved' : 'Save to rotation'}</Button>
+            <Button variant="secondary" onClick={()=>go(true)} style={{ flexShrink:0 }}>Try another</Button>
+          </div>
+        </>
+      )}
     </div>
   )
 }
 
 function PillarCard({ p, onDeepDive }) {
   const [expanded, setExpanded] = useState(false)
-  const col = PILLAR_COLORS[p.color]
   return (
-    <Card>
-      <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:10 }}>
-        <div style={{ width:32, height:32, borderRadius:8, background:col.bg, flexShrink:0 }} />
-        <div style={{ flex:1 }}>
-          <div style={{ fontSize:12, fontWeight:500, color:col.accent, letterSpacing:.5, textTransform:'uppercase' }}>Pillar {p.num}</div>
-          <div style={{ fontSize:16, fontWeight:500, color:T.text, marginTop:1 }}>{p.title}</div>
-        </div>
+    <UICard style={{ padding:'20px 20px 8px' }}>
+      <div style={{ display:'flex', gap:14, alignItems:'baseline', marginBottom:8 }}>
+        <span className="t-num" style={{ fontFamily:'var(--font-display)', fontSize:28, fontWeight:200, color:'var(--c-accent-text)', lineHeight:1 }}>
+          {String(p.num).padStart(2,'0')}
+        </span>
+        <h2 className="t-title2">{p.title}</h2>
       </div>
-      <div style={{ fontSize:13, color:col.accent, lineHeight:1.6, marginBottom:8, fontStyle:'italic' }}>{p.identity}</div>
-      <div style={{ fontSize:13, color:T.text2, lineHeight:1.7, marginBottom:10 }}>
-        {expanded ? p.body : ''}
-      </div>
-      {expanded && <>
-        <Divider />
-        <div style={{ display:'flex', gap:14, marginBottom:12 }}>
-          <div style={{ flex:1 }}><div style={{ fontSize:12, fontWeight:500, color:'var(--green)', letterSpacing:.5, textTransform:'uppercase', marginBottom:4 }}>Worth your time</div><div style={{ fontSize:12, color:T.text2, lineHeight:1.55 }}>{p.good}</div></div>
-          <div style={{ flex:1 }}><div style={{ fontSize:12, fontWeight:500, color:'var(--coral)', letterSpacing:.5, textTransform:'uppercase', marginBottom:4 }}>Skip this</div><div style={{ fontSize:12, color:T.text2, lineHeight:1.55 }}>{p.skip}</div></div>
+      <p className="t-body c-2">{p.identity}</p>
+
+      {expanded && (
+        <div style={{ display:'flex', flexDirection:'column', gap:16, marginTop:16 }}>
+          <p className="t-body">{p.body}</p>
+          <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+            <div style={{ background:'var(--c-muted)', borderRadius:'var(--r-row)', padding:14 }}>
+              <div className="t-footnote" style={{ fontWeight:600, display:'flex', alignItems:'center', gap:6, marginBottom:6, color:'var(--c-done)' }}>
+                <Icon name="check" size={16} strokeWidth={2.2} />Worth your time
+              </div>
+              <p className="t-subhead c-2">{p.good}</p>
+            </div>
+            <div style={{ background:'var(--c-muted)', borderRadius:'var(--r-row)', padding:14 }}>
+              <div className="t-footnote c-2" style={{ fontWeight:600, display:'flex', alignItems:'center', gap:6, marginBottom:6 }}>
+                <Icon name="close" size={16} strokeWidth={2.2} />Skip this
+              </div>
+              <p className="t-subhead c-2">{p.skip}</p>
+            </div>
+          </div>
+          <Button variant="secondary" size="md" full iconAfter="arrowRight" onClick={()=>onDeepDive(p.prompt)}>Go deeper</Button>
         </div>
-        <button onClick={()=>onDeepDive(p.prompt)} style={{ width:'100%', padding:'9px 12px', borderRadius:rr('sm'), border:`0.5px solid ${T.border}`, background:'transparent', color:T.text2, fontSize:13, textAlign:'left', marginBottom:6 }}>Go deeper →</button>
-      </>}
-      <button onClick={()=>setExpanded(v=>!v)} style={{ background:'none', border:'none', color:T.text3, fontSize:12, padding:'4px 0 0', cursor:'pointer' }}>
-        {expanded ? 'Show less ▲' : 'Read more ▼'}
-      </button>
-    </Card>
+      )}
+      <Disclosure open={expanded} onToggle={()=>setExpanded(v=>!v)}>
+        <span className="t-subhead c-accent" style={{ fontWeight:500 }}>{expanded ? 'Show less' : 'Read more'}</span>
+      </Disclosure>
+    </UICard>
   )
 }
 
 function PillarsScreen({ onDeepDive }) {
   return (
-    <div style={{ padding:'20px 20px' }}>
+    <div style={{ padding:'0 var(--edge)', display:'flex', flexDirection:'column', gap:12 }}>
       {PILLARS.map(p => <PillarCard key={p.num} p={p} onDeepDive={onDeepDive} />)}
     </div>
   )
@@ -1200,6 +1098,7 @@ function PillarsScreen({ onDeepDive }) {
 function DeepDiveScreen({ prompt, onBack }) {
   const [resp, setResp] = useState('')
   const [loading, setLoading] = useState(true)
+  const pillar = PILLARS.find(p => p.prompt === prompt)
   useEffect(() => {
     callAI(prompt+'\n\nBe conversational, practical, and concise. No fluff.')
       .then(setResp)
@@ -1208,11 +1107,20 @@ function DeepDiveScreen({ prompt, onBack }) {
         : 'Something went wrong. Go back and try again.'))
       .finally(()=>setLoading(false))
   }, [prompt])
+  const paragraphs = resp.replace(/\*\*/g,'').split(/\n{2,}/).map(t=>t.trim()).filter(Boolean)
   return (
-    <div style={{ padding:'20px 20px' }}>
-      <button onClick={onBack} style={{ border:'none', background:'none', color:T.text2, fontSize:13, marginBottom:16, display:'flex', alignItems:'center', gap:4, padding:0 }}>Back to Pillars</button>
-      <ResponseBox text={resp} loading={loading} />
-    </div>
+    <>
+      <ScreenHeader title={pillar ? pillar.title : 'Go deeper'} subtitle={pillar ? 'Going deeper' : null} onBack={onBack} backLabel="Back to Pillars" />
+      <div style={{ padding:'0 var(--edge)' }}>
+        <UICard>
+          {loading
+            ? <Skeleton lines={6} label="Writing your answer" />
+            : <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+                {paragraphs.map((t,i)=><p key={i} className="t-body" style={{ whiteSpace:'pre-wrap' }}>{t}</p>)}
+              </div>}
+        </UICard>
+      </div>
+    </>
   )
 }
 
@@ -1226,135 +1134,84 @@ function ProfileScreen({ userId, onSaved, onNav }) {
   const [saved, setSaved] = useState(false)
   const [loading, setLoading] = useState(true)
   useEffect(() => { if (userId) getProfile(userId).then(p=>{ setProfile(p||{}); setLoading(false) }) }, [userId])
-  const update = (key,val) => setProfile(p=>({ ...p, [key]:val }))
+  const update = (key,val) => { setProfile(p=>({ ...p, [key]:val })); setSaved(false) }
   const handleSave = async () => {
     await saveProfile(userId, profile)
     setSaved(true); setTimeout(()=>setSaved(false),2000)
     if (onSaved) onSaved(profile)
   }
-  if (loading) return <div style={{ padding:20 }}><LoadingDots /></div>
+  if (loading) return <div style={{ padding:'0 var(--edge)' }}><Skeleton lines={6} label="Loading your profile" /></div>
 
-  const Section = ({ label }) => (
-    <div style={{ fontSize:12, color:T.text3, letterSpacing:.6, textTransform:'uppercase', fontWeight:500, marginBottom:10, marginTop:22, paddingBottom:6, borderBottom:`0.5px solid ${T.border}` }}>{label}</div>
+  const pick = (key, options) => (
+    <UIChipRow>
+      {options.map(o => <UIChip key={o} small selected={profile[key]===o} onClick={()=>update(key, profile[key]===o ? '' : o)}>{o}</UIChip>)}
+    </UIChipRow>
   )
+  const group = { display:'flex', flexDirection:'column', gap:18 }
 
   return (
-    <div style={{ padding:'20px 20px' }}>
-      <Section label="About you" />
-      <PrefLabel>First name</PrefLabel>
-      <input value={profile.name||''} onChange={e=>update('name',e.target.value)} placeholder="First name"
-        style={{ width:'100%', padding:'9px 12px', borderRadius:rr('sm'), fontSize:16, border:`0.5px solid ${T.border}`, background:T.surface, color:T.text, outline:'none', marginBottom:10 }} />
+    <div style={{ padding:'0 var(--edge)', display:'flex', flexDirection:'column', gap:32 }}>
+      <Section title="About you">
+        <UICard style={group}>
+          <Field label="First name" htmlFor="pf-name"><TextInput id="pf-name" value={profile.name} onChange={v=>update('name',v)} placeholder="First name" autoComplete="given-name" /></Field>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(2, minmax(0,1fr))', gap:12 }}>
+            <Field label="Age" htmlFor="pf-age"><TextInput id="pf-age" type="number" inputMode="numeric" value={profile.age} onChange={v=>update('age',v)} placeholder="28" /></Field>
+            <Field label="City" htmlFor="pf-loc"><TextInput id="pf-loc" value={profile.location} onChange={v=>update('location',v)} placeholder="San Diego" autoComplete="address-level2" /></Field>
+          </div>
+          <Field label="Gender (optional)">{pick('gender', ['Male','Female','Prefer not to say'])}</Field>
+        </UICard>
+      </Section>
 
-      <div style={{ display:'flex', gap:10, marginBottom:10 }}>
-        <div style={{ flex:1 }}>
-          <PrefLabel>Age</PrefLabel>
-          <input type="number" value={profile.age||''} onChange={e=>update('age',e.target.value)} placeholder="e.g. 28"
-            style={{ width:'100%', padding:'9px 12px', borderRadius:rr('sm'), fontSize:16, border:`0.5px solid ${T.border}`, background:T.surface, color:T.text, outline:'none' }} />
-        </div>
-        <div style={{ flex:1 }}>
-          <PrefLabel>Location</PrefLabel>
-          <input value={profile.location||''} onChange={e=>update('location',e.target.value)} placeholder="City"
-            style={{ width:'100%', padding:'9px 12px', borderRadius:rr('sm'), fontSize:16, border:`0.5px solid ${T.border}`, background:T.surface, color:T.text, outline:'none' }} />
-        </div>
-      </div>
+      <Section title="Your training">
+        <UICard style={group}>
+          <Field label="Main goal">{pick('goal', GOALS)}</Field>
+          <Field label="How often you train">{pick('activity', ACTIVITY_LEVELS)}</Field>
+          <Field label="Experience">{pick('experience', ['Beginner','Intermediate','Experienced'])}</Field>
+          <Field label="Sports or activities" htmlFor="pf-sports"><TextInput id="pf-sports" value={profile.sports} onChange={v=>update('sports',v)} placeholder="Golf, running, pickleball" /></Field>
+        </UICard>
+      </Section>
 
-      <PrefLabel>Gender (optional)</PrefLabel>
-      <div style={{ display:'flex', gap:6, marginBottom:14 }}>
-        {['Male','Female','Prefer not to say'].map(g => (
-          <button key={g} onClick={()=>update('gender', profile.gender===g?'':g)} style={{
-            padding:'7px 12px', borderRadius:20, fontSize:12, border:`0.5px solid ${T.border}`, cursor:'pointer',
-            background: profile.gender===g ? T.text : T.surface2,
-            color: profile.gender===g ? T.bg : T.text2,
-          }}>{g}</button>
-        ))}
-      </div>
+      <Section title="Nutrition targets (optional)">
+        <UICard style={group}>
+          <p className="t-subhead c-2">Used to shape recipe ideas and post-workout meals. Leave blank if you don't track.</p>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(2, minmax(0,1fr))', gap:12 }}>
+            <Field label="Protein a day (g)" htmlFor="pf-protein"><TextInput id="pf-protein" type="number" inputMode="numeric" value={profile.protein} onChange={v=>update('protein',v)} placeholder="160" /></Field>
+            <Field label="Calories a day" htmlFor="pf-cal"><TextInput id="pf-cal" type="number" inputMode="numeric" value={profile.calories} onChange={v=>update('calories',v)} placeholder="2,800" /></Field>
+          </div>
+        </UICard>
+      </Section>
 
-      <Section label="Your training" />
-      <PrefLabel>Training goal</PrefLabel>
-      <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom:14 }}>
-        {GOALS.map(g => (
-          <button key={g} onClick={()=>update('goal', profile.goal===g?'':g)} style={{
-            padding:'7px 13px', borderRadius:20, fontSize:12, border:'none', cursor:'pointer',
-            background: profile.goal===g ? 'var(--cream)' : T.surface2,
-            color: profile.goal===g ? 'var(--bg)' : T.text2,
-            fontWeight: profile.goal===g ? 500 : 400,
-          }}>{g}</button>
-        ))}
-      </div>
+      <Section title="Anything else Hale should know?">
+        <TextArea value={profile.notes} onChange={v=>update('notes',v)} rows={3}
+          placeholder="Injuries, foods you avoid, how you like to train" aria-label="Anything else Hale should know" />
+      </Section>
 
-      <PrefLabel>Activity level</PrefLabel>
-      <ChipRow options={ACTIVITY_LEVELS} selected={profile.activity||''} onSelect={v=>update('activity',v)} />
-
-      <PrefLabel>Training experience</PrefLabel>
-      <ChipRow options={['Beginner','Intermediate','Experienced']} selected={profile.experience||''} onSelect={v=>update('experience',v)} />
-
-      <PrefLabel>Sports or activities you do</PrefLabel>
-      <input value={profile.sports||''} onChange={e=>update('sports',e.target.value)} placeholder="e.g. golf, running, basketball"
-        style={{ width:'100%', padding:'9px 12px', borderRadius:rr('sm'), fontSize:16, border:`0.5px solid ${T.border}`, background:T.surface, color:T.text, outline:'none', marginBottom:14 }} />
-
-      <Section label="Nutrition targets (optional)" />
-      <div style={{ fontSize:12, color:T.text3, marginBottom:10, lineHeight:1.6 }}>
-        Used to personalize recipe suggestions and post-workout nutrition guidance.
-      </div>
-      <div style={{ display:'flex', gap:10, marginBottom:14 }}>
-        <div style={{ flex:1 }}>
-          <PrefLabel>Daily protein (g)</PrefLabel>
-          <input type="number" value={profile.protein||''} onChange={e=>update('protein',e.target.value)} placeholder="e.g. 160"
-            style={{ width:'100%', padding:'9px 12px', borderRadius:rr('sm'), fontSize:16, border:`0.5px solid ${T.border}`, background:T.surface, color:T.text, outline:'none' }} />
-        </div>
-        <div style={{ flex:1 }}>
-          <PrefLabel>Daily calories</PrefLabel>
-          <input type="number" value={profile.calories||''} onChange={e=>update('calories',e.target.value)} placeholder="e.g. 2800"
-            style={{ width:'100%', padding:'9px 12px', borderRadius:rr('sm'), fontSize:16, border:`0.5px solid ${T.border}`, background:T.surface, color:T.text, outline:'none' }} />
-        </div>
-      </div>
-
-      <Section label="Anything else?" />
-      <textarea value={profile.notes||''} onChange={e=>update('notes',e.target.value)}
-        placeholder="Injuries, preferences, things the app should know about you..."
-        rows={3} style={{ width:'100%', background:T.surface, border:`0.5px solid ${T.border}`,
-          borderRadius:rr('md'), padding:'10px 12px', fontSize:16, color:T.text, resize:'none', outline:'none', marginBottom:14 }} />
-
-      <PrimaryBtn onClick={handleSave}>{saved?'Profile saved ✓':'Save profile'}</PrimaryBtn>
-
-      <div style={{ marginTop:16, padding:'12px 14px', background:T.surface2, borderRadius:rr('md') }}>
-        <div style={{ fontSize:12, color:T.text3, lineHeight:1.7 }}>Your profile personalizes recipe suggestions, workout nutrition guidance, and how the app talks to you.</div>
-      </div>
-
-      <div style={{ marginTop:20, paddingTop:16, borderTop:`0.5px solid ${T.border}` }}>
-        <button onClick={async()=>{ await supabase.auth.signOut() }} style={{ fontSize:13, color:'var(--coral)', border:'none', background:'none', cursor:'pointer', padding:0 }}>Sign out</button>
+      <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+        <Button full onClick={handleSave} icon={saved ? 'check' : undefined}>{saved ? 'Saved' : 'Save profile'}</Button>
+        <Button variant="quiet" full onClick={async()=>{ await supabase.auth.signOut() }} style={{ color:'var(--c-danger)' }}>Sign out</Button>
       </div>
     </div>
   )
 }
 
+
 function SavedItemDetail({ item }) {
-  // Try JSON routine format
   if (item.type === 'routine') {
     try {
       const parsed = JSON.parse(item.text)
       if (parsed.exercises?.length) {
+        const meta = [parsed.duration, parsed.source].filter(Boolean).join(' · ')
         return (
-          <div style={{ padding:'8px 16px 16px' }}>
-            {parsed.duration && <div style={{ fontSize:12, color:T.text3, marginBottom:10 }}>{parsed.duration}{parsed.source ? ` · ${parsed.source}` : ''}</div>}
-            {parsed.exercises.map((ex, i) => (
-              <div key={i} style={{ padding:'12px 0', borderBottom: i < parsed.exercises.length-1 ? `0.5px solid ${T.border}` : 'none' }}>
-                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:4 }}>
-                  <div style={{ fontSize:13, fontWeight:500, color:T.text, flex:1 }}>{ex.name}</div>
-                  <div style={{ fontSize:12, color:'var(--green)', marginLeft:8, flexShrink:0, fontWeight:500 }}>{ex.reps}</div>
-                </div>
-                {ex.cue && <div style={{ fontSize:12, color:T.text2, lineHeight:1.55 }}>{ex.cue}</div>}
-              </div>
-            ))}
+          <div style={{ padding:'0 20px 12px' }}>
+            {meta && <p className="t-subhead c-2" style={{ marginBottom:4 }}>{meta}</p>}
+            <ExerciseList exercises={parsed.exercises} />
           </div>
         )
       }
     } catch(e) {}
-    // Plain text fallback
-    return <div style={{ padding:'8px 16px 16px', fontSize:13, color:T.text2, lineHeight:1.7, whiteSpace:'pre-wrap' }}>{item.text}</div>
+    return <p className="t-subhead c-2" style={{ padding:'0 20px 20px', whiteSpace:'pre-wrap' }}>{item.text}</p>
   }
-  // Recipe
-  return <div style={{ padding:'0 16px 16px' }}><RecipeCard text={item.text} /></div>
+  return <div style={{ padding:'0 12px 12px' }}><RecipeCard text={item.text} /></div>
 }
 
 function StackScreen({ items, onDelete, onRename }) {
@@ -1363,76 +1220,54 @@ function StackScreen({ items, onDelete, onRename }) {
   const [editingId, setEditingId] = useState(null)
   const [editingLabel, setEditingLabel] = useState('')
   const filtered = items.filter(i=>tab==='routines'?i.type==='routine':i.type==='recipe')
+  const fmtDate = d => new Date(d||Date.now()).toLocaleDateString(undefined, { month:'short', day:'numeric' })
+  const commitRename = id => { onRename(id, editingLabel); setEditingId(null) }
 
   return (
-    <div style={{ padding:'20px 20px' }}>
-      <div style={{ display:'flex', gap:6, marginBottom:20 }}>
-        {['routines','recipes'].map(t=>(
-          <button key={t} onClick={()=>{ setTab(t); setExpandedId(null) }}
-            style={{ flex:1, padding:'8px', borderRadius:rr('sm'), fontSize:13, border:'none',
-              background:tab===t?T.text:T.surface2, color:tab===t?T.bg:T.text2, textTransform:'capitalize' }}>
-            {t}
-          </button>
-        ))}
-      </div>
+    <div style={{ padding:'0 var(--edge)', display:'flex', flexDirection:'column', gap:16 }}>
+      <Segmented label="Show" value={tab} onChange={t=>{ setTab(t); setExpandedId(null); setEditingId(null) }}
+        options={[{ key:'routines', label:'Routines' }, { key:'recipes', label:'Recipes' }]} />
 
       {filtered.length===0 ? (
-        <div style={{ textAlign:'center', padding:'3rem 1rem' }}>
-          <div style={{ fontSize:15, fontWeight:500, color:T.text, marginBottom:8 }}>Your rotation is empty for now.</div>
-          <div style={{ fontSize:13, color:T.text2, lineHeight:1.7 }}>
-            {tab==='routines' ? 'Save any mobility or sport routine from the Move tab and it will live here.' : 'Save any recipe from the Eat tab and it will live here — easy to find next time.'}
-          </div>
+        <div style={{ textAlign:'center', padding:'48px 16px', display:'flex', flexDirection:'column', alignItems:'center', gap:10 }}>
+          <span style={{ width:56, height:56, borderRadius:28, background:'var(--c-muted)', display:'flex', alignItems:'center', justifyContent:'center', color:'var(--c-accent-text)' }}>
+            <Icon name={tab==='routines' ? 'move' : 'eat'} size={26} />
+          </span>
+          <h2 className="t-headline">Nothing saved yet</h2>
+          <p className="t-subhead c-2" style={{ maxWidth:280 }}>
+            {tab==='routines' ? 'Save a routine from Move and it lives here, one tap away next time.' : 'Save a recipe from Eat and it lives here, ready for next week.'}
+          </p>
         </div>
-      ) : filtered.map((item) => {
-        const isOpen = expandedId === item.id
-        return (
-          <div key={item.id} style={{ background:T.surface, borderRadius:rr('md'), marginBottom:10, overflow:'hidden' }}>
-            {/* Header row — name + actions */}
-            <div className="pressable" style={{ padding:'14px 16px', cursor:'pointer' }} onClick={()=>{ if(editingId!==item.id) setExpandedId(isOpen?null:item.id) }}>
-              <div style={{ fontSize:12, color:T.text3, letterSpacing:.5, textTransform:'uppercase', marginBottom:6 }}>
-                {tab==='routines'?'Routine':'Recipe'} · {new Date(item.created_at||Date.now()).toLocaleDateString()}
-              </div>
-              {editingId === item.id ? (
-                <div style={{ display:'flex', gap:6, alignItems:'center', marginBottom:4 }}>
-                  <input
-                    autoFocus
-                    value={editingLabel}
-                    onChange={e=>setEditingLabel(e.target.value)}
-                    onKeyDown={e=>{ if(e.key==='Enter'){ onRename(item.id,editingLabel); setEditingId(null) } if(e.key==='Escape') setEditingId(null) }}
-                    style={{ flex:1, padding:'6px 10px', borderRadius:rr('sm'), border:`1px solid ${T.border2}`, background:T.surface2, color:T.text, fontSize:16, outline:'none' }}
-                  />
-                  <button onClick={()=>{ onRename(item.id,editingLabel); setEditingId(null) }}
-                    style={{ border:'none', background:'var(--cream)', color:'var(--bg)', borderRadius:rr('sm'), padding:'6px 12px', fontSize:12, fontWeight:500, cursor:'pointer', flexShrink:0 }}>Save</button>
-                  <button onClick={()=>setEditingId(null)} aria-label="Cancel rename"
-                    style={{ width:44, height:44, border:'none', background:'none', color:T.text3, cursor:'pointer', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', padding:0 }}>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
-                  </button>
-                </div>
-              ) : (
-                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                  <div style={{ fontSize:14, fontWeight:500, color:T.text, flex:1 }}>{item.label}</div>
-                  <div style={{ display:'flex', alignItems:'center', gap:4, flexShrink:0, margin:'-8px -10px -8px 0' }}>
-                    <button onClick={e=>{ e.stopPropagation(); setEditingId(item.id); setEditingLabel(item.label) }}
-                      style={{ height:44, border:'none', background:'none', color:T.text2, padding:'0 10px', fontSize:13, cursor:'pointer' }}>Rename</button>
-                    <button onClick={e=>{ e.stopPropagation(); onDelete(item.id) }} aria-label={`Remove ${item.label}`}
-                      style={{ width:44, height:44, border:'none', background:'none', color:T.text3, padding:0, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      ) : (
+        <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+          {filtered.map(item => {
+            const isOpen = expandedId === item.id
+            const isEditing = editingId === item.id
+            return (
+              <UICard key={item.id} style={{ padding:0, overflow:'hidden' }}>
+                {isEditing ? (
+                  <form onSubmit={e=>{ e.preventDefault(); commitRename(item.id) }} style={{ display:'flex', gap:8, alignItems:'center', padding:12 }}>
+                    <TextInput autoFocus value={editingLabel} onChange={setEditingLabel} aria-label="New name"
+                      onKeyDown={e=>{ if(e.key==='Escape') setEditingId(null) }} style={{ flex:1 }} />
+                    <Button type="submit" size="md">Save</Button>
+                    <IconButton icon="close" label="Cancel rename" onClick={()=>setEditingId(null)} />
+                  </form>
+                ) : (
+                  <div style={{ display:'flex', alignItems:'center', gap:4, padding:'6px 6px 6px 0' }}>
+                    <button onClick={()=>setExpandedId(isOpen?null:item.id)} aria-expanded={isOpen}
+                      style={{ flex:1, minWidth:0, minHeight:56, border:'none', background:'none', textAlign:'left', padding:'8px 0 8px 20px', display:'flex', flexDirection:'column', gap:2 }}>
+                      <span className="t-callout" style={{ fontWeight:600, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{item.label}</span>
+                      <span className="t-footnote c-2" style={{ fontWeight:400 }}>Saved {fmtDate(item.created_at)}</span>
                     </button>
+                    <IconButton icon="edit" label={`Rename ${item.label}`} size={20} onClick={()=>{ setEditingId(item.id); setEditingLabel(item.label) }} />
+                    <IconButton icon="trash" label={`Remove ${item.label}`} size={20} onClick={()=>onDelete(item.id)} />
                   </div>
-                </div>
-              )}
-            </div>
-            {isOpen && (
-              <div style={{ borderTop:`0.5px solid ${T.border}` }}>
-                <SavedItemDetail item={item} />
-              </div>
-            )}
-          </div>
-        )
-      })}
-      {filtered.length > 0 && (
-        <div style={{ fontSize:12, color:T.text3, textAlign:'center', padding:'14px 0 4px', fontStyle:'italic', lineHeight:1.6 }}>
-          Every save here is a vote for who you're becoming.
+                )}
+                {isOpen && !isEditing && <SavedItemDetail item={item} />}
+              </UICard>
+            )
+          })}
+          <p className="t-subhead c-3" style={{ textAlign:'center', padding:'12px 0' }}>Every save here is a vote for who you're becoming.</p>
         </div>
       )}
     </div>
@@ -1541,7 +1376,7 @@ export default function App() {
     const saved = await addSavedItem(session.user.id, item)
     if (saved) {
       setSavedItems(prev=>[saved, ...prev])
-      const msg = item.type === 'recipe' ? '✓ Meal saved to your rotation' : '✓ Routine saved to your rotation'
+      const msg = item.type === 'recipe' ? 'Meal saved to your rotation' : 'Routine saved to your rotation'
       showToast(msg)
     }
   }
@@ -1609,7 +1444,7 @@ export default function App() {
 
   return (
     <div style={{ maxWidth:'var(--app-max)', margin:'0 auto', minHeight:'100dvh' }}>
-      {tab!=='home' && tb && !(tab==='pillars' && deepDive) && (
+      {tab!=='home' && tb && !(tab==='pillars' && deepDive) && !(tab==='move' && pendingSession) && (
         <ScreenHeader key={`h-${tab}`} title={tb.title} subtitle={tb.sub}
           onBack={backTarget ? ()=>go(backTarget) : undefined} />
       )}
