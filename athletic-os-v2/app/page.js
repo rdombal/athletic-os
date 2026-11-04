@@ -1,7 +1,7 @@
 'use client'
 export const dynamic = 'force-dynamic'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from './supabase'
 import AuthScreen from './AuthScreen'
 import LiftScreen from './LiftScreen'
@@ -198,7 +198,7 @@ function buildNutritionNudge(profile, workoutType) {
 // ─── UI primitives ────────────────────────────────────────────────────────────
 function rr(s) { return s==='sm'?'8px':s==='lg'?'16px':'12px' }
 function Eyebrow({ children, style }) {
-  return <div style={{ fontSize:11, letterSpacing:.7, textTransform:'uppercase', color:T.text3, fontWeight:500, marginBottom:8, ...style }}>{children}</div>
+  return <div style={{ fontSize:12, letterSpacing:.7, textTransform:'uppercase', color:T.text3, fontWeight:500, marginBottom:8, ...style }}>{children}</div>
 }
 function PrefLabel({ children }) {
   return <div style={{ fontSize:12, color:T.text3, marginBottom:6, letterSpacing:.2 }}>{children}</div>
@@ -269,17 +269,24 @@ function Divider() { return <div style={{ height:'0.5px', background:T.border, m
 
 
 // ─── Toast notification ───────────────────────────────────────────────────────
-function Toast({ message, visible }) {
+function Toast({ message, visible, action }) {
   if (!visible) return null
   return (
-    <div style={{
+    <div role="status" style={{
       position:'fixed', bottom:154, left:'50%', transform:'translateX(-50%)',
-      background:'var(--cream)', color:'var(--bg)', padding:'10px 20px',
-      borderRadius:20, fontSize:13, fontWeight:500, zIndex:500,
+      background:'var(--cream)', color:'var(--bg)', padding: action ? '4px 4px 4px 20px' : '10px 20px',
+      borderRadius:24, fontSize:14, fontWeight:500, zIndex:500,
+      display:'flex', alignItems:'center', gap:8, whiteSpace:'nowrap',
       animation:'slideUp .2s ease-out',
       boxShadow:'0 4px 20px rgba(0,0,0,0.3)',
     }}>
       {message}
+      {action && (
+        <button onClick={action.onPress} style={{
+          height:40, padding:'0 16px', borderRadius:20, border:'none',
+          background:'var(--bg)', color:'var(--cream)', fontSize:14, fontWeight:600,
+        }}>{action.label}</button>
+      )}
       <style>{`@keyframes slideUp{from{opacity:0;transform:translateX(-50%) translateY(10px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}`}</style>
     </div>
   )
@@ -326,7 +333,7 @@ function DailyCard({ userId, cacheKey, category, cardLabel, promptFn, fallback }
   return (
     <div style={{ background:T.surface, borderRadius:rr('md'), overflow:'hidden', marginBottom:12 }}>
       <div style={{ padding:'12px 14px 4px' }}>
-        <div style={{ fontSize:10, fontWeight:600, letterSpacing:.6, textTransform:'uppercase', color:barColor }}>
+        <div style={{ fontSize:12, fontWeight:600, letterSpacing:.6, textTransform:'uppercase', color:barColor }}>
           {cardLabel}{item ? ` · ${item.category}` : ''}
         </div>
       </div>
@@ -404,7 +411,7 @@ function PantryEditor({ pantry, onAdd, onRemove }) {
       {/* Quick add chips */}
       {showQuick && quickAvailable.length > 0 && (
         <div style={{ marginBottom:10 }}>
-          <div style={{ fontSize:11, color:T.text3, marginBottom:6 }}>Quick add</div>
+          <div style={{ fontSize:12, color:T.text3, marginBottom:6 }}>Quick add</div>
           <div style={{ display:'flex', flexWrap:'wrap', gap:5 }}>
             {quickAvailable.slice(0,12).map(q=>(
               <button key={q} onClick={()=>handleAdd(q)} style={{
@@ -420,10 +427,10 @@ function PantryEditor({ pantry, onAdd, onRemove }) {
       <div style={{ display:'flex', gap:6 }}>
         <input value={input} onChange={e=>{ setInput(e.target.value); setError('') }}
           onKeyDown={e=>e.key==='Enter'&&handleAdd()} placeholder="Add anything else..."
-          style={{ flex:1, padding:'9px 12px', borderRadius:rr('sm'), fontSize:13, border:`0.5px solid ${T.border}`, background:T.surface, color:T.text, outline:'none' }} />
+          style={{ flex:1, padding:'9px 12px', borderRadius:rr('sm'), fontSize:16, border:`0.5px solid ${T.border}`, background:T.surface, color:T.text, outline:'none' }} />
         <button onClick={()=>handleAdd()} style={{ padding:'9px 14px', borderRadius:rr('sm'), fontSize:13, border:'none', background:T.text, color:T.bg, fontWeight:500, cursor:'pointer' }}>Add</button>
       </div>
-      {error && <div style={{ fontSize:11, color:'var(--coral)', marginTop:4 }}>{error}</div>}
+      {error && <div style={{ fontSize:12, color:'var(--coral)', marginTop:4 }}>{error}</div>}
       {pantry.length > 0 && (
         <button onClick={()=>setShowQuick(v=>!v)} style={{ marginTop:8, border:'none', background:'none', color:T.text3, fontSize:12, padding:0, cursor:'pointer' }}>
           {showQuick ? 'Hide suggestions' : '+ Quick add more'}
@@ -455,17 +462,17 @@ function RecipeCard({ text, onAdjust, adjusting }) {
       <div style={{ padding:'16px 16px 12px', borderBottom:`0.5px solid ${T.border}` }}>
         <div style={{ fontSize:18, fontWeight:500, color:T.text }}>{name}</div>
       </div>
-      {ingredients.length>0&&<div style={{ padding:'12px 16px', borderBottom:`0.5px solid ${T.border}` }}><div style={{ fontSize:11, fontWeight:500, color:T.text3, letterSpacing:.6, textTransform:'uppercase', marginBottom:8 }}>Ingredients</div>{ingredients.map((ing,i)=><div key={i} style={{ fontSize:13, color:T.text2, paddingBottom:5, lineHeight:1.4 }}>- {ing.replace(/^[-*]\s*/,'')}</div>)}</div>}
-      {steps.length>0&&<div style={{ padding:'12px 16px', borderBottom:`0.5px solid ${T.border}` }}><div style={{ fontSize:11, fontWeight:500, color:T.text3, letterSpacing:.6, textTransform:'uppercase', marginBottom:8 }}>Steps</div>{steps.map((step,i)=><div key={i} style={{ display:'flex', gap:10, marginBottom:8, alignItems:'flex-start' }}><div style={{ width:20, height:20, borderRadius:'50%', background:T.surface2, display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:500, color:T.text2, flexShrink:0 }}>{i+1}</div><div style={{ fontSize:13, color:T.text, lineHeight:1.5 }}>{step.replace(/^\d+[\.\)]\s*/,'').replace(/^[-*]\s*/,'')}</div></div>)}</div>}
+      {ingredients.length>0&&<div style={{ padding:'12px 16px', borderBottom:`0.5px solid ${T.border}` }}><div style={{ fontSize:12, fontWeight:500, color:T.text3, letterSpacing:.6, textTransform:'uppercase', marginBottom:8 }}>Ingredients</div>{ingredients.map((ing,i)=><div key={i} style={{ fontSize:13, color:T.text2, paddingBottom:5, lineHeight:1.4 }}>- {ing.replace(/^[-*]\s*/,'')}</div>)}</div>}
+      {steps.length>0&&<div style={{ padding:'12px 16px', borderBottom:`0.5px solid ${T.border}` }}><div style={{ fontSize:12, fontWeight:500, color:T.text3, letterSpacing:.6, textTransform:'uppercase', marginBottom:8 }}>Steps</div>{steps.map((step,i)=><div key={i} style={{ display:'flex', gap:10, marginBottom:8, alignItems:'flex-start' }}><div style={{ width:20, height:20, borderRadius:'50%', background:T.surface2, display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:500, color:T.text2, flexShrink:0 }}>{i+1}</div><div style={{ fontSize:13, color:T.text, lineHeight:1.5 }}>{step.replace(/^\d+[\.\)]\s*/,'').replace(/^[-*]\s*/,'')}</div></div>)}</div>}
       {Object.keys(macros).length>0&&<div style={{ padding:'10px 16px', borderBottom:varLines.length>0||onAdjust?`0.5px solid ${T.border}`:'none' }}>
         <button onClick={()=>setShowMacros(v=>!v)} style={{ background:'none', border:'none', color:T.text3, fontSize:12, padding:0, cursor:'pointer', display:'flex', alignItems:'center', gap:6 }}>
           <span>Macros</span>
-          <span style={{ fontSize:10 }}>{showMacros?'▲':'▼'}</span>
+          <span style={{ fontSize:12 }}>{showMacros?'▲':'▼'}</span>
         </button>
-        {showMacros && <div style={{ display:'flex', gap:8, marginTop:10 }}>{macros.cal&&<div style={{ flex:1, background:T.surface2, borderRadius:rr('sm'), padding:'8px 6px', textAlign:'center' }}><div style={{ fontSize:15, fontWeight:500, color:T.text }}>{macros.cal}</div><div style={{ fontSize:10, color:T.text3, marginTop:2 }}>cal</div></div>}{macros.protein&&<div style={{ flex:1, background:T.surface2, borderRadius:rr('sm'), padding:'8px 6px', textAlign:'center' }}><div style={{ fontSize:15, fontWeight:500, color:T.text }}>{macros.protein}g</div><div style={{ fontSize:10, color:T.text3, marginTop:2 }}>protein</div></div>}{macros.carbs&&<div style={{ flex:1, background:T.surface2, borderRadius:rr('sm'), padding:'8px 6px', textAlign:'center' }}><div style={{ fontSize:15, fontWeight:500, color:T.text }}>{macros.carbs}g</div><div style={{ fontSize:10, color:T.text3, marginTop:2 }}>carbs</div></div>}{macros.fat&&<div style={{ flex:1, background:T.surface2, borderRadius:rr('sm'), padding:'8px 6px', textAlign:'center' }}><div style={{ fontSize:15, fontWeight:500, color:T.text }}>{macros.fat}g</div><div style={{ fontSize:10, color:T.text3, marginTop:2 }}>fat</div></div>}</div>}
+        {showMacros && <div style={{ display:'flex', gap:8, marginTop:10 }}>{macros.cal&&<div style={{ flex:1, background:T.surface2, borderRadius:rr('sm'), padding:'8px 6px', textAlign:'center' }}><div style={{ fontSize:15, fontWeight:500, color:T.text }}>{macros.cal}</div><div style={{ fontSize:12, color:T.text3, marginTop:2 }}>cal</div></div>}{macros.protein&&<div style={{ flex:1, background:T.surface2, borderRadius:rr('sm'), padding:'8px 6px', textAlign:'center' }}><div style={{ fontSize:15, fontWeight:500, color:T.text }}>{macros.protein}g</div><div style={{ fontSize:12, color:T.text3, marginTop:2 }}>protein</div></div>}{macros.carbs&&<div style={{ flex:1, background:T.surface2, borderRadius:rr('sm'), padding:'8px 6px', textAlign:'center' }}><div style={{ fontSize:15, fontWeight:500, color:T.text }}>{macros.carbs}g</div><div style={{ fontSize:12, color:T.text3, marginTop:2 }}>carbs</div></div>}{macros.fat&&<div style={{ flex:1, background:T.surface2, borderRadius:rr('sm'), padding:'8px 6px', textAlign:'center' }}><div style={{ fontSize:15, fontWeight:500, color:T.text }}>{macros.fat}g</div><div style={{ fontSize:12, color:T.text3, marginTop:2 }}>fat</div></div>}</div>}
       </div>}
-      {varLines.length>0&&<div style={{ padding:'12px 16px', background:T.surface2, borderBottom:onAdjust?`0.5px solid ${T.border}`:'none' }}><div style={{ fontSize:11, fontWeight:500, color:T.text3, letterSpacing:.6, textTransform:'uppercase', marginBottom:8 }}>Quick variations</div>{varLines.map((v,i)=><div key={i} style={{ fontSize:12, color:T.text2, paddingBottom:5, lineHeight:1.5 }}>{v.replace(/^[-*]\s*/,'')}</div>)}</div>}
-      {onAdjust&&<div style={{ padding:'12px 16px' }}><div style={{ fontSize:11, fontWeight:500, color:T.text3, letterSpacing:.6, textTransform:'uppercase', marginBottom:8 }}>Adjust this meal</div>{adjusting?<div style={{ padding:'8px 0' }}><LoadingDots /></div>:<div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>{ADJUST_BUTTONS.map(b=><button key={b.key} onClick={()=>onAdjust(b.key,name,text)} style={{ padding:'6px 12px', borderRadius:20, fontSize:12, border:`0.5px solid ${T.border}`, background:T.surface2, color:T.text2, cursor:'pointer' }}>{b.label}</button>)}</div>}</div>}
+      {varLines.length>0&&<div style={{ padding:'12px 16px', background:T.surface2, borderBottom:onAdjust?`0.5px solid ${T.border}`:'none' }}><div style={{ fontSize:12, fontWeight:500, color:T.text3, letterSpacing:.6, textTransform:'uppercase', marginBottom:8 }}>Quick variations</div>{varLines.map((v,i)=><div key={i} style={{ fontSize:12, color:T.text2, paddingBottom:5, lineHeight:1.5 }}>{v.replace(/^[-*]\s*/,'')}</div>)}</div>}
+      {onAdjust&&<div style={{ padding:'12px 16px' }}><div style={{ fontSize:12, fontWeight:500, color:T.text3, letterSpacing:.6, textTransform:'uppercase', marginBottom:8 }}>Adjust this meal</div>{adjusting?<div style={{ padding:'8px 0' }}><LoadingDots /></div>:<div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>{ADJUST_BUTTONS.map(b=><button key={b.key} onClick={()=>onAdjust(b.key,name,text)} style={{ padding:'6px 12px', borderRadius:20, fontSize:12, border:`0.5px solid ${T.border}`, background:T.surface2, color:T.text2, cursor:'pointer' }}>{b.label}</button>)}</div>}</div>}
     </div>
   )
 }
@@ -504,7 +511,7 @@ function LowEnergyCard({ onNav, onNavMove, onNavEat }) {
             { label:'5-min mobility flow',   sub:'Tap an area, get moving in seconds', action: ()=>{ onNavMove?.() || onNav('move'); setDismissed(true) } },
             { label:'Easy meal idea',         sub:'Low effort, simple, no stress',      action: ()=>{ onNavEat?.() || onNav('eat'); setDismissed(true) } },
           ].map((item,i) => (
-            <div key={i} onClick={item.action}
+            <div className="pressable" key={i} onClick={item.action}
               style={{ display:'flex', justifyContent:'space-between', alignItems:'center',
                 padding:'12px 0', borderBottom: i<2 ? `0.5px solid ${T.border}` : 'none', cursor:'pointer' }}>
               <div>
@@ -617,7 +624,7 @@ function SmartHomeCard({ programs, recentSessions, activeProgramId, onStartWarmu
   return (
     <div style={{ background:T.surface, borderRadius:rr('lg'), marginBottom:16, overflow:'hidden', border:`0.5px solid ${T.border}` }}>
       <div style={{ padding:'16px 16px 12px' }}>
-        <div style={{ fontSize:11, color:'var(--cream)', fontWeight:600, letterSpacing:.5, textTransform:'uppercase', marginBottom:6 }}>{timeLabel}</div>
+        <div style={{ fontSize:12, color:'var(--cream)', fontWeight:600, letterSpacing:.5, textTransform:'uppercase', marginBottom:6 }}>{timeLabel}</div>
         <div style={{ fontSize:17, fontWeight:500, color:T.text, marginBottom:4 }}>{nextWorkout.name}</div>
         <div style={{ fontSize:12, color:T.text3, marginBottom:14 }}>{activeProgram.name} · {nextPhase.name}</div>
         <div style={{ display:'flex', gap:8 }}>
@@ -766,7 +773,7 @@ function OnboardingFlow({ userId, onComplete }) {
 
         {/* Eyebrow */}
         {current.eyebrow && (
-          <div style={{ fontSize:11, color:T.text3, letterSpacing:.5, textTransform:'uppercase',
+          <div style={{ fontSize:12, color:T.text3, letterSpacing:.5, textTransform:'uppercase',
             marginBottom:12, fontWeight:500 }}>{current.eyebrow}</div>
         )}
 
@@ -942,12 +949,12 @@ function RestaurantCard({ spot }) {
   const [expanded, setExpanded] = useState(false)
   return (
     <div style={{ background:T.surface, borderRadius:rr('md'), marginBottom:10, overflow:'hidden' }}>
-      <div onClick={()=>setExpanded(v=>!v)} style={{ padding:'14px 16px', cursor:'pointer' }}>
+      <div className="pressable" onClick={()=>setExpanded(v=>!v)} style={{ padding:'14px 16px', cursor:'pointer' }}>
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:6 }}>
           <div style={{ flex:1 }}>
             <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:3 }}>
               <div style={{ fontSize:15, fontWeight:500, color:T.text }}>{spot.name}</div>
-              {spot.curated && <div style={{ fontSize:10, padding:'2px 7px', borderRadius:20, background:'var(--amber-bg)', color:'var(--amber)', fontWeight:500, flexShrink:0 }}>✓ Curated</div>}
+              {spot.curated && <div style={{ fontSize:12, padding:'2px 7px', borderRadius:20, background:'var(--amber-bg)', color:'var(--amber)', fontWeight:500, flexShrink:0 }}>✓ Curated</div>}
             </div>
             <div style={{ fontSize:12, color:T.text3 }}>{spot.neighborhood} · {spot.cuisine} · {spot.priceRange}</div>
           </div>
@@ -956,7 +963,7 @@ function RestaurantCard({ spot }) {
         <div style={{ display:'flex', flexWrap:'wrap', gap:5 }}>
           {spot.tags.map(tag => {
             const s = TAG_META[tag] || { bg:T.surface2, text:T.text2, label:tag }
-            return <div key={tag} style={{ fontSize:10, padding:'2px 8px', borderRadius:20, background:s.bg, color:s.text, fontWeight:500 }}>{s.label}</div>
+            return <div key={tag} style={{ fontSize:12, padding:'2px 8px', borderRadius:20, background:s.bg, color:s.text, fontWeight:500 }}>{s.label}</div>
           })}
         </div>
       </div>
@@ -964,10 +971,10 @@ function RestaurantCard({ spot }) {
         <div style={{ borderTop:`0.5px solid ${T.border}`, padding:'12px 16px' }}>
           <div style={{ fontSize:13, color:T.text2, lineHeight:1.65, marginBottom:10 }}>{spot.description}</div>
           <div style={{ background:T.surface2, borderRadius:rr('sm'), padding:'10px 12px', marginBottom:8 }}>
-            <div style={{ fontSize:10, color:T.text3, letterSpacing:.5, textTransform:'uppercase', marginBottom:4 }}>Order this</div>
+            <div style={{ fontSize:12, color:T.text3, letterSpacing:.5, textTransform:'uppercase', marginBottom:4 }}>Order this</div>
             <div style={{ fontSize:13, fontWeight:500, color:T.text }}>{spot.mustOrder}</div>
           </div>
-          {spot.curatorNote && <div style={{ fontSize:11, color:T.text3, fontStyle:'italic' }}>— {spot.curatorNote}</div>}
+          {spot.curatorNote && <div style={{ fontSize:12, color:T.text3, fontStyle:'italic' }}>— {spot.curatorNote}</div>}
         </div>
       )}
     </div>
@@ -984,7 +991,7 @@ function EatOutScreen() {
   return (
     <div>
       <div style={{ marginBottom:16 }}>
-        <div style={{ fontSize:11, color:T.text3, letterSpacing:.5, textTransform:'uppercase', marginBottom:8 }}>Location</div>
+        <div style={{ fontSize:12, color:T.text3, letterSpacing:.5, textTransform:'uppercase', marginBottom:8 }}>Location</div>
         <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
           {cities.map(city => (
             <button key={city} onClick={()=>{ setSelectedCity(city); setActiveTag(null) }} style={{
@@ -995,16 +1002,16 @@ function EatOutScreen() {
         </div>
       </div>
       <div style={{ marginBottom:16 }}>
-        <div style={{ fontSize:11, color:T.text3, letterSpacing:.5, textTransform:'uppercase', marginBottom:8 }}>Filter</div>
+        <div style={{ fontSize:12, color:T.text3, letterSpacing:.5, textTransform:'uppercase', marginBottom:8 }}>Filter</div>
         <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
-          <button onClick={()=>setActiveTag(null)} style={{ padding:'5px 12px', borderRadius:20, fontSize:11, border:`0.5px solid ${T.border}`, cursor:'pointer', background:!activeTag?T.text:T.surface, color:!activeTag?T.bg:T.text2 }}>All</button>
+          <button onClick={()=>setActiveTag(null)} style={{ padding:'5px 12px', borderRadius:20, fontSize:12, border:`0.5px solid ${T.border}`, cursor:'pointer', background:!activeTag?T.text:T.surface, color:!activeTag?T.bg:T.text2 }}>All</button>
           {allTags.map(tag => {
             const s = TAG_META[tag] || { bg:T.surface2, text:T.text2, label:tag }
-            return <button key={tag} onClick={()=>setActiveTag(activeTag===tag?null:tag)} style={{ padding:'5px 12px', borderRadius:20, fontSize:11, cursor:'pointer', border:`0.5px solid ${activeTag===tag?s.text:T.border}`, background:activeTag===tag?s.bg:T.surface, color:activeTag===tag?s.text:T.text2, fontWeight:activeTag===tag?500:400 }}>{s.label||tag}</button>
+            return <button key={tag} onClick={()=>setActiveTag(activeTag===tag?null:tag)} style={{ padding:'5px 12px', borderRadius:20, fontSize:12, cursor:'pointer', border:`0.5px solid ${activeTag===tag?s.text:T.border}`, background:activeTag===tag?s.bg:T.surface, color:activeTag===tag?s.text:T.text2, fontWeight:activeTag===tag?500:400 }}>{s.label||tag}</button>
           })}
         </div>
       </div>
-      <div style={{ fontSize:11, color:T.text3, letterSpacing:.5, textTransform:'uppercase', marginBottom:12 }}>{filtered.length} spot{filtered.length!==1?'s':''} · Personally curated</div>
+      <div style={{ fontSize:12, color:T.text3, letterSpacing:.5, textTransform:'uppercase', marginBottom:12 }}>{filtered.length} spot{filtered.length!==1?'s':''} · Personally curated</div>
       {filtered.map((spot,i) => <RestaurantCard key={i} spot={spot} />)}
       <div style={{ marginTop:16, padding:'12px 14px', background:T.surface, borderRadius:rr('md') }}>
         <div style={{ fontSize:12, color:T.text3, lineHeight:1.6 }}>More cities coming soon. Know a spot that belongs here? Recommendations welcome.</div>
@@ -1149,7 +1156,7 @@ Variations:
       <Divider />
       <PrefLabel>Effort level</PrefLabel>
       <div style={{ display:'flex', gap:8, marginBottom:14 }}>
-        {EFFORT_LEVELS.map(e=><button key={e.key} onClick={()=>setEffort(e.key)} style={{ flex:1, padding:'10px 6px', borderRadius:rr('sm'), fontSize:11, textAlign:'center', border:effort===e.key?'none':`0.5px solid ${T.border}`, background:effort===e.key?T.text:T.surface, color:effort===e.key?T.bg:T.text2 }}><div style={{ fontWeight:500, marginBottom:2, fontSize:12 }}>{e.label}</div><div style={{ opacity:.7, lineHeight:1.3 }}>{e.desc}</div></button>)}
+        {EFFORT_LEVELS.map(e=><button key={e.key} onClick={()=>setEffort(e.key)} style={{ flex:1, padding:'10px 6px', borderRadius:rr('sm'), fontSize:12, textAlign:'center', border:effort===e.key?'none':`0.5px solid ${T.border}`, background:effort===e.key?T.text:T.surface, color:effort===e.key?T.bg:T.text2 }}><div style={{ fontWeight:500, marginBottom:2, fontSize:12 }}>{e.label}</div><div style={{ opacity:.7, lineHeight:1.3 }}>{e.desc}</div></button>)}
       </div>
       <PrefLabel>Meal type</PrefLabel>
       <ChipRow options={['Breakfast','Lunch','Dinner','Snack']} selected={meal} onSelect={setMeal} />
@@ -1158,9 +1165,9 @@ Variations:
         {CUISINES.map(cu=><button key={cu} onClick={()=>setCuisine(cuisine===cu?'':cu)} style={{ padding:'5px 12px', borderRadius:20, fontSize:12, border:`0.5px solid ${T.border}`, background:cuisine===cu?T.text:T.surface2, color:cuisine===cu?T.bg:T.text2 }}>{cu}</button>)}
       </div>
       <PrefLabel>What's the vibe?</PrefLabel>
-      <textarea value={vibe} onChange={e=>setVibe(e.target.value)} placeholder="high protein, comforting, fresh, post-workout..." rows={2} style={{ width:'100%', background:T.surface, border:`0.5px solid ${T.border}`, borderRadius:rr('md'), padding:'10px 12px', fontSize:14, color:T.text, resize:'none', outline:'none', marginBottom:8 }} />
+      <textarea value={vibe} onChange={e=>setVibe(e.target.value)} placeholder="high protein, comforting, fresh, post-workout..." rows={2} style={{ width:'100%', background:T.surface, border:`0.5px solid ${T.border}`, borderRadius:rr('md'), padding:'10px 12px', fontSize:16, color:T.text, resize:'none', outline:'none', marginBottom:8 }} />
       <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom:4 }}>
-        {VIBE_SUGGESTIONS.map(v=><button key={v} onClick={()=>setVibe(vibe===v?'':v)} style={{ padding:'4px 10px', borderRadius:20, fontSize:11, border:`0.5px solid ${T.border}`, background:vibe===v?T.text:T.surface2, color:vibe===v?T.bg:T.text3 }}>{v}</button>)}
+        {VIBE_SUGGESTIONS.map(v=><button key={v} onClick={()=>setVibe(vibe===v?'':v)} style={{ padding:'4px 10px', borderRadius:20, fontSize:12, border:`0.5px solid ${T.border}`, background:vibe===v?T.text:T.surface2, color:vibe===v?T.bg:T.text3 }}>{v}</button>)}
       </div>
       <PrimaryBtn onClick={()=>go(false)} disabled={loading||pantry.length===0}>{loading?'Finding a great recipe...':'Get recipe ideas'}</PrimaryBtn>
       {loading&&<div style={{ marginTop:12 }}><LoadingDots /></div>}
@@ -1209,7 +1216,7 @@ function PillarCard({ p, onDeepDive }) {
       <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:10 }}>
         <div style={{ width:32, height:32, borderRadius:8, background:col.bg, flexShrink:0 }} />
         <div style={{ flex:1 }}>
-          <div style={{ fontSize:10, fontWeight:500, color:col.accent, letterSpacing:.5, textTransform:'uppercase' }}>Pillar {p.num}</div>
+          <div style={{ fontSize:12, fontWeight:500, color:col.accent, letterSpacing:.5, textTransform:'uppercase' }}>Pillar {p.num}</div>
           <div style={{ fontSize:16, fontWeight:500, color:T.text, marginTop:1 }}>{p.title}</div>
         </div>
       </div>
@@ -1220,8 +1227,8 @@ function PillarCard({ p, onDeepDive }) {
       {expanded && <>
         <Divider />
         <div style={{ display:'flex', gap:14, marginBottom:12 }}>
-          <div style={{ flex:1 }}><div style={{ fontSize:10, fontWeight:500, color:'var(--green)', letterSpacing:.5, textTransform:'uppercase', marginBottom:4 }}>Worth your time</div><div style={{ fontSize:12, color:T.text2, lineHeight:1.55 }}>{p.good}</div></div>
-          <div style={{ flex:1 }}><div style={{ fontSize:10, fontWeight:500, color:'var(--coral)', letterSpacing:.5, textTransform:'uppercase', marginBottom:4 }}>Skip this</div><div style={{ fontSize:12, color:T.text2, lineHeight:1.55 }}>{p.skip}</div></div>
+          <div style={{ flex:1 }}><div style={{ fontSize:12, fontWeight:500, color:'var(--green)', letterSpacing:.5, textTransform:'uppercase', marginBottom:4 }}>Worth your time</div><div style={{ fontSize:12, color:T.text2, lineHeight:1.55 }}>{p.good}</div></div>
+          <div style={{ flex:1 }}><div style={{ fontSize:12, fontWeight:500, color:'var(--coral)', letterSpacing:.5, textTransform:'uppercase', marginBottom:4 }}>Skip this</div><div style={{ fontSize:12, color:T.text2, lineHeight:1.55 }}>{p.skip}</div></div>
         </div>
         <button onClick={()=>onDeepDive(p.prompt)} style={{ width:'100%', padding:'9px 12px', borderRadius:rr('sm'), border:`0.5px solid ${T.border}`, background:'transparent', color:T.text2, fontSize:13, textAlign:'left', marginBottom:6 }}>Go deeper →</button>
       </>}
@@ -1278,7 +1285,7 @@ function ProfileScreen({ userId, onSaved, onNav }) {
   if (loading) return <div style={{ padding:20 }}><LoadingDots /></div>
 
   const Section = ({ label }) => (
-    <div style={{ fontSize:10, color:T.text3, letterSpacing:.6, textTransform:'uppercase', fontWeight:500, marginBottom:10, marginTop:22, paddingBottom:6, borderBottom:`0.5px solid ${T.border}` }}>{label}</div>
+    <div style={{ fontSize:12, color:T.text3, letterSpacing:.6, textTransform:'uppercase', fontWeight:500, marginBottom:10, marginTop:22, paddingBottom:6, borderBottom:`0.5px solid ${T.border}` }}>{label}</div>
   )
 
   return (
@@ -1286,18 +1293,18 @@ function ProfileScreen({ userId, onSaved, onNav }) {
       <Section label="About you" />
       <PrefLabel>First name</PrefLabel>
       <input value={profile.name||''} onChange={e=>update('name',e.target.value)} placeholder="First name"
-        style={{ width:'100%', padding:'9px 12px', borderRadius:rr('sm'), fontSize:13, border:`0.5px solid ${T.border}`, background:T.surface, color:T.text, outline:'none', marginBottom:10 }} />
+        style={{ width:'100%', padding:'9px 12px', borderRadius:rr('sm'), fontSize:16, border:`0.5px solid ${T.border}`, background:T.surface, color:T.text, outline:'none', marginBottom:10 }} />
 
       <div style={{ display:'flex', gap:10, marginBottom:10 }}>
         <div style={{ flex:1 }}>
           <PrefLabel>Age</PrefLabel>
           <input type="number" value={profile.age||''} onChange={e=>update('age',e.target.value)} placeholder="e.g. 28"
-            style={{ width:'100%', padding:'9px 12px', borderRadius:rr('sm'), fontSize:13, border:`0.5px solid ${T.border}`, background:T.surface, color:T.text, outline:'none' }} />
+            style={{ width:'100%', padding:'9px 12px', borderRadius:rr('sm'), fontSize:16, border:`0.5px solid ${T.border}`, background:T.surface, color:T.text, outline:'none' }} />
         </div>
         <div style={{ flex:1 }}>
           <PrefLabel>Location</PrefLabel>
           <input value={profile.location||''} onChange={e=>update('location',e.target.value)} placeholder="City"
-            style={{ width:'100%', padding:'9px 12px', borderRadius:rr('sm'), fontSize:13, border:`0.5px solid ${T.border}`, background:T.surface, color:T.text, outline:'none' }} />
+            style={{ width:'100%', padding:'9px 12px', borderRadius:rr('sm'), fontSize:16, border:`0.5px solid ${T.border}`, background:T.surface, color:T.text, outline:'none' }} />
         </div>
       </div>
 
@@ -1333,7 +1340,7 @@ function ProfileScreen({ userId, onSaved, onNav }) {
 
       <PrefLabel>Sports or activities you do</PrefLabel>
       <input value={profile.sports||''} onChange={e=>update('sports',e.target.value)} placeholder="e.g. golf, running, basketball"
-        style={{ width:'100%', padding:'9px 12px', borderRadius:rr('sm'), fontSize:13, border:`0.5px solid ${T.border}`, background:T.surface, color:T.text, outline:'none', marginBottom:14 }} />
+        style={{ width:'100%', padding:'9px 12px', borderRadius:rr('sm'), fontSize:16, border:`0.5px solid ${T.border}`, background:T.surface, color:T.text, outline:'none', marginBottom:14 }} />
 
       <Section label="Nutrition targets (optional)" />
       <div style={{ fontSize:12, color:T.text3, marginBottom:10, lineHeight:1.6 }}>
@@ -1343,12 +1350,12 @@ function ProfileScreen({ userId, onSaved, onNav }) {
         <div style={{ flex:1 }}>
           <PrefLabel>Daily protein (g)</PrefLabel>
           <input type="number" value={profile.protein||''} onChange={e=>update('protein',e.target.value)} placeholder="e.g. 160"
-            style={{ width:'100%', padding:'9px 12px', borderRadius:rr('sm'), fontSize:13, border:`0.5px solid ${T.border}`, background:T.surface, color:T.text, outline:'none' }} />
+            style={{ width:'100%', padding:'9px 12px', borderRadius:rr('sm'), fontSize:16, border:`0.5px solid ${T.border}`, background:T.surface, color:T.text, outline:'none' }} />
         </div>
         <div style={{ flex:1 }}>
           <PrefLabel>Daily calories</PrefLabel>
           <input type="number" value={profile.calories||''} onChange={e=>update('calories',e.target.value)} placeholder="e.g. 2800"
-            style={{ width:'100%', padding:'9px 12px', borderRadius:rr('sm'), fontSize:13, border:`0.5px solid ${T.border}`, background:T.surface, color:T.text, outline:'none' }} />
+            style={{ width:'100%', padding:'9px 12px', borderRadius:rr('sm'), fontSize:16, border:`0.5px solid ${T.border}`, background:T.surface, color:T.text, outline:'none' }} />
         </div>
       </div>
 
@@ -1356,7 +1363,7 @@ function ProfileScreen({ userId, onSaved, onNav }) {
       <textarea value={profile.notes||''} onChange={e=>update('notes',e.target.value)}
         placeholder="Injuries, preferences, things the app should know about you..."
         rows={3} style={{ width:'100%', background:T.surface, border:`0.5px solid ${T.border}`,
-          borderRadius:rr('md'), padding:'10px 12px', fontSize:13, color:T.text, resize:'none', outline:'none', marginBottom:14 }} />
+          borderRadius:rr('md'), padding:'10px 12px', fontSize:16, color:T.text, resize:'none', outline:'none', marginBottom:14 }} />
 
       <PrimaryBtn onClick={handleSave}>{saved?'Profile saved ✓':'Save profile'}</PrimaryBtn>
 
@@ -1379,12 +1386,12 @@ function SavedItemDetail({ item }) {
       if (parsed.exercises?.length) {
         return (
           <div style={{ padding:'8px 16px 16px' }}>
-            {parsed.duration && <div style={{ fontSize:11, color:T.text3, marginBottom:10 }}>{parsed.duration}{parsed.source ? ` · ${parsed.source}` : ''}</div>}
+            {parsed.duration && <div style={{ fontSize:12, color:T.text3, marginBottom:10 }}>{parsed.duration}{parsed.source ? ` · ${parsed.source}` : ''}</div>}
             {parsed.exercises.map((ex, i) => (
               <div key={i} style={{ padding:'12px 0', borderBottom: i < parsed.exercises.length-1 ? `0.5px solid ${T.border}` : 'none' }}>
                 <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:4 }}>
                   <div style={{ fontSize:13, fontWeight:500, color:T.text, flex:1 }}>{ex.name}</div>
-                  <div style={{ fontSize:11, color:'var(--green)', marginLeft:8, flexShrink:0, fontWeight:500 }}>{ex.reps}</div>
+                  <div style={{ fontSize:12, color:'var(--green)', marginLeft:8, flexShrink:0, fontWeight:500 }}>{ex.reps}</div>
                 </div>
                 {ex.cue && <div style={{ fontSize:12, color:T.text2, lineHeight:1.55 }}>{ex.cue}</div>}
               </div>
@@ -1431,8 +1438,8 @@ function StackScreen({ items, onDelete, onRename }) {
         return (
           <div key={item.id} style={{ background:T.surface, borderRadius:rr('md'), marginBottom:10, overflow:'hidden' }}>
             {/* Header row — name + actions */}
-            <div style={{ padding:'14px 16px', cursor:'pointer' }} onClick={()=>{ if(editingId!==item.id) setExpandedId(isOpen?null:item.id) }}>
-              <div style={{ fontSize:10, color:T.text3, letterSpacing:.5, textTransform:'uppercase', marginBottom:6 }}>
+            <div className="pressable" style={{ padding:'14px 16px', cursor:'pointer' }} onClick={()=>{ if(editingId!==item.id) setExpandedId(isOpen?null:item.id) }}>
+              <div style={{ fontSize:12, color:T.text3, letterSpacing:.5, textTransform:'uppercase', marginBottom:6 }}>
                 {tab==='routines'?'Routine':'Recipe'} · {new Date(item.created_at||Date.now()).toLocaleDateString()}
               </div>
               {editingId === item.id ? (
@@ -1442,21 +1449,25 @@ function StackScreen({ items, onDelete, onRename }) {
                     value={editingLabel}
                     onChange={e=>setEditingLabel(e.target.value)}
                     onKeyDown={e=>{ if(e.key==='Enter'){ onRename(item.id,editingLabel); setEditingId(null) } if(e.key==='Escape') setEditingId(null) }}
-                    style={{ flex:1, padding:'6px 10px', borderRadius:rr('sm'), border:`1px solid ${T.border2}`, background:T.surface2, color:T.text, fontSize:14, outline:'none' }}
+                    style={{ flex:1, padding:'6px 10px', borderRadius:rr('sm'), border:`1px solid ${T.border2}`, background:T.surface2, color:T.text, fontSize:16, outline:'none' }}
                   />
                   <button onClick={()=>{ onRename(item.id,editingLabel); setEditingId(null) }}
                     style={{ border:'none', background:'var(--cream)', color:'var(--bg)', borderRadius:rr('sm'), padding:'6px 12px', fontSize:12, fontWeight:500, cursor:'pointer', flexShrink:0 }}>Save</button>
-                  <button onClick={()=>setEditingId(null)}
-                    style={{ border:'none', background:'none', color:T.text3, fontSize:12, cursor:'pointer', flexShrink:0 }}>✕</button>
+                  <button onClick={()=>setEditingId(null)} aria-label="Cancel rename"
+                    style={{ width:44, height:44, border:'none', background:'none', color:T.text3, cursor:'pointer', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', padding:0 }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+                  </button>
                 </div>
               ) : (
                 <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                   <div style={{ fontSize:14, fontWeight:500, color:T.text, flex:1 }}>{item.label}</div>
-                  <div style={{ display:'flex', alignItems:'center', gap:8, flexShrink:0 }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:4, flexShrink:0, margin:'-8px -10px -8px 0' }}>
                     <button onClick={e=>{ e.stopPropagation(); setEditingId(item.id); setEditingLabel(item.label) }}
-                      style={{ border:`0.5px solid ${T.border}`, background:T.surface2, color:T.text3, borderRadius:rr('sm'), padding:'4px 10px', fontSize:11, cursor:'pointer' }}>Rename</button>
-                    <button onClick={e=>{ e.stopPropagation(); onDelete(item.id) }}
-                      style={{ border:'none', background:'none', color:T.text3, fontSize:15, padding:0, cursor:'pointer' }}>×</button>
+                      style={{ height:44, border:'none', background:'none', color:T.text2, padding:'0 10px', fontSize:13, cursor:'pointer' }}>Rename</button>
+                    <button onClick={e=>{ e.stopPropagation(); onDelete(item.id) }} aria-label={`Remove ${item.label}`}
+                      style={{ width:44, height:44, border:'none', background:'none', color:T.text3, padding:0, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+                    </button>
                   </div>
                 </div>
               )}
@@ -1539,12 +1550,40 @@ export default function App() {
   const [pendingSession, setPendingSession] = useState(null) // { programId, phaseId, workoutId, warmupType }
   const [liftDeepLink, setLiftDeepLink] = useState(null) // deep link into a specific workout
   const [savedItems, setSavedItems] = useState([])
-  const [toast, setToast] = useState({ visible:false, message:'' })
+  const [toast, setToast] = useState({ visible:false, message:'', action:null })
+  const toastTimer = useRef(null)
+  // Deletes wait here for a few seconds so they can be undone: id -> { item, index, timer }
+  const pendingDeletes = useRef(new Map())
 
-  const showToast = (message) => {
-    setToast({ visible:true, message })
-    setTimeout(() => setToast({ visible:false, message:'' }), 2200)
+  const hideToast = () => {
+    clearTimeout(toastTimer.current)
+    setToast({ visible:false, message:'', action:null })
   }
+  const showToast = (message, action = null, duration = 2200) => {
+    clearTimeout(toastTimer.current)
+    setToast({ visible:true, message, action })
+    toastTimer.current = setTimeout(hideToast, duration)
+  }
+
+  // If the app is closed or backgrounded, finish any deletes still waiting on Undo
+  useEffect(() => {
+    const flush = () => {
+      if (pendingDeletes.current.size === 0) return
+      hideToast() // the Undo would no longer be true once the delete is sent
+      pendingDeletes.current.forEach(({ timer }, id) => {
+        clearTimeout(timer)
+        deleteSavedItem(id).catch(()=>{})
+      })
+      pendingDeletes.current.clear()
+    }
+    const onHide = () => { if (document.visibilityState === 'hidden') flush() }
+    window.addEventListener('pagehide', flush)
+    document.addEventListener('visibilitychange', onHide)
+    return () => {
+      window.removeEventListener('pagehide', flush)
+      document.removeEventListener('visibilitychange', onHide)
+    }
+  }, [])
   const [profile, setProfile] = useState(null)
 
   useEffect(() => {
@@ -1592,9 +1631,33 @@ export default function App() {
     }
   }
 
-  const handleDelete = async (id) => {
-    await deleteSavedItem(id)
+  const handleDelete = (id) => {
+    const index = savedItems.findIndex(i=>i.id===id)
+    if (index === -1) return
+    const item = savedItems[index]
     setSavedItems(prev=>prev.filter(i=>i.id!==id))
+
+    const restore = () => {
+      setSavedItems(prev => {
+        if (prev.some(i=>i.id===id)) return prev
+        const next = [...prev]
+        next.splice(Math.min(index, next.length), 0, item)
+        return next
+      })
+    }
+    const timer = setTimeout(async () => {
+      pendingDeletes.current.delete(id)
+      try { await deleteSavedItem(id) }
+      catch { restore(); showToast("Couldn't remove that. Try again.") }
+    }, 5000)
+    pendingDeletes.current.set(id, { item, index, timer })
+
+    showToast('Removed from your rotation', { label:'Undo', onPress: () => {
+      const pending = pendingDeletes.current.get(id)
+      if (pending) { clearTimeout(pending.timer); pendingDeletes.current.delete(id) }
+      restore()
+      hideToast()
+    }}, 5000)
   }
 
   const handleRename = async (id, newLabel) => {
@@ -1639,12 +1702,12 @@ export default function App() {
         {tab==='stack'   && <StackScreen items={savedItems} onDelete={handleDelete} onRename={handleRename} />}
         {tab==='profile' && <ProfileScreen userId={userId} onSaved={setProfile} onNav={setTab} />}
       </div>
-      <Toast message={toast.message} visible={toast.visible} />
+      <Toast message={toast.message} visible={toast.visible} action={toast.action} />
       <nav style={{ position:'fixed', bottom:0, left:'50%', transform:'translateX(-50%)', width:'100%', maxWidth:430, background:T.surface2, borderTop:`0.5px solid ${T.border}`, display:'flex', padding:'8px 0 max(16px, env(safe-area-inset-bottom))', zIndex:100 }}>
         {NAV.map(n=>{ const active=tab===n.tab; return (
-          <button key={n.tab} onClick={()=>{ setDeepDive(null); setTab(n.tab) }} style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', gap:3, padding:'4px 0', border:'none', background:'none', color:active?T.text:T.text3, transition:'color .15s' }}>
+          <button key={n.tab} onClick={()=>{ setDeepDive(null); setTab(n.tab) }} style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', gap:3, padding:'4px 0', border:'none', background:'none', color:active?T.text:T.text3, transition:'color .15s, transform .1s ease-out' }}>
             {NAV_ICONS[n.tab]?.(active)}
-            <span style={{ fontSize:9, fontWeight:active?600:400, letterSpacing:.3 }}>{n.label}</span>
+            <span style={{ fontSize:12, fontWeight:active?600:400, letterSpacing:.3 }}>{n.label}</span>
           </button>
         )})}
       </nav>

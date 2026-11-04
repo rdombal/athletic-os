@@ -59,16 +59,16 @@ function FullBtn({ children, onClick, disabled, outline, color }) {
 function TextInput({ value, onChange, placeholder, style }) {
   return (
     <input value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder}
-      style={{ width:'100%', padding:'9px 12px', borderRadius:rr('sm'), fontSize:13,
+      style={{ width:'100%', padding:'9px 12px', borderRadius:rr('sm'), fontSize:16,
         border:`0.5px solid ${T.border}`, background:T.surface2, color:T.text, outline:'none', ...style }} />
   )
 }
 function Label({ children }) {
-  return <div style={{ fontSize:11, letterSpacing:.6, textTransform:'uppercase', color:T.text3, fontWeight:500, marginBottom:6 }}>{children}</div>
+  return <div style={{ fontSize:12, letterSpacing:.6, textTransform:'uppercase', color:T.text3, fontWeight:500, marginBottom:6 }}>{children}</div>
 }
 function Card({ children, style, onClick }) {
   return (
-    <div onClick={onClick} style={{ background:T.surface, border:`0.5px solid ${T.border}`,
+    <div className="pressable" onClick={onClick} style={{ background:T.surface, border:`0.5px solid ${T.border}`,
       borderRadius:rr('md'), padding:'12px 14px', marginBottom:8,
       cursor:onClick?'pointer':'default', ...style }}>
       {children}
@@ -189,13 +189,13 @@ function ExercisePicker({ onSelect, onClose }) {
           </div>
           <TextInput value={search} onChange={setSearch} placeholder="Search exercises..." />
           <div style={{ display:'flex', gap:6, marginTop:8, overflowX:'auto', paddingBottom:4 }}>
-            {EXERCISE_GROUPS.map(g=><button key={g} onClick={()=>setGroup(g)} style={{ flexShrink:0, padding:'4px 10px', borderRadius:20, fontSize:11, border:'none', background:group===g?T.text:T.surface2, color:group===g?T.bg:T.text2 }}>{g}</button>)}
+            {EXERCISE_GROUPS.map(g=><button key={g} onClick={()=>setGroup(g)} style={{ flexShrink:0, padding:'4px 10px', borderRadius:20, fontSize:12, border:'none', background:group===g?T.text:T.surface2, color:group===g?T.bg:T.text2 }}>{g}</button>)}
           </div>
         </div>
         <div style={{ overflowY:'auto', flex:1, padding:'8px 16px' }}>
           {filtered.map(e=>(
-            <div key={e.id} onClick={()=>onSelect(e)} style={{ padding:'10px 0', borderBottom:`0.5px solid ${T.border}`, cursor:'pointer', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-              <div><div style={{ fontSize:13, fontWeight:500, color:T.text }}>{e.name}</div><div style={{ fontSize:11, color:T.text3, marginTop:1 }}>{e.group}</div></div>
+            <div className="pressable" key={e.id} onClick={()=>onSelect(e)} style={{ padding:'10px 0', borderBottom:`0.5px solid ${T.border}`, cursor:'pointer', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+              <div><div style={{ fontSize:13, fontWeight:500, color:T.text }}>{e.name}</div><div style={{ fontSize:12, color:T.text3, marginTop:1 }}>{e.group}</div></div>
               <div style={{ fontSize:12, color:T.text3 }}>+</div>
             </div>
           ))}
@@ -282,13 +282,13 @@ Give 2-3 sentences max. Mention any PRs. Note one small win. No fluff, no exclam
         {saveState === 'error' ? (
           <div style={{ background:'var(--coral-bg)', border:'0.5px solid var(--coral-dim)', borderRadius:rr('sm'), padding:'10px 12px', marginBottom:12 }}>
             <div style={{ fontSize:12, color:'var(--coral)', fontWeight:500, marginBottom:6 }}>This session didn’t save</div>
-            <div style={{ fontSize:11, color:T.text2, lineHeight:1.6, marginBottom:8 }}>Your numbers are still here. Tap to try saving again — don’t close this screen until it saves.</div>
+            <div style={{ fontSize:12, color:T.text2, lineHeight:1.6, marginBottom:8 }}>Your numbers are still here. Tap to try saving again — don’t close this screen until it saves.</div>
             <button onClick={onRetrySave} style={{ fontSize:12, fontWeight:500, color:'var(--bg)', background:'var(--cream)', border:'none', borderRadius:rr('sm'), padding:'8px 16px', cursor:'pointer' }}>Retry save</button>
           </div>
         ) : saveState === 'saving' ? (
-          <div style={{ fontSize:11, color:T.text3, marginBottom:12 }}>Saving session…</div>
+          <div style={{ fontSize:12, color:T.text3, marginBottom:12 }}>Saving session…</div>
         ) : (
-          <div style={{ fontSize:11, color:'var(--green)', marginBottom:12 }}>✓ Session saved</div>
+          <div style={{ fontSize:12, color:'var(--green)', marginBottom:12 }}>✓ Session saved</div>
         )}
 
         <div style={{ fontSize:12, color:T.text3, fontStyle:'italic', marginBottom:16 }}>Strength is built gradually, session by session.</div>
@@ -296,23 +296,23 @@ Give 2-3 sentences max. Mention any PRs. Note one small win. No fluff, no exclam
         <div style={{ display:'flex', gap:8, marginBottom:14 }}>
           <div style={{ flex:1, background:T.surface2, borderRadius:rr('sm'), padding:'10px 8px', textAlign:'center' }}>
             <div style={{ fontSize:16, fontWeight:500, color:T.text }}>{stats.duration}</div>
-            <div style={{ fontSize:10, color:T.text3, marginTop:2 }}>duration</div>
+            <div style={{ fontSize:12, color:T.text3, marginTop:2 }}>duration</div>
           </div>
           <div style={{ flex:1, background:T.surface2, borderRadius:rr('sm'), padding:'10px 8px', textAlign:'center' }}>
             <div style={{ fontSize:16, fontWeight:500, color:T.text }}>{stats.totalSets}</div>
-            <div style={{ fontSize:10, color:T.text3, marginTop:2 }}>sets logged</div>
+            <div style={{ fontSize:12, color:T.text3, marginTop:2 }}>sets logged</div>
           </div>
         </div>
 
         {stats.prs.length > 0 && (
           <div style={{ background:'var(--green-bg)', border:'0.5px solid var(--green-dim)', borderRadius:rr('sm'), padding:'10px 12px', marginBottom:12 }}>
-            <div style={{ fontSize:11, fontWeight:500, color:'var(--green)', letterSpacing:.5, textTransform:'uppercase', marginBottom:6 }}>PR{stats.prs.length>1?'s':''} hit</div>
+            <div style={{ fontSize:12, fontWeight:500, color:'var(--green)', letterSpacing:.5, textTransform:'uppercase', marginBottom:6 }}>PR{stats.prs.length>1?'s':''} hit</div>
             {stats.prs.map((pr,i) => (
               <div key={i} style={{ marginTop:4 }}>
                 <div style={{ fontSize:13, color:'var(--green)', fontWeight:500 }}>
                   {pr.firstEver ? `🎯 ${pr.name}: ${pr.weight} lb — first time ever` : `${pr.name}: ${pr.weight} lb`}
                 </div>
-                {pr.firstEver && <div style={{ fontSize:11, color:'var(--green)', opacity:.8, marginTop:1 }}>That is a milestone worth noting.</div>}
+                {pr.firstEver && <div style={{ fontSize:12, color:'var(--green)', opacity:.8, marginTop:1 }}>That is a milestone worth noting.</div>}
               </div>
             ))}
           </div>
@@ -324,7 +324,7 @@ Give 2-3 sentences max. Mention any PRs. Note one small win. No fluff, no exclam
 
         {showDetails && stats.nextTargets?.length > 0 && (
           <div style={{ background:T.surface2, borderRadius:rr('sm'), padding:'10px 12px', marginBottom:12 }}>
-            <div style={{ fontSize:11, fontWeight:500, color:T.text2, letterSpacing:.5, textTransform:'uppercase', marginBottom:8 }}>Next session targets</div>
+            <div style={{ fontSize:12, fontWeight:500, color:T.text2, letterSpacing:.5, textTransform:'uppercase', marginBottom:8 }}>Next session targets</div>
             {stats.nextTargets.map((t,i) => (
               <div key={i} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', paddingBottom:6, marginBottom:6, borderBottom: i < stats.nextTargets.length-1 ? `0.5px solid ${T.border}` : 'none' }}>
                 <div style={{ fontSize:12, color:T.text2 }}>{t.name}</div>
@@ -344,7 +344,7 @@ Give 2-3 sentences max. Mention any PRs. Note one small win. No fluff, no exclam
 
         {nutritionNudge && (
           <div style={{ background:'var(--amber-bg)', border:'0.5px solid var(--amber-dim)', borderRadius:rr('sm'), padding:'10px 12px', marginBottom:12 }}>
-            <div style={{ fontSize:11, fontWeight:500, color:'var(--amber)', letterSpacing:.5, textTransform:'uppercase', marginBottom:4 }}>Fuel your recovery</div>
+            <div style={{ fontSize:12, fontWeight:500, color:'var(--amber)', letterSpacing:.5, textTransform:'uppercase', marginBottom:4 }}>Fuel your recovery</div>
             <div style={{ fontSize:12, color:T.text2, lineHeight:1.6, marginBottom:8 }}>{nutritionNudge}</div>
             {onGoEat && <button onClick={onGoEat} style={{ fontSize:12, color:'var(--amber)', border:'none', background:'none', padding:0, cursor:'pointer' }}>Get a meal idea →</button>}
           </div>
@@ -379,7 +379,7 @@ function ExerciseEditor({ exercise, onChange, onRemove }) {
       <div style={{ padding:'12px 14px', borderBottom:`0.5px solid ${T.border}`, display:'flex', justifyContent:'space-between', alignItems:'center' }}>
         <div>
           <div style={{ fontSize:14, fontWeight:500, color:T.text }}>{exercise.name}</div>
-          <div style={{ fontSize:11, color:T.text3, marginTop:2 }}>{exercise.group}</div>
+          <div style={{ fontSize:12, color:T.text3, marginTop:2 }}>{exercise.group}</div>
         </div>
         <button onClick={onRemove} style={{ border:'none', background:'none', color:T.text3, fontSize:16, padding:'0 0 0 12px', cursor:'pointer' }}>×</button>
       </div>
@@ -388,7 +388,7 @@ function ExerciseEditor({ exercise, onChange, onRemove }) {
         <Stepper label="Target reps" value={exercise.targetReps||8} onChange={v=>onChange({ ...exercise, targetReps:v })} min={1} max={100} />
       </div>
       <div style={{ padding:'0 14px 12px' }}>
-        <div style={{ fontSize:11, color:T.text3, marginBottom:6 }}>Target RPE (optional)</div>
+        <div style={{ fontSize:12, color:T.text3, marginBottom:6 }}>Target RPE (optional)</div>
         <div style={{ display:'flex', gap:6, marginBottom:10 }}>
           {[6,7,8,9,10].map(r => (
             <button key={r} onClick={()=>onChange({ ...exercise, targetRpe: exercise.targetRpe===r ? null : r })} style={{
@@ -400,10 +400,10 @@ function ExerciseEditor({ exercise, onChange, onRemove }) {
             }}>{r}</button>
           ))}
         </div>
-        <div style={{ fontSize:11, color:T.text3, marginBottom:6 }}>Coach note (optional)</div>
+        <div style={{ fontSize:12, color:T.text3, marginBottom:6 }}>Coach note (optional)</div>
         <input value={exercise.notes||''} onChange={e=>onChange({ ...exercise, notes:e.target.value })}
           placeholder="e.g. Pause at the bottom, control the negative"
-          style={{ width:'100%', padding:'9px 12px', borderRadius:rr('sm'), fontSize:12, border:`0.5px solid ${T.border}`, background:T.surface2, color:T.text, outline:'none' }} />
+          style={{ width:'100%', padding:'9px 12px', borderRadius:rr('sm'), fontSize:16, border:`0.5px solid ${T.border}`, background:T.surface2, color:T.text, outline:'none' }} />
       </div>
     </div>
   )
@@ -461,9 +461,9 @@ function PhaseBuilder({ phase, onChange, onBack }) {
       {phase.workouts.map((w,i) => (
         <Card key={w.id} style={{ cursor:'default' }}>
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-            <div onClick={()=>setEditingWorkout(i)} style={{ flex:1, cursor:'pointer' }}>
+            <div className="pressable" onClick={()=>setEditingWorkout(i)} style={{ flex:1, cursor:'pointer' }}>
               <div style={{ fontSize:14, fontWeight:500, color:T.text }}>{w.name}</div>
-              <div style={{ fontSize:11, color:T.text3, marginTop:2 }}>{w.exercises.length} exercise{w.exercises.length!==1?'s':''}</div>
+              <div style={{ fontSize:12, color:T.text3, marginTop:2 }}>{w.exercises.length} exercise{w.exercises.length!==1?'s':''}</div>
             </div>
             <div style={{ display:'flex', gap:8, alignItems:'center' }}>
               <Btn small outline onClick={()=>setEditingWorkout(i)}>Edit</Btn>
@@ -498,9 +498,9 @@ function ProgramBuilder({ program, onSave, onBack, onDelete }) {
       {prog.phases.map((ph,i) => (
         <Card key={ph.id} style={{ cursor:'default' }}>
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-            <div onClick={()=>setEditingPhase(i)} style={{ flex:1, cursor:'pointer' }}>
+            <div className="pressable" onClick={()=>setEditingPhase(i)} style={{ flex:1, cursor:'pointer' }}>
               <div style={{ fontSize:14, fontWeight:500, color:T.text }}>{ph.name}</div>
-              <div style={{ fontSize:11, color:T.text3, marginTop:2 }}>{ph.weeks} weeks · {ph.workouts.length} workout{ph.workouts.length!==1?'s':''}</div>
+              <div style={{ fontSize:12, color:T.text3, marginTop:2 }}>{ph.weeks} weeks · {ph.workouts.length} workout{ph.workouts.length!==1?'s':''}</div>
             </div>
             <div style={{ display:'flex', gap:8, alignItems:'center' }}>
               <Btn small outline onClick={()=>setEditingPhase(i)}>Edit</Btn>
@@ -580,13 +580,13 @@ function InlineSetRow({ setNum, initial, lastSet, prevSet, isCurrent, onSave, on
       {!saved && (
         <div style={{ display:'flex', gap:6, marginBottom:6, alignItems:'center', paddingLeft:36 }}>
           {prevSet && (
-            <button onClick={copyPrev} style={{ fontSize:11, color:T.text3, border:`0.5px solid ${T.border}`, borderRadius:20, padding:'3px 10px', background:T.surface2, cursor:'pointer' }}>
+            <button onClick={copyPrev} style={{ fontSize:12, color:T.text3, border:`0.5px solid ${T.border}`, borderRadius:20, padding:'3px 10px', background:T.surface2, cursor:'pointer' }}>
               Copy last
             </button>
           )}
           <div style={{ flex:1 }} />
           {[2.5, 5, 10].map(d => (
-            <button key={d} onClick={()=>adjustWeight(d)} style={{ fontSize:11, color:T.text2, border:`0.5px solid ${T.border}`, borderRadius:20, padding:'3px 10px', background:T.surface2, cursor:'pointer' }}>
+            <button key={d} onClick={()=>adjustWeight(d)} style={{ fontSize:12, color:T.text2, border:`0.5px solid ${T.border}`, borderRadius:20, padding:'3px 10px', background:T.surface2, cursor:'pointer' }}>
               +{d}
             </button>
           ))}
@@ -607,7 +607,7 @@ function InlineSetRow({ setNum, initial, lastSet, prevSet, isCurrent, onSave, on
           <input type="number" inputMode="decimal" value={rpe}
             onChange={e=>{ setRpe(e.target.value); setSaved(false) }}
             placeholder={targetRpe ? String(targetRpe) : 'RPE'}
-            style={{ ...bigInput, width:58, flexShrink:0, fontSize:14 }} />
+            style={{ ...bigInput, width:58, flexShrink:0, fontSize:16 }} />
         )}
         <button onClick={saved ? handleUndo : handleSave} style={{
           width:42, height:42, borderRadius:'50%', flexShrink:0, border:'none',
@@ -639,15 +639,15 @@ function WarmupSuggestion({ workout }) {
       ) : (
         <div style={{ background:T.surface2, borderRadius:rr('md'), padding:'12px 14px' }}>
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:4 }}>
-            <div style={{ fontSize:11, fontWeight:500, color:T.text3, letterSpacing:.5, textTransform:'uppercase' }}>{routine.title}</div>
+            <div style={{ fontSize:12, fontWeight:500, color:T.text3, letterSpacing:.5, textTransform:'uppercase' }}>{routine.title}</div>
             <button onClick={()=>setOpen(false)} style={{ border:'none', background:'none', color:T.text3, fontSize:12, cursor:'pointer' }}>×</button>
           </div>
-          <div style={{ fontSize:11, color:T.text3, marginBottom:8 }}>{routine.duration} · {routine.source}</div>
+          <div style={{ fontSize:12, color:T.text3, marginBottom:8 }}>{routine.duration} · {routine.source}</div>
           {routine.exercises.map((ex, i) => (
             <div key={i} style={{ padding:'8px 0', borderBottom: i < routine.exercises.length-1 ? `0.5px solid ${T.border}` : 'none' }}>
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', gap:8 }}>
                 <div style={{ fontSize:13, fontWeight:500, color:T.text }}>{ex.name}</div>
-                <div style={{ fontSize:11, color:'var(--green)', fontWeight:500, flexShrink:0 }}>{ex.reps}</div>
+                <div style={{ fontSize:12, color:'var(--green)', fontWeight:500, flexShrink:0 }}>{ex.reps}</div>
               </div>
             </div>
           ))}
@@ -693,7 +693,7 @@ function RestTimer({ onDismiss }) {
       animation:'slideUp .2s ease-out',
     }}>
       <div>
-        <div style={{ fontSize:11, color:T.text3, letterSpacing:.4, textTransform:'uppercase', marginBottom:2 }}>Rest</div>
+        <div style={{ fontSize:12, color:T.text3, letterSpacing:.4, textTransform:'uppercase', marginBottom:2 }}>Rest</div>
         <div style={{ fontSize:22, fontWeight:600, color: isVeryLong ? 'var(--amber)' : T.text, fontVariantNumeric:'tabular-nums' }}>{fmt(seconds)}</div>
       </div>
       <button onClick={dismiss} style={{ border:'none', background:T.text, color:T.bg, borderRadius:rr('sm'), padding:'7px 14px', fontSize:12, fontWeight:600, cursor:'pointer', flexShrink:0 }}>
@@ -870,7 +870,7 @@ function SessionLogger({ workout, programId, phaseId, userId, profile, onGoEat, 
         return (
           <div key={ex.id||exIdx} style={{ marginBottom:10 }}>
             {/* Exercise header */}
-            <div onClick={()=>setExpandedEx(isExpanded ? null : exIdx)}
+            <div className="pressable" onClick={()=>setExpandedEx(isExpanded ? null : exIdx)}
               style={{ background:T.surface,
                 border:`1px solid ${allDone ? 'var(--green-dim)' : isExpanded ? T.border2 : T.border}`,
                 borderRadius: isExpanded ? `${rr('lg')} ${rr('lg')} 0 0` : rr('lg'),
@@ -899,14 +899,14 @@ function SessionLogger({ workout, programId, phaseId, userId, profile, onGoEat, 
                 {/* Coaching notes */}
                 {ex.notes && (
                   <div style={{ padding:'10px 16px 2px', borderBottom:`0.5px solid ${T.border}` }}>
-                    <div style={{ fontSize:11, color:T.text3, letterSpacing:.4, textTransform:'uppercase', marginBottom:4 }}>Coach note</div>
+                    <div style={{ fontSize:12, color:T.text3, letterSpacing:.4, textTransform:'uppercase', marginBottom:4 }}>Coach note</div>
                     <div style={{ fontSize:12, color:T.text2, lineHeight:1.6 }}>{ex.notes}</div>
                   </div>
                 )}
                 {/* Last session pills */}
                 {lastSess && (
                   <div style={{ padding:'8px 16px', borderBottom:`0.5px solid ${T.border}`, display:'flex', gap:6, flexWrap:'wrap', alignItems:'center' }}>
-                    <div style={{ fontSize:10, color:T.text3, marginRight:4, letterSpacing:.4, textTransform:'uppercase' }}>Last</div>
+                    <div style={{ fontSize:12, color:T.text3, marginRight:4, letterSpacing:.4, textTransform:'uppercase' }}>Last</div>
                     {lastSess.sets.map((s,i)=>(
                       <div key={i} style={{ fontSize:12, color:T.text2, background:T.surface2, borderRadius:6, padding:'3px 10px' }}>{s.weight}×{s.reps}</div>
                     ))}
@@ -916,9 +916,9 @@ function SessionLogger({ workout, programId, phaseId, userId, profile, onGoEat, 
                 {/* Column headers */}
                 <div style={{ display:'flex', alignItems:'center', padding:'10px 16px 4px', gap:8 }}>
                   <div style={{ width:28, flexShrink:0 }} />
-                  <div style={{ flex:1, fontSize:10, fontWeight:600, color:T.text3, letterSpacing:.6, textTransform:'uppercase', textAlign:'center' }}>Weight (lb)</div>
-                  <div style={{ flex:1, fontSize:10, fontWeight:600, color:T.text3, letterSpacing:.6, textTransform:'uppercase', textAlign:'center' }}>Reps</div>
-                  {(ex.useRpe || workout.useRpe || program?.useRpe || ex.targetRpe) && <div style={{ width:52, fontSize:10, fontWeight:600, color:T.text3, letterSpacing:.6, textTransform:'uppercase', textAlign:'center', flexShrink:0 }}>RPE</div>}
+                  <div style={{ flex:1, fontSize:12, fontWeight:600, color:T.text3, letterSpacing:.6, textTransform:'uppercase', textAlign:'center' }}>Weight (lb)</div>
+                  <div style={{ flex:1, fontSize:12, fontWeight:600, color:T.text3, letterSpacing:.6, textTransform:'uppercase', textAlign:'center' }}>Reps</div>
+                  {(ex.useRpe || workout.useRpe || program?.useRpe || ex.targetRpe) && <div style={{ width:52, fontSize:12, fontWeight:600, color:T.text3, letterSpacing:.6, textTransform:'uppercase', textAlign:'center', flexShrink:0 }}>RPE</div>}
                   <div style={{ width:42, flexShrink:0 }} />
                 </div>
 
@@ -1023,11 +1023,11 @@ function SessionHistory({ userId, program, programId, preloadedSessions, onBack,
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
               <div>
                 <div style={{ fontSize:14, fontWeight:500, color:T.text }}>{s.workout_name||s.workoutName}</div>
-                <div style={{ fontSize:11, color:T.text3, marginTop:2 }}>{date}</div>
+                <div style={{ fontSize:12, color:T.text3, marginTop:2 }}>{date}</div>
               </div>
               <div style={{ textAlign:'right' }}>
                 <div style={{ fontSize:12, color:T.text2 }}>{totalVol.toLocaleString()} lbs</div>
-                <div style={{ fontSize:11, color:T.text3, marginTop:2 }}>{(s.exercises||[]).reduce((a,e)=>a+e.sets.length,0)} sets</div>
+                <div style={{ fontSize:12, color:T.text3, marginTop:2 }}>{(s.exercises||[]).reduce((a,e)=>a+e.sets.length,0)} sets</div>
               </div>
             </div>
             {isOpen && (
@@ -1035,7 +1035,7 @@ function SessionHistory({ userId, program, programId, preloadedSessions, onBack,
                 <Divider />
                 {(s.exercises||[]).map((ex,j) => (
                   <div key={j} style={{ marginBottom:10 }}>
-                    <div onClick={()=>onViewProgress&&onViewProgress(ex.name, ex.exerciseId)} style={{ fontSize:12, fontWeight:500, color:T.text2, marginBottom:4, cursor:onViewProgress?'pointer':'default', textDecoration:onViewProgress?'underline':'none' }}>{ex.name}</div>
+                    <div className="pressable" onClick={()=>onViewProgress&&onViewProgress(ex.name, ex.exerciseId)} style={{ fontSize:12, fontWeight:500, color:T.text2, marginBottom:4, cursor:onViewProgress?'pointer':'default', textDecoration:onViewProgress?'underline':'none' }}>{ex.name}</div>
                     <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
                       {ex.sets.map((set,k) => (
                         <div key={k} style={{ background:T.surface2, borderRadius:rr('sm'), padding:'4px 10px', fontSize:12, color:T.text }}>
@@ -1101,7 +1101,7 @@ function ExerciseProgress({ userId, programId, exerciseName, exerciseId, onBack 
 
       {overallBest.weight > 0 && (
         <div style={{ background:'var(--green-bg)', border:'0.5px solid var(--green-dim)', borderRadius:rr('md'), padding:'14px 16px', marginBottom:20 }}>
-          <div style={{ fontSize:11, fontWeight:500, color:'var(--green)', letterSpacing:.5, textTransform:'uppercase', marginBottom:4 }}>All-time best set</div>
+          <div style={{ fontSize:12, fontWeight:500, color:'var(--green)', letterSpacing:.5, textTransform:'uppercase', marginBottom:4 }}>All-time best set</div>
           <div style={{ fontSize:24, fontWeight:500, color:T.text }}>{overallBest.weight} lb <span style={{ fontSize:14, color:T.text2, fontWeight:400 }}>× {overallBest.reps} reps</span></div>
         </div>
       )}
@@ -1113,9 +1113,9 @@ function ExerciseProgress({ userId, programId, exerciseName, exerciseId, onBack 
         return (
           <div key={band} style={{ marginBottom:20 }}>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8 }}>
-              <div style={{ fontSize:11, fontWeight:600, color:T.text2, letterSpacing:.4, textTransform:'uppercase' }}>{REP_BAND_LABEL[band]}</div>
+              <div style={{ fontSize:12, fontWeight:600, color:T.text2, letterSpacing:.4, textTransform:'uppercase' }}>{REP_BAND_LABEL[band]}</div>
               <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-                {diff > 0 && <div style={{ fontSize:11, color:'var(--green)' }}>+{diff} lb</div>}
+                {diff > 0 && <div style={{ fontSize:12, color:'var(--green)' }}>+{diff} lb</div>}
                 <div style={{ fontSize:14, color:trend==='—'?T.text3:trendColor }}>{trend}</div>
               </div>
             </div>
@@ -1126,7 +1126,7 @@ function ExerciseProgress({ userId, programId, exerciseName, exerciseId, onBack 
               return (
                 <div key={i} style={{ background:T.surface, borderRadius:rr('md'), padding:'10px 14px', marginBottom:6 }}>
                   <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:4 }}>
-                    <div style={{ fontSize:11, color:T.text3 }}>{date}</div>
+                    <div style={{ fontSize:12, color:T.text3 }}>{date}</div>
                     {sessTrend && <div style={{ fontSize:13, color:sessTrend==='↑'?'var(--green)':T.text3 }}>{sessTrend}</div>}
                   </div>
                   <div style={{ fontSize:14, fontWeight:500, color:T.text, marginBottom:4 }}>
@@ -1134,7 +1134,7 @@ function ExerciseProgress({ userId, programId, exerciseName, exerciseId, onBack 
                   </div>
                   <div style={{ display:'flex', gap:5, flexWrap:'wrap' }}>
                     {h.sets.map((s,j) => (
-                      <div key={j} style={{ fontSize:11, color:T.text2, background:T.surface2, borderRadius:rr('sm'), padding:'2px 7px' }}>
+                      <div key={j} style={{ fontSize:12, color:T.text2, background:T.surface2, borderRadius:rr('sm'), padding:'2px 7px' }}>
                         {s.weight}×{s.reps}
                       </div>
                     ))}
@@ -1212,25 +1212,25 @@ function ProgressSummary({ sessions, onViewExercise }) {
 
   return (
     <div style={{ marginTop:20 }}>
-      <div style={{ fontSize:11, color:T.text3, letterSpacing:.5, textTransform:'uppercase', marginBottom:10 }}>Your progress</div>
+      <div style={{ fontSize:12, color:T.text3, letterSpacing:.5, textTransform:'uppercase', marginBottom:10 }}>Your progress</div>
       {exercises.map((ex, i) => {
         const band = getDominantBand(ex.history)
         const { trend, diff, last } = getBandTrend(ex.history, band)
         const trendColor = trend==='↑' ? 'var(--green)' : T.text3
         const showDiff = diff > 0
         return (
-          <div key={i} onClick={()=>onViewExercise(ex.name, ex.exerciseId)}
+          <div className="pressable" key={i} onClick={()=>onViewExercise(ex.name, ex.exerciseId)}
             style={{ background:T.surface, borderRadius:rr('md'), padding:'12px 14px', marginBottom:8,
               cursor:'pointer', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
             <div style={{ flex:1, minWidth:0 }}>
               <div style={{ fontSize:13, fontWeight:500, color:T.text }}>{ex.name}</div>
-              <div style={{ fontSize:11, color:T.text3, marginTop:2 }}>
+              <div style={{ fontSize:12, color:T.text3, marginTop:2 }}>
                 {last ? `${last.weight} lb × ${last.reps}` : '—'}
                 {band && <span style={{ color:T.text3, marginLeft:6, opacity:.7 }}>· {REP_BAND_LABEL[band]}</span>}
               </div>
             </div>
             <div style={{ display:'flex', alignItems:'center', gap:8, flexShrink:0 }}>
-              {showDiff && <div style={{ fontSize:11, fontWeight:500, color:trendColor }}>+{diff} lb</div>}
+              {showDiff && <div style={{ fontSize:12, fontWeight:500, color:trendColor }}>+{diff} lb</div>}
               <div style={{ fontSize:16, color: trend==='—' ? T.text3 : trendColor }}>{trend}</div>
             </div>
           </div>
@@ -1315,12 +1315,12 @@ function ProgramProgress({ program, sessions, onViewExercise }) {
     const { trend, diff, last } = getBandTrend(ex.history, band)
     const trendColor = trend==='↑' ? 'var(--green)' : T.text3
     return (
-      <div key={i} onClick={()=>onViewExercise(ex.name, ex.exerciseId||ex.id)}
+      <div className="pressable" key={i} onClick={()=>onViewExercise(ex.name, ex.exerciseId||ex.id)}
         style={{ background:T.surface2, borderRadius:rr('sm'), padding:'10px 12px', marginBottom:6,
           cursor:'pointer', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
         <div style={{ flex:1 }}>
           <div style={{ fontSize:12, fontWeight:500, color:T.text }}>{ex.name}</div>
-          <div style={{ fontSize:11, color:T.text3, marginTop:2 }}>
+          <div style={{ fontSize:12, color:T.text3, marginTop:2 }}>
             {last ? `${last.weight} lb × ${last.reps}` : '—'}
             {showBand && band && <span style={{ opacity:.6, marginLeft:5 }}>· {REP_BAND_LABEL[band]}</span>}
             {diff > 0 && <span style={{ color:'var(--green)', marginLeft:5 }}>+{diff} lb</span>}
@@ -1334,11 +1334,11 @@ function ProgramProgress({ program, sessions, onViewExercise }) {
   return (
     <div style={{ marginTop:20, marginBottom:12 }}>
       <div style={{ height:'0.5px', background:T.border, marginBottom:16 }} />
-      <div style={{ fontSize:11, color:T.text3, letterSpacing:.5, textTransform:'uppercase', marginBottom:12 }}>Progress this program</div>
+      <div style={{ fontSize:12, color:T.text3, letterSpacing:.5, textTransform:'uppercase', marginBottom:12 }}>Progress this program</div>
 
       {phaseProgress.length > 0 ? phaseProgress.map((pp, pi) => (
         <div key={pi} style={{ marginBottom:14 }}>
-          <div style={{ fontSize:11, fontWeight:600, color:T.text2, marginBottom:6, letterSpacing:.3 }}>{pp.phase.name}</div>
+          <div style={{ fontSize:12, fontWeight:600, color:T.text2, marginBottom:6, letterSpacing:.3 }}>{pp.phase.name}</div>
           {pp.exerciseData.map((ex, i) => renderExercise(ex, i))}
         </div>
       )) : flatExercises.map((ex, i) => renderExercise(ex, i, false))}
@@ -1360,14 +1360,14 @@ function UpNextCard({ nextUp, activeProgram, onSelectProgram }) {
   return (
     <div style={{ background:T.surface, border:`1.5px solid ${T.text}`, borderRadius:rr('md'), marginBottom:16, overflow:'hidden' }}>
       {/* Header — tap to preview */}
-      <div onClick={()=>setExpanded(v=>!v)} style={{ padding:'14px 16px', cursor:'pointer' }}>
-        <div style={{ fontSize:11, color:T.text3, letterSpacing:.5, textTransform:'uppercase', marginBottom:6 }}>Up next</div>
+      <div className="pressable" onClick={()=>setExpanded(v=>!v)} style={{ padding:'14px 16px', cursor:'pointer' }}>
+        <div style={{ fontSize:12, color:T.text3, letterSpacing:.5, textTransform:'uppercase', marginBottom:6 }}>Up next</div>
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
           <div>
             <div style={{ fontSize:18, fontWeight:500, color:T.text }}>{nextUp.workout.name}</div>
             <div style={{ fontSize:12, color:T.text2, marginTop:3, display:'flex', alignItems:'center', gap:6 }}>
               <span>{nextUp.phase.name} · {exercises.length} exercises</span>
-              <span style={{ color:expanded?'var(--cream)':T.text3, fontSize:11 }}>{expanded ? '▲ hide' : '▼ preview'}</span>
+              <span style={{ color:expanded?'var(--cream)':T.text3, fontSize:12 }}>{expanded ? '▲ hide' : '▼ preview'}</span>
             </div>
           </div>
         </div>
@@ -1378,9 +1378,9 @@ function UpNextCard({ nextUp, activeProgram, onSelectProgram }) {
         <div style={{ borderTop:`0.5px solid ${T.border}`, padding:'8px 16px 12px' }}>
           <div style={{ background:T.surface2, borderRadius:rr('md'), overflow:'hidden' }}>
             <div style={{ display:'flex', padding:'7px 12px', borderBottom:`0.5px solid ${T.border}` }}>
-              <div style={{ flex:1, fontSize:10, fontWeight:600, color:T.text3, letterSpacing:.5, textTransform:'uppercase' }}>Exercise</div>
-              <div style={{ width:44, fontSize:10, fontWeight:600, color:T.text3, letterSpacing:.5, textTransform:'uppercase', textAlign:'center' }}>Sets</div>
-              <div style={{ width:44, fontSize:10, fontWeight:600, color:T.text3, letterSpacing:.5, textTransform:'uppercase', textAlign:'center' }}>Reps</div>
+              <div style={{ flex:1, fontSize:12, fontWeight:600, color:T.text3, letterSpacing:.5, textTransform:'uppercase' }}>Exercise</div>
+              <div style={{ width:44, fontSize:12, fontWeight:600, color:T.text3, letterSpacing:.5, textTransform:'uppercase', textAlign:'center' }}>Sets</div>
+              <div style={{ width:44, fontSize:12, fontWeight:600, color:T.text3, letterSpacing:.5, textTransform:'uppercase', textAlign:'center' }}>Reps</div>
             </div>
             {mainExercises.map((ex, i) => (
               <div key={i} style={{ display:'flex', alignItems:'center', padding:'7px 12px',
@@ -1391,7 +1391,7 @@ function UpNextCard({ nextUp, activeProgram, onSelectProgram }) {
               </div>
             ))}
             {exercises.length > mainExercises.length && (
-              <div style={{ padding:'7px 12px', fontSize:11, color:T.text3, fontStyle:'italic' }}>
+              <div style={{ padding:'7px 12px', fontSize:12, color:T.text3, fontStyle:'italic' }}>
                 + {exercises.length - mainExercises.length} athletic add-ons
               </div>
             )}
@@ -1478,7 +1478,7 @@ function WeeklyOverview({ programs, sessions, activeProgramId, lastWorkoutId, on
         <>
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:20 }}>
             <div>
-              <div style={{ fontSize:11, color:T.text3, letterSpacing:.5, textTransform:'uppercase', marginBottom:4 }}>Current program</div>
+              <div style={{ fontSize:12, color:T.text3, letterSpacing:.5, textTransform:'uppercase', marginBottom:4 }}>Current program</div>
               <div style={{ fontSize:22, fontWeight:400, color:T.text, letterSpacing:-.3 }}>{activeProgram.name}</div>
             </div>
           </div>
@@ -1506,7 +1506,7 @@ function WeeklyOverview({ programs, sessions, activeProgramId, lastWorkoutId, on
 
           {recentSessions.length > 0 && (
             <>
-              <div style={{ fontSize:11, color:T.text3, letterSpacing:.5, textTransform:'uppercase', marginBottom:10 }}>This week</div>
+              <div style={{ fontSize:12, color:T.text3, letterSpacing:.5, textTransform:'uppercase', marginBottom:10 }}>This week</div>
               {recentSessions.slice(0,4).map((s,i) => {
                 const date = new Date(s.logged_at||s.date).toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' })
                 const vol = (s.exercises||[]).reduce((sum,ex) => sum + ex.sets.reduce((a,set) => a+(set.weight||0)*(set.reps||0), 0), 0)
@@ -1514,7 +1514,7 @@ function WeeklyOverview({ programs, sessions, activeProgramId, lastWorkoutId, on
                   <div key={i} style={{ background:T.surface, border:`0.5px solid ${T.border}`, borderRadius:rr('md'), padding:'10px 14px', marginBottom:8, display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                     <div>
                       <div style={{ fontSize:13, fontWeight:500, color:T.text }}>{s.workout_name||s.workoutName}</div>
-                      <div style={{ fontSize:11, color:T.text3, marginTop:2 }}>{date}</div>
+                      <div style={{ fontSize:12, color:T.text3, marginTop:2 }}>{date}</div>
                     </div>
                     <div style={{ fontSize:12, color:T.text2 }}>{vol.toLocaleString()} lbs</div>
                   </div>
@@ -1538,16 +1538,16 @@ function WeeklyOverview({ programs, sessions, activeProgramId, lastWorkoutId, on
 
           {programs.length > 0 && (
             <div style={{ marginTop:24 }}>
-              <div style={{ fontSize:11, color:T.text3, letterSpacing:.5, textTransform:'uppercase', marginBottom:10 }}>All programs</div>
+              <div style={{ fontSize:12, color:T.text3, letterSpacing:.5, textTransform:'uppercase', marginBottom:10 }}>All programs</div>
               {programs.map(p => (
-                <div key={p.id} onClick={()=>onSelectProgram(p)}
+                <div className="pressable" key={p.id} onClick={()=>onSelectProgram(p)}
                   style={{ background:T.surface, border:`0.5px solid ${p.id===activeProgramId?'var(--green-dim)':T.border}`,
                     borderRadius:rr('md'), padding:'12px 14px', marginBottom:8, cursor:'pointer',
                     display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                   <div>
-                    {p.id===activeProgramId && <div style={{ fontSize:10, color:'var(--green)', letterSpacing:.4, marginBottom:3 }}>Current</div>}
+                    {p.id===activeProgramId && <div style={{ fontSize:12, color:'var(--green)', letterSpacing:.4, marginBottom:3 }}>Current</div>}
                     <div style={{ fontSize:14, fontWeight:500, color:T.text }}>{p.name}</div>
-                    <div style={{ fontSize:11, color:T.text3, marginTop:2 }}>
+                    <div style={{ fontSize:12, color:T.text3, marginTop:2 }}>
                       {p.phases.length} phase{p.phases.length!==1?'s':''} · {p.phases.reduce((a,ph)=>a+ph.workouts.length,0)} workouts
                     </div>
                   </div>
@@ -1568,17 +1568,17 @@ function WeeklyOverview({ programs, sessions, activeProgramId, lastWorkoutId, on
             + Build my program
           </button>
 
-          <div style={{ fontSize:11, color:T.text3, letterSpacing:.5, textTransform:'uppercase', marginBottom:10 }}>Common structures</div>
+          <div style={{ fontSize:12, color:T.text3, letterSpacing:.5, textTransform:'uppercase', marginBottom:10 }}>Common structures</div>
           {[
             { name:'Push / Pull / Legs',     desc:'3 or 6 days · Classic split for muscle building', phases:'1 phase · 3 workouts' },
             { name:'Upper / Lower',           desc:'4 days · Balanced strength and size',             phases:'1 phase · 2 workouts' },
             { name:'Full Body 3x',            desc:'3 days · Great for beginners and busy schedules', phases:'1 phase · 1 workout'  },
             { name:'Hybrid Strength + Cardio',desc:'5 days · Lift and run combined',                  phases:'2 phases · 4 workouts'},
           ].map((s,i) => (
-            <div key={i} onClick={()=> onUseTemplate ? onUseTemplate(s.name) : onNewProgram()} style={{ background:T.surface, borderRadius:rr('md'), padding:'12px 14px', marginBottom:8, cursor:'pointer', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+            <div className="pressable" key={i} onClick={()=> onUseTemplate ? onUseTemplate(s.name) : onNewProgram()} style={{ background:T.surface, borderRadius:rr('md'), padding:'12px 14px', marginBottom:8, cursor:'pointer', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
               <div>
                 <div style={{ fontSize:13, fontWeight:500, color:T.text }}>{s.name}</div>
-                <div style={{ fontSize:11, color:T.text3, marginTop:2 }}>{s.desc}</div>
+                <div style={{ fontSize:12, color:T.text3, marginTop:2 }}>{s.desc}</div>
               </div>
               <div style={{ fontSize:12, color:T.text3, flexShrink:0, marginLeft:8 }}>Use →</div>
             </div>
@@ -1812,7 +1812,7 @@ function ProgramsList({ programs, loading, activeProgramId, onSelectProgram, onN
           background:'var(--cream)', color:'var(--bg)',
           fontSize:14, fontWeight:600, cursor:'pointer', marginBottom:10,
         }}>Start with Hale Foundation →</button>
-        <div style={{ fontSize:11, color:T.text3, textAlign:'center', marginBottom:20 }}>
+        <div style={{ fontSize:12, color:T.text3, textAlign:'center', marginBottom:20 }}>
           12-week full body program. 3 workouts per week. Free.
         </div>
         <button onClick={onNewProgram} style={{
@@ -1834,9 +1834,9 @@ function ProgramsList({ programs, loading, activeProgramId, onSelectProgram, onN
           <Card key={p.id} onClick={()=>onSelectProgram(p)} style={isActive ? { border:`1.5px solid var(--green-dim)`, background:T.surface } : {}}>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
               <div style={{ flex:1 }}>
-                {isActive && <div style={{ fontSize:10, fontWeight:500, color:'var(--green)', letterSpacing:.5, textTransform:'uppercase', marginBottom:4 }}>Current program</div>}
+                {isActive && <div style={{ fontSize:12, fontWeight:500, color:'var(--green)', letterSpacing:.5, textTransform:'uppercase', marginBottom:4 }}>Current program</div>}
                 <div style={{ fontSize:14, fontWeight:500, color:T.text }}>{p.name}</div>
-                <div style={{ fontSize:11, color:T.text3, marginTop:2 }}>
+                <div style={{ fontSize:12, color:T.text3, marginTop:2 }}>
                   {p.phases.length} phase{p.phases.length!==1?'s':''} · {p.phases.reduce((a,ph)=>a+ph.workouts.length,0)} workouts
                 </div>
               </div>
@@ -1868,15 +1868,15 @@ function WorkoutRow({ w, isNext, onStart }) {
     <div style={{ borderBottom:`0.5px solid ${T.border}`, background: isNext ? 'rgba(58,138,88,0.04)' : 'transparent' }}>
       {/* Main row */}
       <div style={{ padding:'12px 16px', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-        <div onClick={()=>setExpanded(v=>!v)} style={{ flex:1, cursor:'pointer' }}>
+        <div className="pressable" onClick={()=>setExpanded(v=>!v)} style={{ flex:1, cursor:'pointer' }}>
           <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:3 }}>
             <div style={{ fontSize:14, fontWeight:500, color:T.text }}>{w.name}</div>
-            {isNext && <div style={{ fontSize:10, padding:'2px 8px', borderRadius:20, background:'var(--green-bg)', color:'var(--green)', fontWeight:500 }}>Up next</div>}
+            {isNext && <div style={{ fontSize:12, padding:'2px 8px', borderRadius:20, background:'var(--green-bg)', color:'var(--green)', fontWeight:500 }}>Up next</div>}
           </div>
           <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-            <div style={{ fontSize:11, color:T.text3 }}>{exercises.length} exercises</div>
-            <div style={{ fontSize:11, color:T.text3, opacity:.5 }}>·</div>
-            <div style={{ fontSize:11, color: expanded ? 'var(--cream)' : T.text3 }}>
+            <div style={{ fontSize:12, color:T.text3 }}>{exercises.length} exercises</div>
+            <div style={{ fontSize:12, color:T.text3, opacity:.5 }}>·</div>
+            <div style={{ fontSize:12, color: expanded ? 'var(--cream)' : T.text3 }}>
               {expanded ? 'Hide preview ▲' : 'Preview ▼'}
             </div>
           </div>
@@ -1898,9 +1898,9 @@ function WorkoutRow({ w, isNext, onStart }) {
           <div style={{ background:T.surface2, borderRadius:rr('md'), overflow:'hidden' }}>
             {/* Column headers */}
             <div style={{ display:'flex', padding:'8px 12px', borderBottom:`0.5px solid ${T.border}` }}>
-              <div style={{ flex:1, fontSize:10, fontWeight:600, color:T.text3, letterSpacing:.5, textTransform:'uppercase' }}>Exercise</div>
-              <div style={{ width:50, fontSize:10, fontWeight:600, color:T.text3, letterSpacing:.5, textTransform:'uppercase', textAlign:'center' }}>Sets</div>
-              <div style={{ width:50, fontSize:10, fontWeight:600, color:T.text3, letterSpacing:.5, textTransform:'uppercase', textAlign:'center' }}>Reps</div>
+              <div style={{ flex:1, fontSize:12, fontWeight:600, color:T.text3, letterSpacing:.5, textTransform:'uppercase' }}>Exercise</div>
+              <div style={{ width:50, fontSize:12, fontWeight:600, color:T.text3, letterSpacing:.5, textTransform:'uppercase', textAlign:'center' }}>Sets</div>
+              <div style={{ width:50, fontSize:12, fontWeight:600, color:T.text3, letterSpacing:.5, textTransform:'uppercase', textAlign:'center' }}>Reps</div>
             </div>
             {mainExercises.map((ex, i) => (
               <div key={i} style={{ display:'flex', alignItems:'center', padding:'8px 12px',
@@ -1911,7 +1911,7 @@ function WorkoutRow({ w, isNext, onStart }) {
               </div>
             ))}
             {exercises.length > mainExercises.length && (
-              <div style={{ padding:'8px 12px', fontSize:11, color:T.text3, fontStyle:'italic' }}>
+              <div style={{ padding:'8px 12px', fontSize:12, color:T.text3, fontStyle:'italic' }}>
                 + {exercises.length - mainExercises.length} athletic add-on exercises
               </div>
             )}
@@ -2011,7 +2011,7 @@ function ProgramDetail({ program, lastWorkoutId, sessions, onBack, onEdit, onSta
             <div style={{ background:T.surface, border:`0.5px solid ${T.border}`, borderRadius:rr('md'), overflow:'hidden' }}>
               <div style={{ padding:'12px 16px', background:T.surface2, borderBottom:`0.5px solid ${T.border}`, display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                 <div style={{ fontSize:14, fontWeight:500, color:T.text }}>{ph.name}</div>
-                <div style={{ fontSize:11, color:T.text3, background:T.surface, borderRadius:20, padding:'3px 10px' }}>{ph.weeks} wks</div>
+                <div style={{ fontSize:12, color:T.text3, background:T.surface, borderRadius:20, padding:'3px 10px' }}>{ph.weeks} wks</div>
               </div>
               {ph.workouts.length===0 && <div style={{ padding:'12px 14px', fontSize:12, color:T.text3 }}>No workouts in this phase.</div>}
               {ph.workouts.map((w) => {

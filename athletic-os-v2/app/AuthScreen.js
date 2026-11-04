@@ -12,7 +12,7 @@ function Input({ value, onChange, placeholder, type='text' }) {
   return (
     <input type={type} value={value} onChange={e=>onChange(e.target.value)}
       placeholder={placeholder} style={{
-        width:'100%', padding:'13px', borderRadius:rr('sm'), fontSize:15,
+        width:'100%', padding:'13px', borderRadius:rr('sm'), fontSize:16,
         border:`1px solid ${T.border}`, background:T.surface,
         color:T.text, outline:'none', marginBottom:12,
       }} />

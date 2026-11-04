@@ -65,3 +65,25 @@ html, body {
 
 button { cursor: pointer; font-family: inherit; }
 textarea, input { font-family: inherit; }
+
+/* ─── Press feedback ──────────────────────────────────────────────
+   Responds the moment a finger lands, not on release.
+   Buttons shrink slightly; larger clickable rows and cards dim instead. */
+button {
+  transition: transform .1s ease-out, opacity .1s ease-out;
+  touch-action: manipulation;
+}
+button:active:not(:disabled) {
+  transform: scale(.97);
+  opacity: .85;
+}
+.pressable {
+  transition: opacity .1s ease-out;
+}
+.pressable:active:not(:has(button:active)) {
+  opacity: .6;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  button:active:not(:disabled) { transform: none; }
+}

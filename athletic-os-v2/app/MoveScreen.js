@@ -304,15 +304,15 @@ function RoutineCard({ exercises, title, duration, source, onSave, saved }) {
         <div style={{ padding:'14px 16px 12px', borderBottom:`0.5px solid ${T.border}` }}>
           <div style={{ fontSize:17, fontWeight:500, color:T.text }}>{title}</div>
           <div style={{ display:'flex', gap:10, marginTop:4 }}>
-            {duration && <span style={{ fontSize:11, color:T.text3 }}>{duration}</span>}
-            {source && <span style={{ fontSize:11, color:T.text3 }}>· {source}</span>}
+            {duration && <span style={{ fontSize:12, color:T.text3 }}>{duration}</span>}
+            {source && <span style={{ fontSize:12, color:T.text3 }}>· {source}</span>}
           </div>
         </div>
       )}
       {exercises.map((ex, i) => (
         <div key={i} style={{ padding:'12px 16px', borderBottom:`0.5px solid ${T.border}` }}>
           <div style={{ fontSize:13, fontWeight:500, color:T.text, marginBottom:3 }}>{ex.name}</div>
-          {ex.reps && <div style={{ fontSize:11, color:'var(--green)', fontWeight:500, marginBottom:4 }}>{ex.reps}</div>}
+          {ex.reps && <div style={{ fontSize:12, color:'var(--green)', fontWeight:500, marginBottom:4 }}>{ex.reps}</div>}
           {ex.cue && <div style={{ fontSize:12, color:T.text2, lineHeight:1.55 }}>{ex.cue}</div>}
         </div>
       ))}
@@ -368,17 +368,17 @@ function AIRoutineCard({ text, onSave, saved }) {
         <div key={i} style={{ padding:'14px 16px', borderBottom: i < exercises.length-1 ? `0.5px solid ${T.border}` : 'none' }}>
           <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:6 }}>
             <div style={{ width:22, height:22, borderRadius:'50%', background:T.surface2,
-              display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:600, color:T.text2, flexShrink:0 }}>{i+1}</div>
+              display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:600, color:T.text2, flexShrink:0 }}>{i+1}</div>
             <div style={{ fontSize:14, fontWeight:500, color:T.text }}>{ex.name}</div>
           </div>
           {ex.cue && <div style={{ fontSize:13, color:T.text2, lineHeight:1.6, marginBottom:4, paddingLeft:30 }}>{ex.cue}</div>}
           {ex.why && (
-            <div style={{ fontSize:11, color:'var(--cream-dim)', lineHeight:1.5, marginBottom:6, paddingLeft:30, fontStyle:'italic' }}>
+            <div style={{ fontSize:12, color:'var(--cream-dim)', lineHeight:1.5, marginBottom:6, paddingLeft:30, fontStyle:'italic' }}>
               {ex.why}
             </div>
           )}
           {ex.reps && (
-            <div style={{ display:'inline-block', marginLeft:30, fontSize:11, fontWeight:500, color:T.text3,
+            <div style={{ display:'inline-block', marginLeft:30, fontSize:12, fontWeight:500, color:T.text3,
               background:T.surface2, borderRadius:20, padding:'2px 10px' }}>
               {ex.reps}
             </div>
@@ -505,7 +505,7 @@ export function DailyMobility({ onSave, defaultOpen=false }) {
 
   return (
     <div style={{ marginBottom:20 }}>
-      <div style={{ fontSize:11, color:T.text3, letterSpacing:.6, textTransform:'uppercase', marginBottom:10 }}>Daily mobility — 10 min</div>
+      <div style={{ fontSize:12, color:T.text3, letterSpacing:.6, textTransform:'uppercase', marginBottom:10 }}>Daily mobility — 10 min</div>
       {!open ? (
         <button onClick={()=>setOpen(true)} style={{
           width:'100%', textAlign:'left', display:'flex', justifyContent:'space-between', alignItems:'center',
@@ -546,7 +546,7 @@ export function QuickRelief({ onSave }) {
 
   return (
     <div style={{ marginBottom:20 }}>
-      <div style={{ fontSize:11, color:T.text3, letterSpacing:.6, textTransform:'uppercase', marginBottom:10 }}>Quick relief — 5 min</div>
+      <div style={{ fontSize:12, color:T.text3, letterSpacing:.6, textTransform:'uppercase', marginBottom:10 }}>Quick relief — 5 min</div>
       <div style={{ display:'flex', flexWrap:'wrap', gap:8, marginBottom:routine?14:0 }}>
         {areas.map(a => (
           <button key={a} onClick={()=>{ setSelected(selected===a?null:a); setSaved(false) }} style={{
@@ -595,7 +595,7 @@ function SportLibrary({ onSave }) {
 
   return (
     <div style={{ marginBottom:20 }}>
-      <div style={{ fontSize:11, color:T.text3, letterSpacing:.6, textTransform:'uppercase', marginBottom:10 }}>Sport routines</div>
+      <div style={{ fontSize:12, color:T.text3, letterSpacing:.6, textTransform:'uppercase', marginBottom:10 }}>Sport routines</div>
       <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom:10 }}>
         {sports.map(s => (
           <button key={s} onClick={()=>{ setSport(sport===s?null:s); setSaved(false) }} style={{
@@ -680,7 +680,7 @@ function CustomRoutine({ onSave }) {
         display:'flex', justifyContent:'space-between', alignItems:'center',
       }}>
         <span>Custom routine</span>
-        <span style={{ fontSize:11, color:T.text3 }}>{open ? '∧' : '∨'}</span>
+        <span style={{ fontSize:12, color:T.text3 }}>{open ? '∧' : '∨'}</span>
       </button>
 
       {open && (
@@ -717,7 +717,7 @@ function CustomRoutine({ onSave }) {
           </div>
           <textarea value={extra} onChange={e=>setExtra(e.target.value)}
             placeholder="Tell me what's going on — e.g. my achilles is sore, I want to do this before bed..." rows={2}
-            style={{ width:'100%', background:T.surface, border:`0.5px solid ${T.border}`, borderRadius:rr('md'), padding:'10px 12px', fontSize:13, color:T.text, resize:'none', outline:'none', marginBottom:8 }} />
+            style={{ width:'100%', background:T.surface, border:`0.5px solid ${T.border}`, borderRadius:rr('md'), padding:'10px 12px', fontSize:16, color:T.text, resize:'none', outline:'none', marginBottom:8 }} />
           <button onClick={go} disabled={loading||(!activity&&!focus&&!extra)} style={{
             width:'100%', padding:'11px', borderRadius:rr('md'), border:'none',
             background:loading||(!activity&&!focus&&!extra)?T.surface2:T.text,
@@ -842,7 +842,7 @@ export default function MoveScreen({ onSave, pendingSession, onClearPending, onS
       <div style={{ padding:'0' }}>
         <div style={{ padding:'16px 20px 12px', borderBottom:`0.5px solid ${T.border}` }}>
           <button onClick={onClearPending} style={{ border:'none', background:'none', color:T.text3, fontSize:12, padding:0, cursor:'pointer', marginBottom:10 }}>← Back</button>
-          <div style={{ fontSize:11, color:'var(--green)', fontWeight:600, letterSpacing:.5, textTransform:'uppercase', marginBottom:4 }}>Pre-session warmup</div>
+          <div style={{ fontSize:12, color:'var(--green)', fontWeight:600, letterSpacing:.5, textTransform:'uppercase', marginBottom:4 }}>Pre-session warmup</div>
           <div style={{ fontSize:20, fontWeight:500, color:T.text, marginBottom:2 }}>{routine.title}</div>
           <div style={{ fontSize:12, color:T.text3 }}>{routine.duration} · Before {workoutName}</div>
         </div>
@@ -850,7 +850,7 @@ export default function MoveScreen({ onSave, pendingSession, onClearPending, onS
           {routine.exercises.map((ex, i) => (
             <div key={i} style={{ padding:'12px 0', borderBottom: i < routine.exercises.length-1 ? `0.5px solid ${T.border}` : 'none' }}>
               <div style={{ fontSize:14, fontWeight:500, color:T.text, marginBottom:3 }}>{ex.name}</div>
-              {ex.reps && <div style={{ fontSize:11, color:'var(--green)', fontWeight:500, marginBottom:4 }}>{ex.reps}</div>}
+              {ex.reps && <div style={{ fontSize:12, color:'var(--green)', fontWeight:500, marginBottom:4 }}>{ex.reps}</div>}
               {ex.cue && <div style={{ fontSize:12, color:T.text2, lineHeight:1.6 }}>{ex.cue}</div>}
             </div>
           ))}
