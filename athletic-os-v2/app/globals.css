@@ -5,72 +5,168 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+/* ════════════════════════════════════════════════════════════════
+   Hale design tokens
+   Screens use these through the components in app/ui. Never set a
+   raw color, font size or radius in a screen; add a token instead.
+   ════════════════════════════════════════════════════════════════ */
 :root {
-  /* ─── Base surfaces — slate/charcoal ─────────────────────────── */
-  --bg:         #141618;
-  --surface:    #1c1f22;
-  --surface2:   #181b1e;
-  --surface3:   #202428;
-  --border:     #282c30;
-  --border2:    #32373c;
-  --text:       #eaecee;
-  --text2:      #8a949e;
-  --text3:      #5a6470;
+  /* ─── Color roles: light (the app) ─────────────────────────────── */
+  --c-bg:            #FAF7F2;   /* Warm White */
+  --c-card:          #FFFFFF;
+  --c-muted:         #F2EDE4;   /* Cream: chips, inputs, quiet fills */
+  --c-muted-2:       #ECE5D8;
+  --c-line:          #E8E2D7;   /* hairlines, only where needed */
+  --c-line-strong:   #D9D1C2;
+  --c-text:          #1A1A1E;   /* Charcoal */
+  --c-text-2:        #5E5C57;   /* secondary, 6.2:1 on bg */
+  --c-text-3:        #6E6B64;   /* tertiary, 5.0:1 on bg */
+  --c-accent:        #C8922A;   /* Gold: fills only on light */
+  --c-accent-text:   #8A5E12;   /* Deep gold: text on light, 5.3:1 */
+  --c-accent-soft:   rgba(200,146,42,0.14);
+  --c-primary:       #1A1A1E;   /* primary button fill */
+  --c-on-primary:    #FAF7F2;
+  --c-done:          #3F7A52;
+  --c-done-soft:     rgba(63,122,82,0.10);
+  --c-danger:        #B5452F;
+  --c-danger-soft:   rgba(181,69,47,0.08);
+  --c-scrim:         rgba(26,26,30,0.40);
+  --c-chrome:        rgba(250,247,242,0.80);  /* translucent bars */
 
-  /* ─── Brand accent — warm cream/white ───────────────────────── */
-  --cream:      #e8e0d0;
-  --cream-dim:  #c8b898;
-  --cream-bg:   rgba(232,224,208,0.08);
+  /* ─── Type ─────────────────────────────────────────────────────── */
+  --font-display: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-text:    'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 
-  /* ─── Functional — green (success, completed) ────────────────── */
-  --green-bg:   rgba(74,122,88,0.12);
-  --green:      #7aaa88;
-  --green-dim:  #4a7a58;
+  /* ─── Space (4-point steps) ────────────────────────────────────── */
+  --s-1: 4px;  --s-2: 8px;  --s-3: 12px; --s-4: 16px;
+  --s-5: 20px; --s-6: 24px; --s-8: 32px; --s-10: 40px;
+  --edge: 20px;            /* screen side padding */
 
-  /* ─── Functional — amber (current/active state) ──────────────── */
-  --amber-bg:   rgba(200,160,80,0.1);
-  --amber:      #d4a843;
-  --amber-dim:  #b08828;
+  /* ─── Shape and depth ──────────────────────────────────────────── */
+  --r-input: 12px;
+  --r-row:   16px;
+  --r-card:  24px;
+  --r-pill:  999px;
+  --shadow-card:  0 1px 2px rgba(26,26,30,0.04), 0 10px 30px rgba(26,26,30,0.07);
+  --shadow-float: 0 0 0 0.5px rgba(26,26,30,0.08), 0 12px 32px rgba(26,26,30,0.14);
 
-  /* ─── Functional — coral (errors, delete) ────────────────────── */
-  --coral-bg:   rgba(200,100,80,0.1);
-  --coral:      #e08070;
-  --coral-dim:  #b05040;
+  /* ─── Motion ───────────────────────────────────────────────────── */
+  --ease-out: cubic-bezier(.22, 1, .36, 1);
+  --t-fast: 100ms;
+  --t-base: 280ms;
 
-  /* ─── Content colors — Pillars, categories ───────────────────── */
-  --blue-bg:    rgba(90,110,180,0.1);
-  --blue:       #8899cc;
-  --blue-dim:   #5a6aaa;
-  --purple-bg:  rgba(120,100,180,0.1);
-  --purple:     #aa99cc;
-  --purple-dim: #7060aa;
-  --pink-bg:    rgba(180,100,140,0.1);
-  --pink:       #cc88aa;
-  --pink-dim:   #aa5878;
-
-  --radius-sm:  8px;
-  --radius-md:  12px;
-  --radius-lg:  16px;
+  /* ─── Layout ───────────────────────────────────────────────────── */
+  --app-max: 430px;
+  --tabbar-h: 64px;
 }
 
-html, body {
-  height: 100%;
-  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', sans-serif;
-  background: var(--bg);
-  color: var(--text);
+/* Gym mode (Phase 5): the same roles, dark values. Put .theme-gym on a container. */
+.theme-gym {
+  --c-bg:          #111113;
+  --c-card:        #1F1F24;
+  --c-muted:       #232328;
+  --c-muted-2:     #2C2C32;
+  --c-line:        #2C2C32;
+  --c-line-strong: #3A3A41;
+  --c-text:        #F2EDE4;
+  --c-text-2:      #B8B3A9;
+  --c-text-3:      #A8A49B;
+  --c-accent-text: #C8922A;
+  --c-primary:     #C8922A;
+  --c-on-primary:  #1A1A1E;
+  --c-done:        #7AAA88;
+  --c-danger:      #E08070;
+  --c-chrome:      rgba(17,17,19,0.80);
+  --shadow-card:   0 12px 32px rgba(0,0,0,0.35);
+  color-scheme: dark;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Legacy variable names, mapped onto the new roles.
+   Screens not yet rebuilt still use these; they go away as each
+   screen moves onto app/ui components (Phases 3 and 4).
+   ════════════════════════════════════════════════════════════════ */
+:root {
+  --bg:        var(--c-bg);
+  --surface:   var(--c-card);
+  --surface2:  var(--c-muted);
+  --surface3:  var(--c-muted-2);
+  --border:    var(--c-line);
+  --border2:   var(--c-line-strong);
+  --text:      var(--c-text);
+  --text2:     var(--c-text-2);
+  --text3:     var(--c-text-3);
+
+  /* "cream" was the accent on dark; on light the accent role is charcoal */
+  --cream:     var(--c-text);
+  --cream-dim: var(--c-accent-text);
+  --cream-bg:  rgba(26,26,30,0.05);
+
+  --green:     var(--c-done);
+  --green-dim: var(--c-done);
+  --green-bg:  var(--c-done-soft);
+
+  --amber:     var(--c-accent-text);
+  --amber-dim: var(--c-accent);
+  --amber-bg:  var(--c-accent-soft);
+
+  --coral:     var(--c-danger);
+  --coral-dim: var(--c-danger);
+  --coral-bg:  var(--c-danger-soft);
+
+  /* Content colors are retired; neutral and gold stand in until Pillars is rebuilt */
+  --blue:      var(--c-text-2);  --blue-dim:   var(--c-text-2);  --blue-bg:   var(--c-muted);
+  --purple:    var(--c-text-2);  --purple-dim: var(--c-text-2);  --purple-bg: var(--c-muted);
+  --pink:      var(--c-accent-text); --pink-dim: var(--c-accent-text); --pink-bg: var(--c-accent-soft);
+
+  --radius-sm: var(--r-input);
+  --radius-md: var(--r-row);
+  --radius-lg: var(--r-card);
+}
+
+html {
+  background: var(--c-bg);
+  color-scheme: light;
+}
+body {
+  min-height: 100%;
+  font-family: var(--font-text);
+  background: var(--c-bg);
+  color: var(--c-text);
   font-size: 16px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
-button { cursor: pointer; font-family: inherit; }
-textarea, input { font-family: inherit; }
+button { cursor: pointer; font-family: inherit; color: inherit; }
+textarea, input { font-family: inherit; color: inherit; }
+::placeholder { color: var(--c-text-3); opacity: 1; }
+:focus-visible { outline: 2px solid var(--c-accent); outline-offset: 2px; }
+
+/* ════════════════════════════════════════════════════════════════
+   Type scale (nine styles). Use these classes, not font sizes.
+   ════════════════════════════════════════════════════════════════ */
+.t-display  { font-family: var(--font-display); font-size: 40px; font-weight: 200; line-height: 1.04; letter-spacing: -0.03em; }
+.t-title1   { font-family: var(--font-display); font-size: 30px; font-weight: 300; line-height: 1.1;  letter-spacing: -0.02em; }
+.t-title2   { font-family: var(--font-display); font-size: 22px; font-weight: 400; line-height: 1.2;  letter-spacing: -0.015em; }
+.t-headline { font-size: 17px; font-weight: 600; line-height: 1.3; }
+.t-body     { font-size: 16px; font-weight: 400; line-height: 1.5; }
+.t-callout  { font-size: 15px; font-weight: 500; line-height: 1.35; }
+.t-subhead  { font-size: 14px; font-weight: 400; line-height: 1.4; }
+.t-footnote { font-size: 13px; font-weight: 500; line-height: 1.35; letter-spacing: 0.01em; }
+.t-caption  { font-size: 12px; font-weight: 500; line-height: 1.3;  letter-spacing: 0.02em; }
+.t-num      { font-variant-numeric: tabular-nums; }
+.c-2 { color: var(--c-text-2); }
+.c-3 { color: var(--c-text-3); }
+.c-accent { color: var(--c-accent-text); }
 
 /* ─── Press feedback ──────────────────────────────────────────────
    Responds the moment a finger lands, not on release.
    Buttons shrink slightly; larger clickable rows and cards dim instead. */
 button {
-  transition: transform .1s ease-out, opacity .1s ease-out;
+  transition: transform var(--t-fast) ease-out, opacity var(--t-fast) ease-out;
   touch-action: manipulation;
 }
 button:active:not(:disabled) {
@@ -78,12 +174,29 @@ button:active:not(:disabled) {
   opacity: .85;
 }
 .pressable {
-  transition: opacity .1s ease-out;
+  transition: opacity var(--t-fast) ease-out;
 }
 .pressable:active:not(:has(button:active)) {
   opacity: .6;
 }
 
+/* ─── Screen change: a short cross-fade with a slight rise ─────── */
+@keyframes hale-screen-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+.screen-enter { animation: hale-screen-in var(--t-base) var(--ease-out) both; }
+
+@keyframes hale-skeleton {
+  0%, 100% { opacity: .55; }
+  50%      { opacity: 1; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   button:active:not(:disabled) { transform: none; }
+  .screen-enter { animation-name: hale-fade-only; }
+  @keyframes hale-fade-only { from { opacity: 0; } to { opacity: 1; } }
+}
+@media (prefers-reduced-transparency: reduce) {
+  :root { --c-chrome: var(--c-bg); }
 }

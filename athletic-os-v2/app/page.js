@@ -5,7 +5,8 @@ import { useState, useEffect, useRef } from 'react'
 import { supabase } from './supabase'
 import AuthScreen from './AuthScreen'
 import LiftScreen from './LiftScreen'
-import MoveScreen, { QuickRelief, DailyMobility, getWarmupType } from './MoveScreen'
+import MoveScreen, { QuickRelief, getWarmupType } from './MoveScreen'
+import { Toast, TabBar, ScreenHeader, HaleMark as HaleLogo, Button, IconButton, Card as UICard, Row, Skeleton, Icon } from './ui'
 import {
   getProfile, saveProfile,
   getPantry, savePantry,
@@ -269,29 +270,6 @@ function Divider() { return <div style={{ height:'0.5px', background:T.border, m
 
 
 // ─── Toast notification ───────────────────────────────────────────────────────
-function Toast({ message, visible, action }) {
-  if (!visible) return null
-  return (
-    <div role="status" style={{
-      position:'fixed', bottom:154, left:'50%', transform:'translateX(-50%)',
-      background:'var(--cream)', color:'var(--bg)', padding: action ? '4px 4px 4px 20px' : '10px 20px',
-      borderRadius:24, fontSize:14, fontWeight:500, zIndex:500,
-      display:'flex', alignItems:'center', gap:8, whiteSpace:'nowrap',
-      animation:'slideUp .2s ease-out',
-      boxShadow:'0 4px 20px rgba(0,0,0,0.3)',
-    }}>
-      {message}
-      {action && (
-        <button onClick={action.onPress} style={{
-          height:40, padding:'0 16px', borderRadius:20, border:'none',
-          background:'var(--bg)', color:'var(--cream)', fontSize:14, fontWeight:600,
-        }}>{action.label}</button>
-      )}
-      <style>{`@keyframes slideUp{from{opacity:0;transform:translateX(-50%) translateY(10px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}`}</style>
-    </div>
-  )
-}
-
 // ─── Daily cards ──────────────────────────────────────────────────────────────
 const CAT_COLORS = {
   sleep:'var(--purple-bg)', nutrition:'var(--green-bg)', movement:'var(--amber-bg)',
@@ -310,13 +288,12 @@ const CAT_TEXT = {
   'longevity':'var(--cream)', 'mental health and exercise':'var(--pink)'
 }
 
-function DailyCard({ userId, cacheKey, category, cardLabel, promptFn, fallback }) {
+function DailyTip({ userId, cacheKey, category, cardLabel, promptFn, fallback }) {
   const [item, setItem] = useState(null)
-  const [loading, setLoading] = useState(true)
   useEffect(() => {
     if (!userId) return
     getDailyCache(userId, cacheKey).then(cached => {
-      if (cached) { setItem(cached); setLoading(false); return }
+      if (cached) { setItem(cached); return }
       callAI(promptFn(category))
         .then(text => {
           const titleMatch = text.match(/TITLE:\s*(.+)/i)
@@ -324,26 +301,20 @@ function DailyCard({ userId, cacheKey, category, cardLabel, promptFn, fallback }
           const parsed = { category, title: titleMatch?titleMatch[1].trim():cardLabel, text: bodyMatch?bodyMatch[1].trim():text.trim() }
           setDailyCache(userId, cacheKey, parsed)
           setItem(parsed)
-          setLoading(false)
         })
-        .catch(() => { setItem({ title:cardLabel, category, text:fallback }); setLoading(false) })
+        .catch(() => setItem({ title:cardLabel, category, text:fallback }))
     })
   }, [userId])
-  const barColor = item ? (CAT_TEXT[item.category]||'var(--green)') : T.text3
   return (
-    <div style={{ background:T.surface, borderRadius:rr('md'), overflow:'hidden', marginBottom:12 }}>
-      <div style={{ padding:'12px 14px 4px' }}>
-        <div style={{ fontSize:12, fontWeight:600, letterSpacing:.6, textTransform:'uppercase', color:barColor }}>
-          {cardLabel}{item ? ` · ${item.category}` : ''}
-        </div>
+    <section style={{ padding:'0 var(--s-1)' }} aria-live="polite">
+      <div className="t-footnote c-accent" style={{ display:'flex', alignItems:'center', gap:8, marginBottom:8 }}>
+        <span aria-hidden="true" style={{ width:6, height:6, borderRadius:3, background:'var(--c-accent)' }} />
+        {cardLabel}{item?.title && item.title !== cardLabel ? ` · ${item.title}` : ''}
       </div>
-      <div style={{ padding:'4px 14px 14px' }}>
-        {loading?<LoadingDots />:<>
-          <div style={{ fontSize:14, fontWeight:500, color:T.text, marginBottom:6 }}>{item.title}</div>
-          <div style={{ fontSize:13, color:T.text2, lineHeight:1.7 }}>{item.text}</div>
-        </>}
-      </div>
-    </div>
+      {item
+        ? <p style={{ fontFamily:'var(--font-display)', fontSize:18, fontWeight:300, lineHeight:1.45, color:'var(--c-text)' }}>{item.text}</p>
+        : <Skeleton lines={2} label="Loading today's tip" />}
+    </section>
   )
 }
 
@@ -531,117 +502,32 @@ function LowEnergyCard({ onNav, onNavMove, onNavEat }) {
 }
 
 // ─── Something small card ─────────────────────────────────────────────────────
-function SomethingSmallCard({ onNav }) {
-  const [dismissed, setDismissed] = useState(false)
-  const [daysSince, setDaysSince] = useState(0)
-
-  // Read the gap once on mount, then record this visit.
-  // (Doing this during render made the card vanish on any re-render.)
-  useEffect(() => {
-    try {
-      const lastVisit = localStorage.getItem('last_home_visit')
-      if (lastVisit) setDaysSince(Math.floor((Date.now() - parseInt(lastVisit)) / (1000*60*60*24)))
-      localStorage.setItem('last_home_visit', Date.now().toString())
-    } catch {}
-  }, [])
-
-  // Only show if it has been 4+ days since last visit and not dismissed
-  if (daysSince < 4 || dismissed) return null
-
-  const suggestions = [
-    { text:'5 minutes of mobility', action:'move',  btn:'Quick relief' },
-    { text:'find something to eat',  action:'eat',   btn:'Get a recipe'  },
-    { text:'a quick stretch',        action:'move',  btn:'Move a little' },
-  ]
-  const suggestion = suggestions[daysSince % suggestions.length]
-
-  return (
-    <div style={{ background:T.surface, borderRadius:rr('md'), padding:'14px 16px', marginBottom:14, position:'relative' }}>
-      <button onClick={()=>setDismissed(true)} style={{ position:'absolute', top:10, right:12, border:'none', background:'none', color:T.text3, fontSize:14, cursor:'pointer', padding:0 }}>×</button>
-      <div style={{ fontSize:14, fontWeight:500, color:T.text, marginBottom:4, paddingRight:20 }}>
-        Five minutes is enough.
-      </div>
-      <div style={{ fontSize:13, color:T.text2, lineHeight:1.6, marginBottom:12 }}>
-        No need to catch up or do everything at once. How about {suggestion.text}?
-      </div>
-      <button onClick={()=>onNav(suggestion.action)} style={{ padding:'8px 18px', borderRadius:20, border:'none', background:'var(--cream)', color:'var(--bg)', fontSize:13, fontWeight:500, cursor:'pointer' }}>
-        {suggestion.btn}
-      </button>
-    </div>
-  )
-}
-
-
-// ─── Smart home card ──────────────────────────────────────────────────────────
-function SmartHomeCard({ programs, recentSessions, activeProgramId, onStartWarmup, onNav }) {
+function findNextWorkout(programs, recentSessions, activeProgramId) {
   if (!programs?.length) return null
+  const program = programs.find(p => p.id === activeProgramId) || programs[0]
+  const phases = program?.phases || []
+  if (!phases.length) return null
 
-  // Find the active program — match LiftScreen's active program
-  const activeProgram = programs.find(p => p.id === activeProgramId) || programs[0]
-  if (!activeProgram?.phases?.length) return null
-
-  // Find last session workout ID
-  const lastSession = recentSessions?.[0]
-  const lastWorkoutId = lastSession?.workoutId || lastSession?.workout_id
-
-  // Find next workout across all phases
-  let nextWorkout = null
-  let nextPhase = null
-  const phases = activeProgram.phases || []
-
-  if (!lastWorkoutId) {
-    const firstPhase = phases.find(p => p.workouts?.length > 0)
-    if (firstPhase) { nextPhase = firstPhase; nextWorkout = firstPhase.workouts[0] }
-  } else {
-    for (let pi = 0; pi < phases.length; pi++) {
-      const ph = phases[pi]
-      const workouts = ph.workouts || []
-      const idx = workouts.findIndex(w => w.id === lastWorkoutId)
-      if (idx >= 0) {
-        if (idx + 1 < workouts.length) { nextPhase = ph; nextWorkout = workouts[idx + 1] }
-        else {
-          for (let ni = pi + 1; ni < phases.length; ni++) {
-            if (phases[ni].workouts?.length > 0) { nextPhase = phases[ni]; nextWorkout = phases[ni].workouts[0]; break }
-          }
-          if (!nextWorkout) { nextPhase = phases[0]; nextWorkout = phases[0].workouts?.[0] }
-        }
-        break
+  const lastWorkoutId = recentSessions?.[0]?.workoutId || recentSessions?.[0]?.workout_id
+  let phase = null, workout = null
+  if (lastWorkoutId) {
+    for (let pi = 0; pi < phases.length && !workout; pi++) {
+      const idx = (phases[pi].workouts || []).findIndex(w => w.id === lastWorkoutId)
+      if (idx < 0) continue
+      if (idx + 1 < phases[pi].workouts.length) { phase = phases[pi]; workout = phases[pi].workouts[idx + 1]; break }
+      for (let ni = pi + 1; ni < phases.length; ni++) {
+        if (phases[ni].workouts?.length) { phase = phases[ni]; workout = phases[ni].workouts[0]; break }
       }
-    }
-    if (!nextWorkout) {
-      const firstPhase = phases.find(p => p.workouts?.length > 0)
-      if (firstPhase) { nextPhase = firstPhase; nextWorkout = firstPhase.workouts[0] }
+      if (!workout) { phase = phases[0]; workout = phases[0].workouts?.[0] }
     }
   }
-
-  if (!nextWorkout || !nextPhase) return null
-
-  const warmupType = getWarmupType(nextWorkout.name)
-  const warmupLabel = warmupType === 'upper' ? 'Upper body warmup' : 'Lower body warmup'
-  const hour = new Date().getHours()
-  const timeLabel = hour < 12 ? 'Ready to train this morning?' : hour < 17 ? 'Afternoon session?' : 'Evening lift?'
-
-  return (
-    <div style={{ background:T.surface, borderRadius:rr('lg'), marginBottom:16, overflow:'hidden', border:`0.5px solid ${T.border}` }}>
-      <div style={{ padding:'16px 16px 12px' }}>
-        <div style={{ fontSize:12, color:'var(--cream)', fontWeight:600, letterSpacing:.5, textTransform:'uppercase', marginBottom:6 }}>{timeLabel}</div>
-        <div style={{ fontSize:17, fontWeight:500, color:T.text, marginBottom:4 }}>{nextWorkout.name}</div>
-        <div style={{ fontSize:12, color:T.text3, marginBottom:14 }}>{activeProgram.name} · {nextPhase.name}</div>
-        <div style={{ display:'flex', gap:8 }}>
-          <button onClick={()=>onStartWarmup({ programId:activeProgram.id, phaseId:nextPhase.id, workoutId:nextWorkout.id, workoutName:nextWorkout.name, warmupType })}
-            style={{ flex:1, padding:'11px', borderRadius:rr('md'), border:'none', background:'var(--cream)', color:'var(--bg)', fontSize:13, fontWeight:600, cursor:'pointer' }}>
-            Start with warmup →
-          </button>
-          <button onClick={()=>onNav('lift')}
-            style={{ padding:'11px 14px', borderRadius:rr('md'), border:`0.5px solid ${T.border}`, background:'transparent', color:T.text2, fontSize:13, cursor:'pointer' }}>
-            Skip warmup
-          </button>
-        </div>
-      </div>
-    </div>
-  )
+  if (!workout) {
+    phase = phases.find(p => p.workouts?.length > 0)
+    workout = phase?.workouts?.[0]
+  }
+  if (!workout || !phase) return null
+  return { program, phase, workout, warmupType: getWarmupType(workout.name) }
 }
-
 
 // ─── Onboarding flow ──────────────────────────────────────────────────────────
 function OnboardingFlow({ userId, onComplete }) {
@@ -855,58 +741,122 @@ function HaleLockup({ markSize = 28, wordSize = 22, color = 'var(--cream)', gap 
 
 // ─── Screens ──────────────────────────────────────────────────────────────────
 function HomeScreen({ onNav, onSave, profile, userId, programs, recentSessions, activeProgramId, onStartWarmup }) {
-  const hour = new Date().getHours()
-  const greeting = hour<12?'Good morning':hour<17?'Good afternoon':'Good evening'
-  const name = profile?.name?`, ${profile.name}`:''
-  const day = new Date().getDate()
+  const now = new Date()
+  const hour = now.getHours()
+  const partOfDay = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening'
+  const when = hour < 12 ? 'this morning' : hour < 17 ? 'today' : 'tonight'
+  const dayName = now.toLocaleDateString(undefined, { weekday:'long' })
+  const firstName = profile?.name?.trim().split(' ')[0]
   const isNewUser = !profile?.goal && !profile?.name
 
-  // One daily card — tips and facts alternate by day instead of stacking two AI cards
+  const next = findNextWorkout(programs, recentSessions, activeProgramId)
+  const lastDate = recentSessions?.[0]?.date ? new Date(recentSessions[0].date) : null
+  const liftedToday = !!lastDate && lastDate.toDateString() === now.toDateString()
+  // The hero is the one thing worth doing now: the next lift, unless there is
+  // no program or the user already lifted today. Then it is five minutes of relief.
+  const heroIsLift = !!next && !liftedToday
+
+  const day = now.getDate()
   const isTipDay = day % 2 === 0
-  const dailyProps = isTipDay
+  const tipProps = isTipDay
     ? { cacheKey:'daily_tip', category:TIP_CATEGORIES[day%TIP_CATEGORIES.length], cardLabel:'Daily tip',
         promptFn:cat=>'You are a knowledgeable health advisor. Give ONE practical tip about '+cat+'. 2-3 sentences. Specific and surprising. No fluff, no exclamation marks. Give a 2-4 word title. Format: TITLE: [title] TIP: [tip]',
         fallback:'Consistency over intensity. Showing up three times a week for a year will outperform any extreme program you can only stick to for a month.' }
     : { cacheKey:'daily_fact', category:FACT_CATEGORIES[day%FACT_CATEGORIES.length], cardLabel:'Daily fact',
         promptFn:cat=>'You are a science communicator. Give ONE surprising fact about '+cat+'. 2-3 sentences. Make it feel worth sharing. No obvious facts. No fluff. Give a 2-4 word title. Format: TITLE: [title] FACT: [fact]',
-        fallback:'Your muscles grow during rest, not during the workout itself. The training session is just the signal — sleep and nutrition are where the actual adaptation happens.' }
+        fallback:'Your muscles grow during rest, not during the workout itself. The training session is just the signal. Sleep and nutrition are where the actual adaptation happens.' }
+
+  const exercises = next?.workout?.exercises || []
+  const shown = exercises.slice(0, 3)
 
   return (
-    <div style={{ padding:'32px 20px 20px' }}>
-      <div style={{ marginBottom:24 }}>
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:18 }}>
-          <HaleLockup markSize={24} wordSize={18} color="var(--cream-dim)" gap={8} />
-          <button onClick={()=>onNav('profile')} aria-label="Profile" style={{
-            width:34, height:34, borderRadius:'50%', border:`0.5px solid ${T.border}`,
-            background:T.surface, color:T.text2, cursor:'pointer',
-            display:'flex', alignItems:'center', justifyContent:'center' }}>
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
-              <circle cx="12" cy="8" r="3.2"/><path d="M5 20c1.5-3.5 4-5 7-5s5.5 1.5 7 5"/>
-            </svg>
-          </button>
+    <div style={{ padding:'calc(env(safe-area-inset-top) + 56px) var(--edge) 0', display:'flex', flexDirection:'column', gap:'var(--s-6)' }}>
+      <header style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:12 }}>
+        <div>
+          <div className="t-subhead c-2" style={{ marginBottom:2 }}>{dayName} {partOfDay}</div>
+          <h1 className="t-title1">{firstName ? `Hi, ${firstName}` : 'Hi there'}</h1>
         </div>
-        <div style={{ fontSize:28, fontWeight:400, color:T.text, letterSpacing:-.5, lineHeight:1.2 }}>{greeting}{name}.</div>
-      </div>
+        <IconButton icon="profile" label="Profile" filled onClick={()=>onNav('profile')} />
+      </header>
 
       {isNewUser && (
-        <div style={{ background:T.surface, borderRadius:rr('md'), padding:'16px', marginBottom:20, borderLeft:`3px solid var(--cream)` }}>
-          <div style={{ fontSize:14, fontWeight:500, color:T.text, marginBottom:4 }}>Welcome.</div>
-          <div style={{ fontSize:13, color:T.text2, lineHeight:1.6, marginBottom:12 }}>Your personal health and performance app. Movement, meals, and lifting — all in one place, without the overwhelm.</div>
-          <div style={{ display:'flex', gap:8 }}>
-            <button onClick={()=>onNav('profile')} style={{ flex:1, padding:'9px', borderRadius:rr('sm'), border:'none', background:T.text, color:T.bg, fontSize:13, fontWeight:500, cursor:'pointer' }}>Set up profile</button>
-            <button onClick={()=>onNav('move')} style={{ flex:1, padding:'9px', borderRadius:rr('sm'), border:`0.5px solid ${T.border}`, background:'transparent', color:T.text2, fontSize:13, cursor:'pointer' }}>Explore first</button>
-          </div>
-        </div>
+        <Row icon="sparkle" title="Make Hale yours" subtitle="Two minutes. Your goals shape what you see here." onClick={()=>onNav('profile')} />
       )}
 
-      {/* Move first — one tap to relief, per the worst-day principle */}
-      <QuickRelief onSave={onSave} />
-      <DailyMobility onSave={onSave} />
+      {heroIsLift ? (
+        <UICard tone="inverse" style={{ position:'relative', overflow:'hidden', padding:'24px 22px 22px', display:'flex', flexDirection:'column', gap:20 }}>
+          <div aria-hidden="true" style={{ position:'absolute', right:-70, top:-70, opacity:.16, pointerEvents:'none' }}>
+            <HaleLogo size={220} />
+          </div>
+          <div className="t-footnote" style={{ color:'var(--c-accent)', textTransform:'uppercase', letterSpacing:'0.06em' }}>Your one thing {when}</div>
+          <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+            <div className="t-display">{next.workout.name}</div>
+            <div className="t-subhead" style={{ color:'#B8B3A9', fontSize:15 }}>
+              {next.phase.name} · {next.program.name}. Warmup first, about 6 minutes.
+            </div>
+          </div>
+          {shown.length > 0 && (
+            <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
+              {shown.map((ex, i) => (
+                <span key={i} className="t-footnote" style={{ height:28, padding:'0 12px', borderRadius:14, background:'#2C2C32', color:'#D8D2C7', display:'inline-flex', alignItems:'center', fontWeight:500 }}>{ex.name}</span>
+              ))}
+              {exercises.length > shown.length && (
+                <span className="t-footnote" style={{ height:28, padding:'0 12px', borderRadius:14, background:'#2C2C32', color:'#A8A49B', display:'inline-flex', alignItems:'center' }}>+{exercises.length - shown.length}</span>
+              )}
+            </div>
+          )}
+          <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
+            <Button variant="accent" full iconAfter="arrowRight"
+              onClick={()=>onStartWarmup({ programId:next.program.id, phaseId:next.phase.id, workoutId:next.workout.id, workoutName:next.workout.name, warmupType:next.warmupType })}>
+              Start with warmup
+            </Button>
+            <button onClick={()=>onNav('lift')} className="t-callout" style={{ height:44, border:'none', background:'none', color:'#B8B3A9' }}>
+              Skip the warmup
+            </button>
+          </div>
+        </UICard>
+      ) : (
+        <UICard style={{ display:'flex', flexDirection:'column', gap:16 }}>
+          <div>
+            <div className="t-footnote c-accent" style={{ marginBottom:4 }}>
+              {liftedToday ? 'You lifted today. Nice work.' : 'Five minutes, no setup'}
+            </div>
+            <h2 className="t-title2">{liftedToday ? 'Help it recover' : 'What feels tight?'}</h2>
+          </div>
+          <QuickRelief onSave={onSave} bare />
+        </UICard>
+      )}
 
-      <SmartHomeCard programs={programs} recentSessions={recentSessions} activeProgramId={activeProgramId} onStartWarmup={onStartWarmup} onNav={onNav} />
-      <DailyCard userId={userId} {...dailyProps} />
-      <SomethingSmallCard onNav={onNav} />
+      <section style={{ display:'flex', flexDirection:'column', gap:12 }}>
+        <p className="t-subhead c-2" style={{ padding:'0 var(--s-1)' }}>
+          {heroIsLift ? 'Not feeling it? Smaller works too.' : 'Or try one of these.'}
+        </p>
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(2, minmax(0, 1fr))', gap:12 }}>
+          {heroIsLift
+            ? <SmallTile icon="move" title="Loosen up" sub="5 min, pick a spot" onClick={()=>onNav('move')} />
+            : <SmallTile icon="lift" title={next ? 'Next lift' : 'Start lifting'} sub={next ? next.workout.name : 'Pick a program'} onClick={()=>onNav('lift')} />}
+          <SmallTile icon="eat" title="Dinner idea" sub="From what you have" onClick={()=>onNav('eat')} />
+        </div>
+      </section>
+
+      <DailyTip userId={userId} {...tipProps} />
+
+      <button onClick={()=>onNav('pillars')} className="t-callout c-accent" style={{ alignSelf:'flex-start', minHeight:44, border:'none', background:'none', padding:'0 var(--s-1)', display:'inline-flex', alignItems:'center', gap:6 }}>
+        The Pillars: what actually matters <Icon name="chevronRight" size={16} strokeWidth={2} />
+      </button>
     </div>
+  )
+}
+
+function SmallTile({ icon, title, sub, onClick }) {
+  return (
+    <UICard onClick={onClick} style={{ minHeight:120, padding:16, display:'flex', flexDirection:'column', justifyContent:'space-between', gap:12 }}>
+      <Icon name={icon} size={24} style={{ color:'var(--c-accent-text)' }} />
+      <span style={{ display:'flex', flexDirection:'column', gap:2, minWidth:0 }}>
+        <span className="t-headline" style={{ fontSize:16 }}>{title}</span>
+        <span className="t-footnote c-2" style={{ fontWeight:400, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{sub}</span>
+      </span>
+    </UICard>
   )
 }
 
@@ -1489,47 +1439,12 @@ function StackScreen({ items, onDelete, onRename }) {
   )
 }
 
-const NAV_ICONS = {
-  home: (active) => (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active?2:1.5} strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z"/>
-      <path d="M9 21V12h6v9"/>
-    </svg>
-  ),
-  move: (active) => (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active?2:1.5} strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="5" r="2"/>
-      <path d="M12 7v6M9 10l-2 4h10l-2-4"/>
-      <path d="M9 21l1-4h4l1 4"/>
-    </svg>
-  ),
-  eat: (active) => (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active?2:1.5} strokeLinecap="round" strokeLinejoin="round">
-      <path d="M18 8h1a4 4 0 010 8h-1"/>
-      <path d="M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8z"/>
-      <line x1="6" y1="1" x2="6" y2="4"/>
-      <line x1="10" y1="1" x2="10" y2="4"/>
-      <line x1="14" y1="1" x2="14" y2="4"/>
-    </svg>
-  ),
-  lift: (active) => (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active?2:1.5} strokeLinecap="round" strokeLinejoin="round">
-      <path d="M6 4v16M18 4v16M2 9h4M18 9h4M2 15h4M18 15h4M6 12h12"/>
-    </svg>
-  ),
-  stack: (active) => (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active?2:1.5} strokeLinecap="round" strokeLinejoin="round">
-      <path d="M19 11H5M19 6H5M19 16H5"/><circle cx="3" cy="6" r="1" fill="currentColor"/><circle cx="3" cy="11" r="1" fill="currentColor"/><circle cx="3" cy="16" r="1" fill="currentColor"/>
-    </svg>
-  ),
-}
-
 const NAV = [
-  { tab:'home',  label:'Home'  },
-  { tab:'move',  label:'Move'  },
-  { tab:'eat',   label:'Eat'   },
-  { tab:'lift',  label:'Lift'  },
-  { tab:'stack', label:'Rotation' },
+  { key:'home',  label:'Home',     icon:'home'     },
+  { key:'move',  label:'Move',     icon:'move'     },
+  { key:'eat',   label:'Eat',      icon:'eat'      },
+  { key:'lift',  label:'Lift',     icon:'lift'     },
+  { key:'stack', label:'Rotation', icon:'rotation' },
 ]
 
 const TOPBAR = {
@@ -1537,8 +1452,8 @@ const TOPBAR = {
   eat:     { title:'Eat better',  sub:'New ideas, your ingredients'                   },
   lift:    { title:'Lift',        sub:'Your programs and sessions'                    },
   pillars: { title:'The Pillars', sub:'The only things that actually move the needle' },
-  stack:   { title:'Your Rotation',    sub:'Your saved routines and recipes'               },
-  profile: { title:'Profile',     sub:'Your profile'                    },
+  stack:   { title:'Your Rotation', sub:'Your saved routines and recipes'             },
+  profile: { title:'Profile',     sub:null                                            },
 }
 
 export default function App() {
@@ -1666,12 +1581,17 @@ export default function App() {
     setSavedItems(prev => prev.map(i => i.id===id ? { ...i, label:newLabel.trim() } : i))
   }
 
-  const handleDeepDive = prompt => { setDeepDive(prompt); setTab('pillars') }
+  const go = (next) => {
+    setDeepDive(null)
+    setTab(next)
+    window.scrollTo(0, 0)
+  }
+  const handleDeepDive = prompt => { setDeepDive(prompt); setTab('pillars'); window.scrollTo(0, 0) }
 
   if (authLoading) {
     return (
-      <div style={{ maxWidth:430, margin:'0 auto', minHeight:'100dvh', background:T.bg, display:'flex', alignItems:'center', justifyContent:'center' }}>
-        <LoadingDots />
+      <div style={{ minHeight:'100dvh', display:'flex', alignItems:'center', justifyContent:'center' }} role="status" aria-label="Loading">
+        <HaleLogo size={36} />
       </div>
     )
   }
@@ -1684,33 +1604,28 @@ export default function App() {
 
   const userId = session.user.id
   const tb = TOPBAR[tab]
+  // Screens reached from Home rather than the tab bar get a back button
+  const backTarget = tab==='profile' ? 'home' : (tab==='pillars' && !deepDive) ? 'home' : null
 
   return (
-    <div style={{ maxWidth:430, margin:'0 auto', minHeight:'100dvh', background:T.bg, display:'flex', flexDirection:'column' }}>
-      {tab!=='home' && tb && (
-        <div style={{ padding:'48px 20px 16px', borderBottom:`0.5px solid ${T.border}`, background:T.bg, flexShrink:0 }}>
-          {tb&&<><div style={{ fontSize:28, fontWeight:500, color:T.text, letterSpacing:-.5 }}>{tb.title}</div><div style={{ fontSize:13, color:T.text2, marginTop:4 }}>{tb.sub}</div></>}
-        </div>
+    <div style={{ maxWidth:'var(--app-max)', margin:'0 auto', minHeight:'100dvh' }}>
+      {tab!=='home' && tb && !(tab==='pillars' && deepDive) && (
+        <ScreenHeader key={`h-${tab}`} title={tb.title} subtitle={tb.sub}
+          onBack={backTarget ? ()=>go(backTarget) : undefined} />
       )}
-      <div style={{ flex:1, overflowY:'auto', paddingBottom:80 }}>
-        {tab==='home'    && <HomeScreen onNav={setTab} onSave={handleSave} profile={profile} userId={userId} programs={programs} recentSessions={recentSessions} activeProgramId={activeProgramId} onStartWarmup={(info)=>{ setPendingSession(info); setTab('move') }} />}
-        {tab==='move'    && <MoveScreen onSave={handleSave} pendingSession={pendingSession} onClearPending={()=>setPendingSession(null)} onStartSession={(info)=>{ setPendingSession(null); setLiftDeepLink(info); setTab('lift') }} />}
+      <main key={`${tab}-${deepDive?'d':''}`} className="screen-enter"
+        style={{ paddingBottom:'calc(var(--tabbar-h) + 48px + env(safe-area-inset-bottom))' }}>
+        {tab==='home'    && <HomeScreen onNav={go} onSave={handleSave} profile={profile} userId={userId} programs={programs} recentSessions={recentSessions} activeProgramId={activeProgramId} onStartWarmup={(info)=>{ setPendingSession(info); go('move') }} />}
+        {tab==='move'    && <MoveScreen onSave={handleSave} pendingSession={pendingSession} onClearPending={()=>setPendingSession(null)} onStartSession={(info)=>{ setPendingSession(null); setLiftDeepLink(info); go('lift') }} />}
         {tab==='eat'     && <EatScreen onSave={handleSave} userId={userId} />}
-        {tab==='lift'    && <LiftScreen userId={userId} userProfile={profile} onGoEat={()=>setTab('eat')} onGoMove={()=>setTab('move')} deepLinkWorkout={liftDeepLink} onClearDeepLink={()=>setLiftDeepLink(null)} />}
+        {tab==='lift'    && <LiftScreen userId={userId} userProfile={profile} onGoEat={()=>go('eat')} onGoMove={()=>go('move')} deepLinkWorkout={liftDeepLink} onClearDeepLink={()=>setLiftDeepLink(null)} />}
         {tab==='pillars' && !deepDive && <PillarsScreen onDeepDive={handleDeepDive} />}
-        {tab==='pillars' && deepDive  && <DeepDiveScreen prompt={deepDive} onBack={()=>setDeepDive(null)} />}
+        {tab==='pillars' && deepDive  && <DeepDiveScreen prompt={deepDive} onBack={()=>{ setDeepDive(null); window.scrollTo(0,0) }} />}
         {tab==='stack'   && <StackScreen items={savedItems} onDelete={handleDelete} onRename={handleRename} />}
-        {tab==='profile' && <ProfileScreen userId={userId} onSaved={setProfile} onNav={setTab} />}
-      </div>
+        {tab==='profile' && <ProfileScreen userId={userId} onSaved={setProfile} onNav={go} />}
+      </main>
       <Toast message={toast.message} visible={toast.visible} action={toast.action} />
-      <nav style={{ position:'fixed', bottom:0, left:'50%', transform:'translateX(-50%)', width:'100%', maxWidth:430, background:T.surface2, borderTop:`0.5px solid ${T.border}`, display:'flex', padding:'8px 0 max(16px, env(safe-area-inset-bottom))', zIndex:100 }}>
-        {NAV.map(n=>{ const active=tab===n.tab; return (
-          <button key={n.tab} onClick={()=>{ setDeepDive(null); setTab(n.tab) }} style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', gap:3, padding:'4px 0', border:'none', background:'none', color:active?T.text:T.text3, transition:'color .15s, transform .1s ease-out' }}>
-            {NAV_ICONS[n.tab]?.(active)}
-            <span style={{ fontSize:12, fontWeight:active?600:400, letterSpacing:.3 }}>{n.label}</span>
-          </button>
-        )})}
-      </nav>
+      <TabBar items={NAV} active={tab} onChange={go} />
     </div>
   )
 }

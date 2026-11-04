@@ -1,5 +1,6 @@
 'use client'
 import { useState } from 'react'
+import { Chip, ChipRow } from './ui'
 
 const T = {
   bg:'var(--bg)', surface:'var(--surface)', surface2:'var(--surface2)',
@@ -533,7 +534,7 @@ export function DailyMobility({ onSave, defaultOpen=false }) {
 }
 
 // ─── Quick relief section ─────────────────────────────────────────────────────
-export function QuickRelief({ onSave }) {
+export function QuickRelief({ onSave, bare }) {
   const [selected, setSelected] = useState(null)
   const [saved, setSaved] = useState(false)
   const areas = Object.keys(QUICK_RELIEF)
@@ -545,18 +546,13 @@ export function QuickRelief({ onSave }) {
   }
 
   return (
-    <div style={{ marginBottom:20 }}>
-      <div style={{ fontSize:12, color:T.text3, letterSpacing:.6, textTransform:'uppercase', marginBottom:10 }}>Quick relief — 5 min</div>
-      <div style={{ display:'flex', flexWrap:'wrap', gap:8, marginBottom:routine?14:0 }}>
+    <div style={{ marginBottom: bare ? 0 : 20 }}>
+      {!bare && <div className="t-footnote c-2" style={{ marginBottom:10 }}>Quick relief, 5 min</div>}
+      <ChipRow style={{ marginBottom: routine ? 14 : 0 }}>
         {areas.map(a => (
-          <button key={a} onClick={()=>{ setSelected(selected===a?null:a); setSaved(false) }} style={{
-            padding:'9px 16px', borderRadius:20, fontSize:13, border:`0.5px solid ${T.border}`,
-            background: selected===a ? T.text : T.surface,
-            color: selected===a ? T.bg : T.text2,
-            fontWeight: selected===a ? 500 : 400,
-          }}>{a}</button>
+          <Chip key={a} selected={selected===a} onClick={()=>{ setSelected(selected===a?null:a); setSaved(false) }}>{a}</Chip>
         ))}
-      </div>
+      </ChipRow>
       {routine && (
         <RoutineCard exercises={routine} title={`${selected} relief`} duration="~5 min" onSave={save} saved={saved} />
       )}
