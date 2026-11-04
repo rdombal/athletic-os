@@ -527,9 +527,16 @@ function InlineSetRow({ setNum, initial, lastSet, prevSet, isCurrent, onSave, on
   const [rpe,    setRpe]    = useState(initial?.rpe?.toString() || '')
   const [saved,  setSaved]  = useState(!!initial)
 
+  // Empty fields fall back to what the placeholder shows (last session, or the
+  // program's target reps), so tapping → with the suggested numbers just works.
+  const effWeight = weight || lastSet?.weight?.toString() || ''
+  const effReps   = reps   || lastSet?.reps?.toString()   || (targetReps ? String(targetReps) : '')
+  const canSave = !!(effWeight && effReps)
+
   const handleSave = () => {
-    if (!weight || !reps) return
-    onSave({ weight: parseFloat(weight)||0, reps: parseInt(reps)||0, ...(useRpe && rpe ? { rpe: parseFloat(rpe) } : {}) })
+    if (!canSave) return
+    setWeight(effWeight); setReps(effReps)
+    onSave({ weight: parseFloat(effWeight)||0, reps: parseInt(effReps)||0, ...(useRpe && rpe ? { rpe: parseFloat(rpe) } : {}) })
     setSaved(true)
     if (onRestStart) onRestStart()
   }
@@ -604,11 +611,11 @@ function InlineSetRow({ setNum, initial, lastSet, prevSet, isCurrent, onSave, on
         )}
         <button onClick={saved ? handleUndo : handleSave} style={{
           width:42, height:42, borderRadius:'50%', flexShrink:0, border:'none',
-          background: saved ? T.surface2 : (weight&&reps) ? 'var(--cream)' : T.surface2,
-          color: saved ? 'var(--green)' : (weight&&reps) ? 'var(--bg)' : T.text3,
+          background: saved ? T.surface2 : canSave ? 'var(--cream)' : T.surface2,
+          color: saved ? 'var(--green)' : canSave ? 'var(--bg)' : T.text3,
           fontSize: saved ? 18 : 16, cursor:'pointer',
           display:'flex', alignItems:'center', justifyContent:'center',
-          boxShadow: (!saved&&weight&&reps) ? '0 2px 8px rgba(58,138,88,0.35)' : 'none',
+          boxShadow: (!saved&&canSave) ? '0 2px 8px rgba(58,138,88,0.35)' : 'none',
         }}>{saved ? '✓' : '→'}</button>
       </div>
     </div>
@@ -1406,7 +1413,7 @@ function UpNextCard({ nextUp, activeProgram, onSelectProgram }) {
 }
 
 // ─── Weekly overview ──────────────────────────────────────────────────────────
-function WeeklyOverview({ programs, sessions, activeProgramId, lastWorkoutId, onSelectProgram, onNewProgram, onViewExercise, onGoMove, loading }) {
+function WeeklyOverview({ programs, sessions, activeProgramId, lastWorkoutId, onSelectProgram, onNewProgram, onUseTemplate, onViewExercise, onGoMove, loading }) {
   const activeProgram = programs.find(p => p.id === activeProgramId) || programs[0]
 
   const getNextWorkout = (program) => {
@@ -1568,7 +1575,7 @@ function WeeklyOverview({ programs, sessions, activeProgramId, lastWorkoutId, on
             { name:'Full Body 3x',            desc:'3 days · Great for beginners and busy schedules', phases:'1 phase · 1 workout'  },
             { name:'Hybrid Strength + Cardio',desc:'5 days · Lift and run combined',                  phases:'2 phases · 4 workouts'},
           ].map((s,i) => (
-            <div key={i} onClick={onNewProgram} style={{ background:T.surface, borderRadius:rr('md'), padding:'12px 14px', marginBottom:8, cursor:'pointer', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+            <div key={i} onClick={()=> onUseTemplate ? onUseTemplate(s.name) : onNewProgram()} style={{ background:T.surface, borderRadius:rr('md'), padding:'12px 14px', marginBottom:8, cursor:'pointer', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
               <div>
                 <div style={{ fontSize:13, fontWeight:500, color:T.text }}>{s.name}</div>
                 <div style={{ fontSize:11, color:T.text3, marginTop:2 }}>{s.desc}</div>
@@ -1676,6 +1683,68 @@ function buildFoundationProgram() {
           mkW('Workout A — Deload',dl(p3A)),mkW('Workout B — Deload',dl(p3B)),mkW('Workout C — Deload',dl(p3C))]},
     ]
   }
+}
+
+// ─── Common structure templates (Lift empty state "Use →") ───────────────────
+// Built from EXERCISE_LIBRARY so exerciseIds match what the builder and the
+// progress tracking use. Each call returns fresh ids, so a template can be used
+// more than once without collisions.
+const tEx = (name, sets, targetReps, notes='') => {
+  const lib = EXERCISE_LIBRARY.find(e => e.name === name)
+  return { id:uid(), exerciseId: lib ? lib.id : uid(), name, group: lib ? lib.group : 'Full Body', sets, targetReps, notes }
+}
+
+const PROGRAM_TEMPLATES = {
+  'Push / Pull / Legs': () => ({
+    name: 'Push / Pull / Legs',
+    phases: [
+      { id:uid(), name:'Phase 1', weeks:6,
+        notes:'Run it 3 days a week (one of each) or 6 days (twice through). Add a rep or a little weight each week.',
+        workouts:[
+          mkW('Push', [tEx('Barbell Bench Press',3,8), tEx('Barbell Overhead Press',3,8), tEx('Incline Dumbbell Press',3,10), tEx('Lateral Raise',3,15), tEx('Rope Pushdown',3,12)]),
+          mkW('Pull', [tEx('Pull-Up',3,8), tEx('Barbell Row',3,8), tEx('Seated Cable Row',3,10), tEx('Face Pull',3,15), tEx('Dumbbell Curl',3,12)]),
+          mkW('Legs', [tEx('Barbell Back Squat',3,8), tEx('Romanian Deadlift',3,10), tEx('Leg Press',3,12), tEx('Hamstring Curl',3,12), tEx('Standing Calf Raise',3,15)]),
+        ]},
+    ],
+  }),
+  'Upper / Lower': () => ({
+    name: 'Upper / Lower',
+    phases: [
+      { id:uid(), name:'Phase 1', weeks:6,
+        notes:'Four days a week: Upper, Lower, rest, Upper, Lower. Add a rep or a little weight each week.',
+        workouts:[
+          mkW('Upper', [tEx('Barbell Bench Press',3,8), tEx('Seated Cable Row',3,10), tEx('Dumbbell Shoulder Press',3,10), tEx('Lat Pulldown',3,10), tEx('Dumbbell Curl',2,12), tEx('Rope Pushdown',2,12)]),
+          mkW('Lower', [tEx('Barbell Back Squat',3,8), tEx('Romanian Deadlift',3,10), tEx('Bulgarian Split Squat',3,10,'Each side.'), tEx('Hamstring Curl',3,12), tEx('Plank',3,45,'Seconds, not reps.')]),
+        ]},
+    ],
+  }),
+  'Full Body 3x': () => ({
+    name: 'Full Body 3x',
+    phases: [
+      { id:uid(), name:'Phase 1', weeks:6,
+        notes:'Same workout three days a week with a rest day between. Add a rep or a little weight each session when it feels solid.',
+        workouts:[
+          mkW('Full Body', [tEx('Goblet Squat',3,10), tEx('Dumbbell Bench Press',3,10), tEx('Dumbbell Row',3,10,'Each side.'), tEx('Romanian Deadlift',3,10), tEx('Dumbbell Shoulder Press',2,10), tEx('Dead Bug',2,8,'Each side.')]),
+        ]},
+    ],
+  }),
+  'Hybrid Strength + Cardio': () => ({
+    name: 'Hybrid Strength + Cardio',
+    phases: [
+      { id:uid(), name:'Phase 1 — Base', weeks:4,
+        notes:'Lift 2 days, run or ride 3 days. Keep most cardio easy, conversational pace.',
+        workouts:[
+          mkW('Upper Strength', [tEx('Barbell Bench Press',3,8), tEx('Pull-Up',3,8), tEx('Dumbbell Shoulder Press',3,10), tEx('Seated Cable Row',3,10), tEx('Plank',3,45,'Seconds, not reps.')]),
+          mkW('Lower Strength', [tEx('Trap Bar Deadlift',3,6), tEx('Bulgarian Split Squat',3,8,'Each side.'), tEx('Hamstring Curl',3,10), tEx('Standing Calf Raise',3,15), tEx('Dead Bug',2,8,'Each side.')]),
+        ]},
+      { id:uid(), name:'Phase 2 — Build', weeks:4,
+        notes:'Same split, slightly heavier lifts. Add one harder cardio session a week.',
+        workouts:[
+          mkW('Upper Strength', [tEx('Barbell Bench Press',4,6), tEx('Pull-Up',4,6), tEx('Barbell Overhead Press',3,8), tEx('Barbell Row',3,8), tEx('Pallof Press',3,10,'Each side.')]),
+          mkW('Lower Power', [tEx('Trap Bar Deadlift',4,5), tEx('Box Jump',3,5), tEx('Reverse Lunges',3,8,'Each side.'), tEx('Kettlebell Swing',3,12), tEx('Side Plank',2,30,'Seconds each side.')]),
+        ]},
+    ],
+  }),
 }
 
 async function addFoundationProgram(userId) {
@@ -2076,7 +2145,12 @@ export default function LiftScreen({ userId, userProfile, onGoEat, onGoMove, dee
             if (workout && phaseId) handleStartWorkout(workout, prog.id, phaseId)
             else setView('detail')
           }}
-          onNewProgram={()=>{ setEditingProgram({ id:uid(), name:'', phases:[] }); setView('builder') }} />
+          onNewProgram={()=>{ setEditingProgram({ id:uid(), name:'', phases:[] }); setView('builder') }}
+          onUseTemplate={(name)=>{
+            const make = PROGRAM_TEMPLATES[name]
+            setEditingProgram(make ? { id:uid(), ...make() } : { id:uid(), name:'', phases:[] })
+            setView('builder')
+          }} />
       )}
       {view==='list' && (
         <ProgramsList programs={programs} loading={programsLoading} activeProgramId={activeProgramId}

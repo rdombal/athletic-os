@@ -1568,8 +1568,11 @@ export default function App() {
     const userId = session.user.id
     getProfile(userId).then(p => {
       setProfile(p)
-      // Show onboarding if profile is empty (new user)
-      if (!p || (!p.name && !p.goal && !p.identity)) {
+      // Show onboarding if profile is empty (new user). The localStorage flag stops
+      // someone who skipped every question from being asked again on this device.
+      let alreadyOnboarded = false
+      try { alreadyOnboarded = localStorage.getItem(`hale_onboarded_${userId}`) === '1' } catch {}
+      if (!alreadyOnboarded && (!p || (!p.name && !p.goal && !p.identity))) {
         setShowOnboarding(true)
       }
     })
@@ -1611,7 +1614,10 @@ export default function App() {
   }
 
   if (!session) return <AuthScreen />
-  if (showOnboarding) return <OnboardingFlow userId={session.user.id} onComplete={(profile) => { setProfile(profile); setShowOnboarding(false) }} />
+  if (showOnboarding) return <OnboardingFlow userId={session.user.id} onComplete={(profile) => {
+    try { localStorage.setItem(`hale_onboarded_${session.user.id}`, '1') } catch {}
+    setProfile(profile); setShowOnboarding(false)
+  }} />
 
   const userId = session.user.id
   const tb = TOPBAR[tab]

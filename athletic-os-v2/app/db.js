@@ -2,8 +2,10 @@ import { supabase } from './supabase'
 
 // ─── Profile ──────────────────────────────────────────────────────────────────
 export async function getProfile(userId) {
-  const { data } = await supabase.from('profiles').select('*').eq('id', userId).single()
-  return data || { name:'', goal:'Athletic performance', activity:'Very active (5+/week)', calories:'', protein:'', notes:'' }
+  // maybeSingle: a brand-new user has no row yet. Return null (not a filled-in
+  // default) so the app can tell they're new and show onboarding.
+  const { data } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle()
+  return data || null
 }
 
 export async function saveProfile(userId, profile) {
@@ -14,12 +16,12 @@ export async function saveProfile(userId, profile) {
 const DEFAULT_PANTRY = ['Ground beef','Chicken','Rice','Eggs','Greek yogurt','Potatoes','Cheese','Bread']
 
 export async function getPantry(userId) {
-  const { data } = await supabase.from('pantry').select('ingredients').eq('user_id', userId).single()
+  const { data } = await supabase.from('pantry').select('ingredients').eq('user_id', userId).maybeSingle()
   return data?.ingredients || DEFAULT_PANTRY
 }
 
 export async function savePantry(userId, ingredients) {
-  const { data } = await supabase.from('pantry').select('id').eq('user_id', userId).single()
+  const { data } = await supabase.from('pantry').select('id').eq('user_id', userId).maybeSingle()
   if (data) {
     await supabase.from('pantry').update({ ingredients, updated_at: new Date().toISOString() }).eq('user_id', userId)
   } else {
@@ -29,7 +31,7 @@ export async function savePantry(userId, ingredients) {
 
 // ─── Taste memory ─────────────────────────────────────────────────────────────
 export async function getTasteMemory(userId) {
-  const { data } = await supabase.from('taste_memory').select('data').eq('user_id', userId).single()
+  const { data } = await supabase.from('taste_memory').select('data').eq('user_id', userId).maybeSingle()
   return data?.data || {}
 }
 
@@ -40,7 +42,7 @@ export async function updateTasteMemory(userId, patch) {
   if (patch.vibes) next.vibes = [...(current.vibes||[]), ...patch.vibes].slice(-20)
   if (patch.efforts) next.efforts = [...(current.efforts||[]), ...patch.efforts].slice(-10)
   if (patch.meals) next.meals = [...(current.meals||[]), ...patch.meals].slice(-20)
-  const { data } = await supabase.from('taste_memory').select('id').eq('user_id', userId).single()
+  const { data } = await supabase.from('taste_memory').select('id').eq('user_id', userId).maybeSingle()
   if (data) {
     await supabase.from('taste_memory').update({ data: next, updated_at: new Date().toISOString() }).eq('user_id', userId)
   } else {
@@ -69,7 +71,7 @@ export async function deleteSavedItem(id) {
 // ─── Daily cache ──────────────────────────────────────────────────────────────
 export async function getDailyCache(userId, cacheKey) {
   const today = new Date().toDateString()
-  const { data } = await supabase.from('daily_cache').select('data, date').eq('user_id', userId).eq('cache_key', cacheKey).single()
+  const { data } = await supabase.from('daily_cache').select('data, date').eq('user_id', userId).eq('cache_key', cacheKey).maybeSingle()
   if (data && data.date === today) return data.data
   return null
 }

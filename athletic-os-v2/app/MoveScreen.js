@@ -330,21 +330,25 @@ function RoutineCard({ exercises, title, duration, source, onSave, saved }) {
 // ─── AI routine card (parses AI text into structured cards) ───────────────────
 function AIRoutineCard({ text, onSave, saved }) {
   if (!text) return null
-  const lines = text.split('\n').map(l => l.trim()).filter(Boolean)
+  // Strip markdown the model sometimes adds (**bold**, __bold__, # headings, bullets)
+  const clean = l => l.replace(/\*\*|__/g, '').replace(/^#+\s*/, '').replace(/^[-•]\s+/, '').trim()
+  const lines = text.split('\n').map(clean).filter(Boolean)
   const exercises = []
   let current = null
   for (const line of lines) {
-    const isNumbered = /^\d+\./.test(line)
+    const isNumbered = /^\d+\.\s/.test(line)
     if (isNumbered) {
       if (current) exercises.push(current)
       current = { name: line.replace(/^\d+\.\s*/, ''), cue: '', why: '', reps: '' }
     } else if (current) {
-      const repsMatch = line.match(/(\d+\s*(reps?|sets?|sec|min|seconds?|minutes?|rounds?|x\s*\d+))/i)
+      // Reps/duration: a known unit ("45 sec") or any line that leads with a count ("10 circles each direction")
+      const repsMatch = line.match(/(\d+\s*(reps?|sets?|sec|min|seconds?|minutes?|rounds?|x\s*\d+))/i) || /^\d/.test(line)
       // "This releases/helps/reduces/loosens/improves..." → why line
       const whyMatch = line.match(/^(this |these |it )/i)
       if (repsMatch && !current.reps) current.reps = line
       else if (whyMatch && !current.why) current.why = line
       else if (!current.cue) current.cue = line
+      else if (!current.reps && line.length < 60) current.reps = line
     }
   }
   if (current) exercises.push(current)
@@ -808,7 +812,7 @@ Format EXACTLY like this:
 export function SavedRoutineCard({ item }) {
   // Handle both real newlines and escaped \n from JSON storage
   const rawText = item.text.replace(/\\n/g, '\n')
-  const lines = rawText.split('\n').map(l => l.trim()).filter(Boolean)
+  const lines = rawText.split('\n').map(l => l.replace(/\*\*|__/g, '').trim()).filter(Boolean)
   const exercises = []
   let current = null
   for (const line of lines) {
