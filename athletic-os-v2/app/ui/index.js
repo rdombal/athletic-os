@@ -257,3 +257,21 @@ export function StepProgress({ total, current, label }) {
     </div>
   )
 }
+
+// ─── Number stepper: − value + ────────────────────────────────────────────────
+export function NumberStepper({ value, onChange, min = 0, max = 999, step = 1, label, suffix }) {
+  const set = (n) => onChange(Math.min(max, Math.max(min, n)))
+  return (
+    <div className={s.stepper} role="group" aria-label={label}>
+      <button className={s.stepperBtn} aria-label={`Decrease ${label || ''}`.trim()} disabled={value <= min} onClick={() => set(value - step)}>
+        <Icon name="minus" size={18} strokeWidth={2} />
+      </button>
+      <input className={s.stepperValue} type="number" inputMode="numeric" value={value} aria-label={label}
+        onChange={e => { const n = parseInt(e.target.value, 10); if (!isNaN(n)) set(n) }} />
+      {suffix && <span className="t-footnote c-2" style={{ marginRight: 6 }}>{suffix}</span>}
+      <button className={s.stepperBtn} aria-label={`Increase ${label || ''}`.trim()} disabled={value >= max} onClick={() => set(value + step)}>
+        <Icon name="plus" size={18} strokeWidth={2} />
+      </button>
+    </div>
+  )
+}

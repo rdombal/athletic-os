@@ -7,6 +7,7 @@ import AuthScreen from './AuthScreen'
 import LiftScreen from './LiftScreen'
 import MoveScreen, { QuickRelief, getWarmupType } from './MoveScreen'
 import { ExerciseList } from './ui/Routine'
+import { Sheet } from './ui/Sheet'
 import { PILLAR_SOURCES } from './pillarSources'
 import { Toast, TabBar, ScreenHeader, HaleMark as HaleLogo, Button, IconButton, Card as UICard, Row, Skeleton, Icon,
   Chip as UIChip, ChipRow as UIChipRow, Section, Field, TextInput, TextArea, Segmented, OptionCards, Token, Disclosure, Hairline, ChoiceList, StepProgress } from './ui'
@@ -981,50 +982,71 @@ Variations:
 
   const hasRecipe = resp && !loading && !resp.startsWith('Taking longer') && !resp.startsWith('Something went wrong')
   const hasError  = resp && !loading && (resp.startsWith('Taking longer') || resp.startsWith('Something went wrong'))
-  const formOpen = editing || (!hasRecipe && !loading)
+  // Before the first recipe, the inputs sit on the page. Once a recipe is up, they open in a sheet
+  // so changing an ingredient never pushes the recipe out of view.
+  const formInline = !hasRecipe && !loading
   const effortLabel = EFFORT_LEVELS.find(e=>e.key===effort)?.label
+  const submit = () => { setEditing(false); go(false) }
+
+  const formFields = (
+    <>
+      <Section title="What you have"><PantryEditor pantry={pantry} onAdd={add} onRemove={remove} /></Section>
+      <Section title="Meal">
+        <Segmented label="Meal" value={meal} onChange={setMeal}
+          options={['Breakfast','Lunch','Dinner','Snack'].map(m=>({ key:m, label:m }))} />
+      </Section>
+      <Section title="Effort">
+        <OptionCards label="Effort" value={effort} onChange={setEffort}
+          options={EFFORT_LEVELS.map(e=>({ key:e.key, label:e.label, desc:e.desc }))} />
+      </Section>
+      <Section title="Cuisine, if you have one in mind">
+        <UIChipRow>
+          {CUISINES.map(cu=><UIChip key={cu} small selected={cuisine===cu} onClick={()=>setCuisine(cuisine===cu?'':cu)}>{cu}</UIChip>)}
+        </UIChipRow>
+      </Section>
+      <Section title="Anything specific?">
+        <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+          <TextInput value={vibe} onChange={setVibe} placeholder="High protein, comforting, post-workout" aria-label="Anything specific" />
+          <div style={{ display:'flex', flexWrap:'wrap', gap:8 }}>
+            {VIBE_SUGGESTIONS.slice(0,6).map(v=><UIChip key={v} small selected={vibe===v} onClick={()=>setVibe(vibe===v?'':v)}>{v}</UIChip>)}
+          </div>
+        </div>
+      </Section>
+    </>
+  )
+  const needIngredient = pantry.length===0 && <p className="t-footnote c-2" style={{ textAlign:'center', fontWeight:400 }}>Add at least one ingredient first.</p>
 
   return (
     <div style={{ padding:'0 var(--edge)', display:'flex', flexDirection:'column', gap:24 }}>
-      {!formOpen && (
+      {!formInline && (
         <UICard flat tone="muted" style={{ padding:'4px 16px' }}>
-          <Disclosure open={false} onToggle={()=>setEditing(true)}>
-            <span className="t-callout">{meal}{cuisine ? ` · ${cuisine}` : ''} · {effortLabel}</span>
-            <span className="t-footnote c-2" style={{ display:'block', fontWeight:400 }}>{pantry.length} ingredient{pantry.length!==1?'s':''}{vibe ? ` · ${vibe}` : ''}</span>
-          </Disclosure>
+          <button onClick={()=>setEditing(true)} disabled={loading} aria-haspopup="dialog"
+            style={{ width:'100%', minHeight:56, display:'flex', alignItems:'center', gap:12, border:'none', background:'none', padding:'8px 0', textAlign:'left', color:'var(--c-text)' }}>
+            <span style={{ flex:1, minWidth:0 }}>
+              <span className="t-callout" style={{ display:'block' }}>{meal}{cuisine ? ` · ${cuisine}` : ''} · {effortLabel}</span>
+              <span className="t-footnote c-2" style={{ display:'block', fontWeight:400 }}>{pantry.length} ingredient{pantry.length!==1?'s':''}{vibe ? ` · ${vibe}` : ''}</span>
+            </span>
+            <span className="t-subhead c-accent" style={{ fontWeight:500, flexShrink:0 }}>Change</span>
+          </button>
         </UICard>
       )}
 
-      {formOpen && (
+      {formInline && (
         <>
-          <Section title="What you have"><PantryEditor pantry={pantry} onAdd={add} onRemove={remove} /></Section>
-          <Section title="Meal">
-            <Segmented label="Meal" value={meal} onChange={setMeal}
-              options={['Breakfast','Lunch','Dinner','Snack'].map(m=>({ key:m, label:m }))} />
-          </Section>
-          <Section title="Effort">
-            <OptionCards label="Effort" value={effort} onChange={setEffort}
-              options={EFFORT_LEVELS.map(e=>({ key:e.key, label:e.label, desc:e.desc }))} />
-          </Section>
-          <Section title="Cuisine, if you have one in mind">
-            <UIChipRow>
-              {CUISINES.map(cu=><UIChip key={cu} small selected={cuisine===cu} onClick={()=>setCuisine(cuisine===cu?'':cu)}>{cu}</UIChip>)}
-            </UIChipRow>
-          </Section>
-          <Section title="Anything specific?">
-            <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-              <TextInput value={vibe} onChange={setVibe} placeholder="High protein, comforting, post-workout" aria-label="Anything specific" />
-              <div style={{ display:'flex', flexWrap:'wrap', gap:8 }}>
-                {VIBE_SUGGESTIONS.slice(0,6).map(v=><UIChip key={v} small selected={vibe===v} onClick={()=>setVibe(vibe===v?'':v)}>{v}</UIChip>)}
-              </div>
-            </div>
-          </Section>
-          <Button full onClick={()=>{ setEditing(false); go(false) }} disabled={loading||pantry.length===0}>
-            {hasRecipe ? 'Get a new recipe' : 'Get a recipe'}
-          </Button>
-          {pantry.length===0 && <p className="t-footnote c-2" style={{ textAlign:'center', fontWeight:400, marginTop:-12 }}>Add at least one ingredient first.</p>}
+          {formFields}
+          <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+            <Button full onClick={submit} disabled={loading||pantry.length===0}>Get a recipe</Button>
+            {needIngredient}
+          </div>
         </>
       )}
+
+      <Sheet open={editing && !formInline} onClose={()=>setEditing(false)} title="What are we making?"
+        footer={<div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+          <Button full onClick={submit} disabled={pantry.length===0}>Get a new recipe</Button>{needIngredient}
+        </div>}>
+        <div style={{ display:'flex', flexDirection:'column', gap:24, paddingBottom:8 }}>{formFields}</div>
+      </Sheet>
 
       {loading && (
         <UICard style={{ display:'flex', flexDirection:'column', gap:14 }}>
@@ -1521,7 +1543,10 @@ export default function App() {
     setSavedItems(prev => prev.map(i => i.id===id ? { ...i, label:newLabel.trim() } : i))
   }
 
+  // Tapping Lift while already on Lift goes back to Lift home (never out of a live session)
+  const [liftHomeSignal, setLiftHomeSignal] = useState(0)
   const go = (next) => {
+    if (next === 'lift' && tab === 'lift') setLiftHomeSignal(n => n + 1)
     setDeepDive(null)
     setTab(next)
     window.scrollTo(0, 0)
@@ -1550,7 +1575,7 @@ export default function App() {
 
   return (
     <div style={{ maxWidth:'var(--app-max)', margin:'0 auto', minHeight:'100dvh' }}>
-      {tab!=='home' && tb && !(tab==='pillars' && deepDive) && !(tab==='move' && pendingSession) && (
+      {tab!=='home' && tab!=='lift' && tb && !(tab==='pillars' && deepDive) && !(tab==='move' && pendingSession) && (
         <ScreenHeader key={`h-${tab}`} title={tb.title} subtitle={tb.sub}
           onBack={backTarget ? ()=>go(backTarget) : undefined} />
       )}
@@ -1559,7 +1584,7 @@ export default function App() {
         {tab==='home'    && <HomeScreen onNav={go} onSave={handleSave} profile={profile} userId={userId} programs={programs} recentSessions={recentSessions} activeProgramId={activeProgramId} onStartWarmup={(info)=>{ setPendingSession(info); go('move') }} />}
         {tab==='move'    && <MoveScreen onSave={handleSave} pendingSession={pendingSession} onClearPending={()=>setPendingSession(null)} onStartSession={(info)=>{ setPendingSession(null); setLiftDeepLink(info); go('lift') }} />}
         {tab==='eat'     && <EatScreen onSave={handleSave} userId={userId} />}
-        {tab==='lift'    && <LiftScreen userId={userId} userProfile={profile} onGoEat={()=>go('eat')} onGoMove={()=>go('move')} deepLinkWorkout={liftDeepLink} onClearDeepLink={()=>setLiftDeepLink(null)} />}
+        {tab==='lift'    && <LiftScreen userId={userId} userProfile={profile} onGoEat={()=>go('eat')} onGoMove={()=>go('move')} deepLinkWorkout={liftDeepLink} onClearDeepLink={()=>setLiftDeepLink(null)} homeSignal={liftHomeSignal} />}
         {tab==='pillars' && !deepDive && <PillarsScreen onDeepDive={handleDeepDive} />}
         {tab==='pillars' && deepDive  && <DeepDiveScreen prompt={deepDive} onBack={()=>{ setDeepDive(null); window.scrollTo(0,0) }} />}
         {tab==='stack'   && <StackScreen items={savedItems} onDelete={handleDelete} onRename={handleRename} />}

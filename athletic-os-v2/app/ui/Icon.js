@@ -30,6 +30,12 @@ const PATHS = {
   article:     <path d="M6 3h9l4 4v14H6zM14 3v5h5M9 12h7M9 16h7" />,
   study:       <path d="M9 3h6M10 3v6l-5 9a2 2 0 001.7 3h10.6a2 2 0 001.7-3l-5-9V3M7.5 15h9" />,
   external:    <path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 01-1 1H5a1 1 0 01-1-1V7a1 1 0 011-1h5" />,
+  swap:        <path d="M7 4L3 8l4 4M3 8h14M17 20l4-4-4-4M21 16H7" />,
+  play:        <path d="M8 5.5v13l10.5-6.5z" strokeLinejoin="round" />,
+  pause:       <path d="M9 5.5v13M15 5.5v13" />,
+  restart:     <path d="M4 12a8 8 0 1 0 2.4-5.7M4 4v4.5h4.5" />,
+  history:     <><path d="M3.5 12a8.5 8.5 0 102.6-6.1L3.5 8.5" /><path d="M3.5 3.5v5h5M12 7.5V12l3 2" /></>,
+  trendUp:     <path d="M4 17l6-6 4 4 6-7M14 8h6v6" />,
 }
 
 export default function Icon({ name, size = 22, strokeWidth = 1.7, label, style, className }) {
