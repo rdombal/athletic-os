@@ -73,14 +73,16 @@ function TrendBadge({ trend, diff }) {
 }
 
 function ExerciseTable({ exercises }) {
-  const main = (exercises || []).filter(ex => !ATHLETIC_ADDONS.includes(ex.name))
-  const extra = (exercises || []).length - main.length
+  const all = exercises || []
+  const labels = supersetLabels(all)
+  const main = all.map((ex, i) => ({ ex, tag: labels[i] })).filter(({ ex }) => !ATHLETIC_ADDONS.includes(ex.name))
+  const extra = all.length - main.length
   return (
     <div style={stack(0)}>
-      {main.map((ex, i) => (
+      {main.map(({ ex, tag }, i) => (
         <div key={i} style={{ display:'flex', justifyContent:'space-between', gap:12, padding:'10px 0', borderTop: i ? '1px solid var(--c-line)' : 'none' }}>
-          <span className="t-subhead">{ex.name}</span>
-          <span className="t-subhead c-2 t-num" style={{ flexShrink:0 }}>{ex.sets || 3} × {ex.targetReps || 8}</span>
+          <span className="t-subhead">{tag && <span className="t-num" style={{ color:'var(--c-accent-text)', fontWeight:600, marginRight:6 }}>{tag}</span>}{ex.name}</span>
+          <span className="t-subhead c-2 t-num" style={{ flexShrink:0 }}>{ex.sets || 3} × {ex.targetReps || 8}{ex.targetWeight ? ` @ ${ex.targetWeight}` : ''}</span>
         </div>
       ))}
       {extra > 0 && <div className="t-footnote c-2" style={{ fontWeight:400, paddingTop:8 }}>Plus {extra} athletic add-on{extra !== 1 ? 's' : ''}</div>}
@@ -339,6 +341,13 @@ function ExerciseEditor({ exercise, onChange, onRemove }) {
         <Field label="Sets"><NumberStepper label="Sets" value={sets} min={1} max={10} onChange={v => onChange({ ...exercise, sets:v })} /></Field>
         <Field label="Target reps"><NumberStepper label="Target reps" value={reps} min={1} max={100} onChange={v => onChange({ ...exercise, targetReps:v })} /></Field>
       </div>
+      <Field label="Target weight (optional)" htmlFor={`tw-${exercise.id}`}>
+        <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+          <TextInput id={`tw-${exercise.id}`} type="number" inputMode="decimal" value={exercise.targetWeight ?? ''} placeholder="Leave blank to use last session"
+            onChange={v => onChange({ ...exercise, targetWeight: v === '' ? null : (parseFloat(v) || 0) })} style={{ flex:1 }} />
+          <span className="t-subhead c-2">lb</span>
+        </div>
+      </Field>
       <Field label="Target RPE (optional)">
         <ChipRow>
           {[6, 7, 8, 9, 10].map(r => (
@@ -354,11 +363,82 @@ function ExerciseEditor({ exercise, onChange, onRemove }) {
   )
 }
 
+// ─── Supersets ────────────────────────────────────────────────────────────────
+// Exercises next to each other that share a supersetId are done as one superset:
+// a set of each, back to back, then rest. supersetRest is the pause between them
+// inside a round (30 sec unless the program says 0).
+const SUPERSET_REST_DEFAULT = 30
+function supersetGroup(exercises, idx) {
+  const id = exercises[idx]?.supersetId
+  if (!id) return [idx]
+  let a = idx, b = idx
+  while (a > 0 && exercises[a - 1]?.supersetId === id) a--
+  while (b < exercises.length - 1 && exercises[b + 1]?.supersetId === id) b++
+  return Array.from({ length: b - a + 1 }, (_, k) => a + k)
+}
+// Drop superset ids that no longer join two neighbours (after a remove or unlink)
+function normalizeSupersets(exercises) {
+  return exercises.map((ex, i) => {
+    if (!ex.supersetId) return ex
+    const linked = exercises[i - 1]?.supersetId === ex.supersetId || exercises[i + 1]?.supersetId === ex.supersetId
+    if (linked) return ex
+    const { supersetId, supersetRest, ...rest } = ex
+    return rest
+  })
+}
+// Letter labels for display: A1, A2, B1 ... (only for exercises in a superset)
+function supersetLabels(exercises) {
+  const out = {}; let letter = 0; let i = 0
+  while (i < exercises.length) {
+    const g = supersetGroup(exercises, i)
+    if (g.length > 1) { const L = String.fromCharCode(65 + letter++); g.forEach((k, n) => { out[k] = `${L}${n + 1}` }) }
+    i = g[g.length - 1] + 1
+  }
+  return out
+}
+
+function SupersetLink({ linked, rest, onLink, onUnlink, onRest }) {
+  if (!linked) return (
+    <div style={{ display:'flex', justifyContent:'center', margin:'-4px 0' }}>
+      <Button variant="quiet" size="sm" icon="plus" onClick={onLink}>Superset with next</Button>
+    </div>
+  )
+  return (
+    <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap', justifyContent:'center', padding:'2px 0' }}>
+      <span className="t-footnote" style={{ color:'var(--c-accent-text)', background:'var(--c-accent-soft)', borderRadius:999, padding:'6px 12px', fontWeight:600 }}>Superset</span>
+      <ChipRow>
+        <Chip small selected={rest !== 0} onClick={() => onRest(SUPERSET_REST_DEFAULT)}>30 sec between</Chip>
+        <Chip small selected={rest === 0} onClick={() => onRest(0)}>No rest between</Chip>
+      </ChipRow>
+      <Button variant="quiet" size="sm" onClick={onUnlink}>Unlink</Button>
+    </div>
+  )
+}
+
 function WorkoutBuilder({ workout, onChange, onBack }) {
   const [showPicker, setShowPicker] = useState(false)
   const addExercise = (ex) => { onChange({ ...workout, exercises:[...workout.exercises, { id:uid(), exerciseId:ex.id, name:ex.name, group:ex.group, sets:3, targetReps:8 }] }); setShowPicker(false) }
   const updateExercise = (idx, updated) => { const e = [...workout.exercises]; e[idx] = updated; onChange({ ...workout, exercises:e }) }
-  const removeExercise = (idx) => { onChange({ ...workout, exercises:workout.exercises.filter((_, i) => i !== idx) }) }
+  const removeExercise = (idx) => { onChange({ ...workout, exercises:normalizeSupersets(workout.exercises.filter((_, i) => i !== idx)) }) }
+  const linkNext = (idx) => {
+    const e = [...workout.exercises]
+    const id = e[idx].supersetId || uid()
+    const oldNext = e[idx + 1].supersetId
+    const rest = e[idx].supersetRest ?? SUPERSET_REST_DEFAULT
+    // Join the next exercise, and anything already supersetted with it
+    e.forEach((x, i) => { if (i === idx || i === idx + 1 || (oldNext && x.supersetId === oldNext) || x.supersetId === id) e[i] = { ...x, supersetId:id, supersetRest:rest } })
+    onChange({ ...workout, exercises:normalizeSupersets(e) })
+  }
+  const unlinkNext = (idx) => {
+    const e = [...workout.exercises]
+    const id = e[idx].supersetId; const fresh = uid()
+    for (let i = idx + 1; i < e.length && e[i].supersetId === id; i++) e[i] = { ...e[i], supersetId:fresh }
+    onChange({ ...workout, exercises:normalizeSupersets(e) })
+  }
+  const setGroupRest = (idx, secs) => {
+    const g = supersetGroup(workout.exercises, idx)
+    onChange({ ...workout, exercises:workout.exercises.map((x, i) => g.includes(i) ? { ...x, supersetRest:secs } : x) })
+  }
   const n = workout.exercises.length
   return (
     <>
@@ -370,7 +450,17 @@ function WorkoutBuilder({ workout, onChange, onBack }) {
         <Section title="Exercises">
           <div style={stack(10)}>
             {n === 0 && <p className="t-subhead c-2">No exercises yet. Add the first one below.</p>}
-            {workout.exercises.map((ex, i) => <ExerciseEditor key={ex.id} exercise={ex} onChange={u => updateExercise(i, u)} onRemove={() => removeExercise(i)} />)}
+            {workout.exercises.map((ex, i) => {
+              const next = workout.exercises[i + 1]
+              const linked = !!(next && ex.supersetId && ex.supersetId === next.supersetId)
+              return (
+                <div key={ex.id} style={stack(10)}>
+                  <ExerciseEditor exercise={ex} onChange={u => updateExercise(i, u)} onRemove={() => removeExercise(i)} />
+                  {next && <SupersetLink linked={linked} rest={ex.supersetRest ?? SUPERSET_REST_DEFAULT}
+                    onLink={() => linkNext(i)} onUnlink={() => unlinkNext(i)} onRest={secs => setGroupRest(i, secs)} />}
+                </div>
+              )
+            })}
             <Button variant="secondary" full icon="plus" onClick={() => setShowPicker(true)}>Add exercise</Button>
           </div>
         </Section>
@@ -500,9 +590,10 @@ function ProgramBuilder({ program, onSave, onBack, onDelete }) {
 
 
 // ─── Inline set row ───────────────────────────────────────────────────────────
-function InlineSetRow({ setNum, initial, lastSet, prevSet, isCurrent, onSave, onUndo, onRestStart, useRpe, targetReps, targetRpe }) {
+function InlineSetRow({ setNum, initial, lastSet, prevSet, isCurrent, onSave, onUndo, onRestStart, useRpe, targetReps, targetRpe, targetWeight }) {
   // Pre-fill from last session on mount, so the increment chips work immediately
-  const defaultWeight = initial?.weight?.toString() || lastSet?.weight?.toString() || ''
+  const hasTarget = targetWeight != null && targetWeight !== ''
+  const defaultWeight = initial?.weight?.toString() || (hasTarget ? String(targetWeight) : '') || lastSet?.weight?.toString() || ''
   const defaultReps   = initial?.reps?.toString()   || lastSet?.reps?.toString()   || ''
   const [weight, setWeight] = useState(defaultWeight)
   const [reps,   setReps]   = useState(defaultReps)
@@ -513,7 +604,7 @@ function InlineSetRow({ setNum, initial, lastSet, prevSet, isCurrent, onSave, on
 
   // Empty fields fall back to what the placeholder shows (last session, or the
   // program's target reps), so logging the suggested numbers is one tap.
-  const effWeight = weight || lastSet?.weight?.toString() || ''
+  const effWeight = weight || (hasTarget ? String(targetWeight) : '') || lastSet?.weight?.toString() || ''
   const effReps   = reps   || lastSet?.reps?.toString()   || (targetReps ? String(targetReps) : '')
   const canSave = !!(effWeight && effReps)
 
@@ -674,7 +765,7 @@ function useWakeLock(on) {
   }, [on])
 }
 
-function BigStepper({ label, value, onChange, step, unit, inputMode = 'decimal' }) {
+function BigStepper({ label, value, onChange, step, unit, hint, inputMode = 'decimal' }) {
   const n = parseFloat(value)
   const bump = (d) => { const next = Math.max(0, (isNaN(n) ? 0 : n) + d); onChange(fmtNum(next)); buzz(6) }
   const btn = { width:56, height:56, borderRadius:28, border:'none', background:'var(--c-muted-2)', color:'var(--c-text)', display:'grid', placeItems:'center', flexShrink:0 }
@@ -685,11 +776,11 @@ function BigStepper({ label, value, onChange, step, unit, inputMode = 'decimal' 
         <button className="pressable" aria-label={`Less ${label.toLowerCase()}`} onClick={() => bump(-step)} style={btn}><Icon name="minus" size={22} strokeWidth={2.2} /></button>
         <input type="number" inputMode={inputMode} value={value} onChange={e => onChange(e.target.value)} aria-label={label} placeholder="0"
           onFocus={e => e.target.select()}
-          style={{ width:'100%', minWidth:0, background:'transparent', border:'none', outline:'none', textAlign:'center', color:'var(--c-text)',
+          style={{ width:'100%', minWidth:0, background:'transparent', border:'none', outline:'none', textAlign:'center', color: hint ? 'var(--c-text-2)' : 'var(--c-text)',
             fontFamily:'var(--font-display)', fontWeight:300, fontSize:52, lineHeight:1, fontVariantNumeric:'tabular-nums', padding:0 }} />
         <button className="pressable" aria-label={`More ${label.toLowerCase()}`} onClick={() => bump(step)} style={btn}><Icon name="plus" size={22} strokeWidth={2.2} /></button>
       </div>
-      <span className="t-caption" style={{ color:'var(--c-text-3)' }}>{unit}</span>
+      <span className="t-caption" style={{ color: hint ? 'var(--c-accent-text)' : 'var(--c-text-3)' }}>{unit}{hint ? ` · ${hint}` : ''}</span>
     </div>
   )
 }
@@ -726,6 +817,9 @@ function GymView({ workout, liveExercises, loggedSets, getLastSession, onLog, on
   const [weight, setWeight] = useState('')
   const [reps, setReps] = useState('')
   const [rpe, setRpe] = useState(null)
+  const [wHint, setWHint] = useState(null)        // where the suggested weight came from
+  const [rHint, setRHint] = useState(null)
+  const [flash, setFlash] = useState(null)        // "Set 1 logged" when a superset moves on with no rest
   const [listOpen, setListOpen] = useState(false)
   const restDoneBuzzed = useRef(false)
 
@@ -750,17 +844,33 @@ function GymView({ workout, liveExercises, loggedSets, getLastSession, onLog, on
   const allDone = liveExercises.every((e, k) => (loggedSets[k]?.sets.filter(Boolean).length || 0) >= (e.sets || 3))
   const exDone = (k) => (loggedSets[k]?.sets.filter(Boolean).length || 0) >= (liveExercises[k]?.sets || 3)
 
-  // Prefill each set: what you logged, else your last set today, else last session, else the target
+  // Prefill every set so logging the plan is one tap. Weight: what you logged, else your
+  // last set today, else the program's target, else the same set last session.
+  // Anything we suggest is marked under the number until you change it.
   useEffect(() => {
     if (!ex || setIdx === null) return
     const own = logged[setIdx]
     const prevToday = setIdx > 0 ? logged[setIdx - 1] : null
     const last = lastSess?.sets?.[setIdx] || lastSess?.sets?.filter(Boolean).slice(-1)[0]
-    const src = own || prevToday || last
-    setWeight(src?.weight != null ? fmtNum(src.weight) : '')
-    setReps(own?.reps != null ? String(own.reps) : prevToday?.reps != null ? String(prevToday.reps) : last?.reps != null ? String(last.reps) : String(toInt(ex.targetReps, 8)))
+    const target = ex.targetWeight != null && ex.targetWeight !== '' ? Number(ex.targetWeight) : null
+    let w = '', wh = null
+    if (own) { w = fmtNum(own.weight || 0) }
+    else if (prevToday) { w = fmtNum(prevToday.weight || 0); wh = 'same as last set' }
+    else if (target != null) { w = fmtNum(target); wh = 'target' }
+    else if (last?.weight != null) { w = fmtNum(last.weight); wh = 'last session' }
+    let r = '', rh = null
+    if (own) { r = String(own.reps) }
+    else if (prevToday) { r = String(prevToday.reps); rh = 'same as last set' }
+    else { r = String(toInt(ex.targetReps, 8)); rh = 'target' }
+    setWeight(w); setWHint(wh); setReps(r); setRHint(rh)
     setRpe(own?.rpe ?? null)
   }, [safeIdx, setIdx, ex?.id])
+  useEffect(() => { if (!flash) return; const t = setTimeout(() => setFlash(null), 1800); return () => clearTimeout(t) }, [flash])
+
+  // Superset this exercise belongs to (just [safeIdx] if none)
+  const group = supersetGroup(liveExercises, safeIdx)
+  const inSuperset = group.length > 1
+  const labels = supersetLabels(liveExercises)
 
   // Rest clock
   useEffect(() => {
@@ -775,12 +885,9 @@ function GymView({ workout, liveExercises, loggedSets, getLastSession, onLog, on
   }, [restLeft, rest])
 
   const advanceAfterRest = () => {
+    const nextIdx = rest?.nextIdx
     setRest(null)
-    if (exDone(safeIdx)) {
-      const next = liveExercises.findIndex((e, k) => k > safeIdx && !exDone(k))
-      const any = next >= 0 ? next : liveExercises.findIndex((e, k) => !exDone(k))
-      if (any >= 0) setExIdx(any)
-    }
+    if (nextIdx != null && nextIdx >= 0) setExIdx(nextIdx)
   }
 
   const canLog = setIdx !== null && (weight === '' || parseFloat(weight) >= 0) && parseInt(reps) > 0   // empty weight = bodyweight
@@ -794,20 +901,42 @@ function GymView({ workout, liveExercises, loggedSets, getLastSession, onLog, on
     setEditing(null)
     if (wasEdit) { buzz(10); return }   // fixing a set doesn't restart rest
     buzz(pr ? [18, 60, 18, 60, 40] : 16)
-    const willFinishAll = liveExercises.every((e, k) => k === safeIdx ? (doneHere + (logged[setIdx] ? 0 : 1)) >= targetSets : exDone(k))
-    if (willFinishAll) { setRest(null); return }
-    const total = restFor(ex)
+    // Counts as they'll be once this set lands
+    const count = (k) => (loggedSets[k]?.sets.filter(Boolean).length || 0) + (k === safeIdx && !logged[setIdx] ? 1 : 0)
+    const need = (k) => count(k) < (liveExercises[k]?.sets || 3)
+    if (!liveExercises.some((e, k) => need(k))) { setRest(null); return }
+
+    let nextIdx, total, between = false
+    const pending = group.filter(need)
+    if (inSuperset && pending.length) {
+      // Next exercise in this round, or back to the top for the next round
+      const after = pending.find(k => k > safeIdx)
+      between = after != null
+      nextIdx = between ? after : pending[0]
+      total = between ? (ex.supersetRest ?? SUPERSET_REST_DEFAULT) : 90
+    } else {
+      const stay = !inSuperset && need(safeIdx)
+      const lastOfGroup = group[group.length - 1]
+      const later = liveExercises.findIndex((e, k) => k > lastOfGroup && need(k))
+      nextIdx = stay ? safeIdx : later >= 0 ? later : liveExercises.findIndex((e, k) => need(k))
+      total = inSuperset ? 90 : restFor(ex)
+    }
+    const loggedInfo = { ...data, setNum: setIdx + 1, name: ex.name }
+    if (total <= 0) {   // superset with no rest between: straight to the next exercise
+      setRest(null); setExIdx(nextIdx); setFlash(pr ? `New best: ${ex.name}` : `Set ${setIdx + 1} logged · ${ex.name}`)
+      return
+    }
     setNow(Date.now())
-    setRest({ total, endsAt: Date.now() + total * 1000, logged: { ...data, setNum: setIdx + 1, name: ex.name }, pr })
+    setRest({ total, endsAt: Date.now() + total * 1000, logged: loggedInfo, pr, nextIdx, between })
   }
 
   // What comes after this rest
   const upNext = (() => {
-    if (!rest) return null
-    if (!exDone(safeIdx) || (doneHere < targetSets)) return { name: ex.name, label: `Set ${(openSet ?? 0) + 1} of ${targetSets}` }
-    const k = liveExercises.findIndex((e, j) => j > safeIdx && !exDone(j))
-    const j = k >= 0 ? k : liveExercises.findIndex((e, i) => !exDone(i))
-    return j >= 0 ? { name: liveExercises[j].name, label: 'Next exercise' } : null
+    if (!rest || rest.nextIdx == null || rest.nextIdx < 0) return null
+    const n = liveExercises[rest.nextIdx]; if (!n) return null
+    const c = loggedSets[rest.nextIdx]?.sets.filter(Boolean).length || 0
+    const tag = labels[rest.nextIdx] ? `${labels[rest.nextIdx]} · ` : ''
+    return { name: n.name, label: `${rest.between ? 'Superset · ' : ''}${tag}Set ${c + 1} of ${n.sets || 3}` }
   })()
 
   const go = (d) => { setEditing(null); setRest(null); setExIdx(i => Math.min(liveExercises.length - 1, Math.max(0, i + d))) }
@@ -865,7 +994,7 @@ function GymView({ workout, liveExercises, loggedSets, getLastSession, onLog, on
               <span key={rest.endsAt} className="pop" style={{ width:44, height:44, borderRadius:22, background: rest.pr ? 'var(--c-accent)' : 'var(--c-done)', color:'#111113', display:'grid', placeItems:'center' }}>
                 <Icon name={rest.pr ? 'trendUp' : 'check'} size={22} strokeWidth={2.4} />
               </span>
-              <span className="t-headline">{rest.pr ? 'New best on this lift' : `Set ${rest.logged.setNum} logged`}</span>
+              <span className="t-headline">{rest.pr ? 'New best on this lift' : rest.between ? 'Quick switch' : `Set ${rest.logged.setNum} logged`}</span>
               <span className="t-subhead t-num" style={{ color:'var(--c-text-2)' }}>{rest.logged.name} · {fmtNum(rest.logged.weight)} lb × {rest.logged.reps}</span>
             </div>
             <RestRing total={rest.total} left={restLeft} />
@@ -886,6 +1015,25 @@ function GymView({ workout, liveExercises, loggedSets, getLastSession, onLog, on
           /* The set */
           <div key={`${safeIdx}-${setIdx}`} className="screen-enter" style={{ flex:1, display:'flex', flexDirection:'column', gap:24, paddingTop:28 }}>
             <div style={stack(8)}>
+              {flash && (
+                <span className="pop t-footnote" role="status" style={{ alignSelf:'flex-start', display:'inline-flex', alignItems:'center', gap:6, color:'var(--c-done)', fontWeight:600 }}>
+                  <Icon name="check" size={16} strokeWidth={2.4} />{flash}
+                </span>
+              )}
+              {inSuperset && (
+                <div aria-label={`Superset: ${group.map(k => liveExercises[k].name).join(' then ')}`}
+                  style={{ display:'flex', alignItems:'center', gap:6, flexWrap:'wrap' }}>
+                  <span className="t-caption" style={{ color:'var(--c-accent-text)', fontWeight:700, letterSpacing:'0.04em' }}>SUPERSET</span>
+                  {group.map((k, n) => (
+                    <span key={k} style={{ display:'inline-flex', alignItems:'center', gap:6 }}>
+                      {n > 0 && <Icon name="arrowRight" size={14} style={{ color:'var(--c-text-3)' }} />}
+                      <span className="t-footnote" style={{ color: k === safeIdx ? 'var(--c-text)' : 'var(--c-text-3)', fontWeight: k === safeIdx ? 600 : 400 }}>
+                        {labels[k]} {liveExercises[k].name}
+                      </span>
+                    </span>
+                  ))}
+                </div>
+              )}
               <div style={{ display:'flex', alignItems:'flex-start', gap:8 }}>
                 <h2 className="t-display" style={{ flex:1, minWidth:0, fontSize:36, lineHeight:1.1 }}>{ex.name}</h2>
               </div>
@@ -904,14 +1052,14 @@ function GymView({ workout, liveExercises, loggedSets, getLastSession, onLog, on
             {setIdx !== null ? (
               <>
                 <div style={{ display:'flex', gap:8 }}>
-                  <BigStepper label="Weight" unit="lb" value={weight} onChange={setWeight} step={5} />
+                  <BigStepper label="Weight" unit="lb" value={weight} hint={wHint} onChange={v => { setWeight(v); setWHint(null) }} step={5} />
                 </div>
                 <div style={{ display:'flex', gap:8, justifyContent:'center', marginTop:-12 }}>
                   {[2.5, 10].map(d => (
-                    <Chip key={d} small onClick={() => { setWeight(fmtNum(Math.max(0, (parseFloat(weight) || 0) + d))); buzz(6) }}>+{d}</Chip>
+                    <Chip key={d} small onClick={() => { setWeight(fmtNum(Math.max(0, (parseFloat(weight) || 0) + d))); setWHint(null); buzz(6) }}>+{d}</Chip>
                   ))}
                 </div>
-                <BigStepper label="Reps" unit="reps" value={reps} onChange={setReps} step={1} inputMode="numeric" />
+                <BigStepper label="Reps" unit="reps" value={reps} hint={rHint} onChange={v => { setReps(v); setRHint(null) }} step={1} inputMode="numeric" />
                 {rpeOn && (
                   <div style={{ ...stack(8), alignItems:'center' }}>
                     <span className="t-footnote" style={{ color:'var(--c-text-2)' }}>How hard (RPE)</span>
@@ -1116,6 +1264,7 @@ function SessionLogger({ workout, programId, phaseId, userId, profile, onGoEat, 
   const exit = () => totalSetsLogged ? setConfirmExit(true) : onBack()
   const askRemove = (idx) => (loggedSets[idx]?.sets.filter(Boolean).length ? setConfirmRemove(idx) : removeExerciseLive(idx))
   const tryFinish = () => totalSetsLogged ? finishSession() : setConfirmFinish(true)
+  const listLabels = supersetLabels(liveExercises)
 
   return (
     <>
@@ -1150,7 +1299,8 @@ function SessionLogger({ workout, programId, phaseId, userId, profile, onGoEat, 
                 <span style={{ flex:1, minWidth:0, ...stack(4) }}>
                   <span className="t-title2" style={{ fontSize: isExpanded ? 24 : 19 }}>{ex.name}</span>
                   <span className="t-subhead c-2 t-num">
-                    {targetSets} × {ex.targetReps || 8}{ex.targetRpe ? ` · RPE ${ex.targetRpe}` : ''}
+                    {listLabels[exIdx] && <span style={{ color:'var(--c-accent-text)', fontWeight:600 }}>Superset {listLabels[exIdx]} · </span>}
+                    {targetSets} × {ex.targetReps || 8}{ex.targetWeight ? ` @ ${ex.targetWeight} lb` : ''}{ex.targetRpe ? ` · RPE ${ex.targetRpe}` : ''}
                     {status && <span style={{ color: allDone ? 'var(--c-done)' : 'var(--c-accent-text)', fontWeight:500 }}> · {status}</span>}
                   </span>
                 </span>
@@ -1185,7 +1335,7 @@ function SessionLogger({ workout, programId, phaseId, userId, profile, onGoEat, 
                           onSave={data => logSet(exIdx, i, data)}
                           onUndo={() => { setLoggedSets(prev => { const next = [...prev]; const sets = [...next[exIdx].sets]; sets[i] = undefined; next[exIdx] = { ...next[exIdx], sets }; return next }) }}
                           onRestStart={() => { setRestActive(true); setRestKey(k => k + 1) }}
-                          useRpe={rpeOn} targetReps={ex.targetReps || 8} targetRpe={ex.targetRpe} />
+                          useRpe={rpeOn} targetReps={ex.targetReps || 8} targetRpe={ex.targetRpe} targetWeight={ex.targetWeight} />
                       )
                     })}
                   </div>
