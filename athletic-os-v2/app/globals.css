@@ -77,6 +77,10 @@
   --c-done:        #7AAA88;
   --c-danger:      #E08070;
   --c-chrome:      rgba(17,17,19,0.80);
+  --c-scrim:       rgba(0,0,0,0.60);
+  --c-done-soft:   rgba(122,170,136,0.16);
+  --c-danger-soft: rgba(224,128,112,0.14);
+  --c-accent-soft: rgba(200,146,42,0.18);
   --shadow-card:   0 12px 32px rgba(0,0,0,0.35);
   color-scheme: dark;
 }

@@ -183,7 +183,7 @@ function ExercisePicker({ open, title = 'Add exercise', onSelect, onClose }) {
 }
 
 // ─── Session complete: a full-screen moment ───────────────────────────────────
-function SessionComplete({ stats, profile, onDone, onGoEat, saveState = 'saved', onRetrySave }) {
+function SessionComplete({ stats, profile, onDone, onGoEat, saveState = 'saved', onRetrySave, dark }) {
   const [analysis, setAnalysis] = useState('')
   const [loading, setLoading] = useState(true)
   const [showTargets, setShowTargets] = useState(false)
@@ -222,8 +222,8 @@ Give 2-3 sentences max. Mention any PRs. Note one small win. No fluff, no exclam
   // Portal to body: a transformed ancestor (screen-enter) would otherwise trap this fixed layer under the tab bar
   if (typeof document === 'undefined') return null
   return createPortal(
-    <div className="screen-enter" role="dialog" aria-modal="true" aria-label="Session complete"
-      style={{ position:'fixed', inset:0, zIndex:550, background:'var(--c-bg)', overflowY:'auto', overscrollBehavior:'contain' }}>
+    <div className={dark ? 'screen-enter theme-gym' : 'screen-enter'} role="dialog" aria-modal="true" aria-label="Session complete"
+      style={{ position:'fixed', inset:0, zIndex:550, background:'var(--c-bg)', color:'var(--c-text)', overflowY:'auto', overscrollBehavior:'contain' }}>
       <div style={{ maxWidth:'var(--app-max)', margin:'0 auto', minHeight:'100%', padding:'calc(env(safe-area-inset-top) + 56px) var(--edge) 0', ...stack(24) }}>
         <div>
           <HaleMark size={40} />
@@ -650,6 +650,344 @@ function RestTimer({ onDismiss }) {
   )
 }
 
+// ─── Gym mode: one set at a time, dark, full screen ───────────────────────────
+// Shares all session state with SessionLogger; this is only a different view of it.
+const VIEW_KEY = 'hale_session_view'
+function readSessionView() { try { return localStorage.getItem(VIEW_KEY) === 'list' ? 'list' : 'gym' } catch { return 'gym' } }
+function writeSessionView(v) { try { localStorage.setItem(VIEW_KEY, v) } catch {} }
+
+const restFor = (ex) => toInt(ex?.targetReps, 8) <= 5 ? 150 : 90   // heavier sets get longer rest
+const fmtClock = (s) => `${Math.floor(s / 60)}:${String(Math.max(0, s) % 60).padStart(2, '0')}`
+const fmtNum = (n) => (n % 1 === 0 ? String(n) : n.toFixed(1))
+const buzz = (p) => { try { navigator.vibrate?.(p) } catch {} }
+
+// Keep the phone awake while lifting, where the browser allows it
+function useWakeLock(on) {
+  useEffect(() => {
+    if (!on || typeof navigator === 'undefined' || !navigator.wakeLock) return
+    let lock = null, cancelled = false
+    const get = () => navigator.wakeLock.request('screen').then(l => { if (cancelled) l.release(); else lock = l }).catch(() => {})
+    get()
+    const onVis = () => { if (document.visibilityState === 'visible') get() }
+    document.addEventListener('visibilitychange', onVis)
+    return () => { cancelled = true; document.removeEventListener('visibilitychange', onVis); lock?.release?.().catch?.(() => {}) }
+  }, [on])
+}
+
+function BigStepper({ label, value, onChange, step, unit, inputMode = 'decimal' }) {
+  const n = parseFloat(value)
+  const bump = (d) => { const next = Math.max(0, (isNaN(n) ? 0 : n) + d); onChange(fmtNum(next)); buzz(6) }
+  const btn = { width:56, height:56, borderRadius:28, border:'none', background:'var(--c-muted-2)', color:'var(--c-text)', display:'grid', placeItems:'center', flexShrink:0 }
+  return (
+    <div style={{ ...stack(6), alignItems:'center', flex:1, minWidth:0 }}>
+      <span className="t-footnote" style={{ color:'var(--c-text-2)' }}>{label}</span>
+      <div style={{ display:'flex', alignItems:'center', gap:6, width:'100%', justifyContent:'center' }}>
+        <button className="pressable" aria-label={`Less ${label.toLowerCase()}`} onClick={() => bump(-step)} style={btn}><Icon name="minus" size={22} strokeWidth={2.2} /></button>
+        <input type="number" inputMode={inputMode} value={value} onChange={e => onChange(e.target.value)} aria-label={label} placeholder="0"
+          onFocus={e => e.target.select()}
+          style={{ width:'100%', minWidth:0, background:'transparent', border:'none', outline:'none', textAlign:'center', color:'var(--c-text)',
+            fontFamily:'var(--font-display)', fontWeight:300, fontSize:52, lineHeight:1, fontVariantNumeric:'tabular-nums', padding:0 }} />
+        <button className="pressable" aria-label={`More ${label.toLowerCase()}`} onClick={() => bump(step)} style={btn}><Icon name="plus" size={22} strokeWidth={2.2} /></button>
+      </div>
+      <span className="t-caption" style={{ color:'var(--c-text-3)' }}>{unit}</span>
+    </div>
+  )
+}
+
+function RestRing({ total, left }) {
+  const R = 108, C = 2 * Math.PI * R
+  const pct = total ? Math.max(0, left) / total : 0
+  const done = left <= 0
+  return (
+    <div style={{ position:'relative', width:240, height:240 }} role="timer" aria-label={done ? 'Rest done' : `Rest, ${fmtClock(left)} left`}>
+      <svg width="240" height="240" viewBox="0 0 240 240" aria-hidden="true" style={{ transform:'rotate(-90deg)' }}>
+        <circle cx="120" cy="120" r={R} fill="none" stroke="var(--c-muted-2)" strokeWidth="8" />
+        <circle cx="120" cy="120" r={R} fill="none" stroke={done ? 'var(--c-done)' : 'var(--c-accent)'} strokeWidth="8" strokeLinecap="round"
+          strokeDasharray={C} strokeDashoffset={C * (1 - pct)} style={{ transition:'stroke-dashoffset 250ms linear, stroke 300ms' }} />
+      </svg>
+      <div style={{ position:'absolute', inset:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:4 }}>
+        <span className="t-num" style={{ fontFamily:'var(--font-display)', fontWeight:200, fontSize:64, lineHeight:1 }}>{done ? 'Go' : fmtClock(left)}</span>
+        <span className="t-footnote" style={{ color:'var(--c-text-2)' }}>{done ? 'Rest is up' : 'Rest'}</span>
+      </div>
+    </div>
+  )
+}
+
+function GymView({ workout, liveExercises, loggedSets, getLastSession, onLog, onUndo, rpeFor, formatted,
+  onExit, onList, onFinish, onSwap, onAdd, onRemove }) {
+  const firstOpen = () => {
+    const i = liveExercises.findIndex((ex, k) => (loggedSets[k]?.sets.filter(Boolean).length || 0) < (ex.sets || 3))
+    return i < 0 ? Math.max(0, liveExercises.length - 1) : i
+  }
+  const [exIdx, setExIdx] = useState(firstOpen)
+  const [editing, setEditing] = useState(null)       // a logged set reopened for a fix
+  const [rest, setRest] = useState(null)             // { total, endsAt, logged:{...}, pr }
+  const [now, setNow] = useState(Date.now())
+  const [weight, setWeight] = useState('')
+  const [reps, setReps] = useState('')
+  const [rpe, setRpe] = useState(null)
+  const [listOpen, setListOpen] = useState(false)
+  const restDoneBuzzed = useRef(false)
+
+  useWakeLock(true)
+  useEffect(() => {
+    // Dark for everything while this is up, sheets and confirms included (they portal to body)
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    document.body.classList.add('theme-gym')
+    return () => { document.body.style.overflow = prev; document.body.classList.remove('theme-gym') }
+  }, [])
+
+  const safeIdx = Math.min(exIdx, Math.max(0, liveExercises.length - 1))
+  const ex = liveExercises[safeIdx]
+  const logged = loggedSets[safeIdx]?.sets || []
+  const targetSets = ex?.sets || 3
+  const doneHere = logged.filter(Boolean).length
+  const openSet = (() => { for (let i = 0; i < targetSets; i++) if (!logged[i]) return i; return null })()
+  const setIdx = editing ?? openSet
+  const lastSess = ex ? getLastSession(ex.exerciseId || ex.id, ex.name) : null
+  const rpeOn = ex ? rpeFor(ex) : false
+  const allDone = liveExercises.every((e, k) => (loggedSets[k]?.sets.filter(Boolean).length || 0) >= (e.sets || 3))
+  const exDone = (k) => (loggedSets[k]?.sets.filter(Boolean).length || 0) >= (liveExercises[k]?.sets || 3)
+
+  // Prefill each set: what you logged, else your last set today, else last session, else the target
+  useEffect(() => {
+    if (!ex || setIdx === null) return
+    const own = logged[setIdx]
+    const prevToday = setIdx > 0 ? logged[setIdx - 1] : null
+    const last = lastSess?.sets?.[setIdx] || lastSess?.sets?.filter(Boolean).slice(-1)[0]
+    const src = own || prevToday || last
+    setWeight(src?.weight != null ? fmtNum(src.weight) : '')
+    setReps(own?.reps != null ? String(own.reps) : prevToday?.reps != null ? String(prevToday.reps) : last?.reps != null ? String(last.reps) : String(toInt(ex.targetReps, 8)))
+    setRpe(own?.rpe ?? null)
+  }, [safeIdx, setIdx, ex?.id])
+
+  // Rest clock
+  useEffect(() => {
+    if (!rest) return
+    restDoneBuzzed.current = false
+    const id = setInterval(() => setNow(Date.now()), 250)
+    return () => clearInterval(id)
+  }, [rest?.endsAt])
+  const restLeft = rest ? Math.ceil((rest.endsAt - now) / 1000) : 0
+  useEffect(() => {
+    if (rest && restLeft <= 0 && !restDoneBuzzed.current) { restDoneBuzzed.current = true; buzz([30, 80, 30]) }
+  }, [restLeft, rest])
+
+  const advanceAfterRest = () => {
+    setRest(null)
+    if (exDone(safeIdx)) {
+      const next = liveExercises.findIndex((e, k) => k > safeIdx && !exDone(k))
+      const any = next >= 0 ? next : liveExercises.findIndex((e, k) => !exDone(k))
+      if (any >= 0) setExIdx(any)
+    }
+  }
+
+  const canLog = setIdx !== null && (weight === '' || parseFloat(weight) >= 0) && parseInt(reps) > 0   // empty weight = bodyweight
+  const log = () => {
+    if (!canLog) return
+    const data = { weight: parseFloat(weight) || 0, reps: parseInt(reps) || 0, ...(rpeOn && rpe ? { rpe } : {}) }
+    const bestBefore = Math.max(0, ...(lastSess?.sets || []).filter(Boolean).map(s => s.weight || 0), ...logged.filter((s, i) => s && i !== setIdx).map(s => s.weight || 0))
+    const pr = !!lastSess && data.weight > bestBefore
+    const wasEdit = editing !== null
+    onLog(safeIdx, setIdx, data)
+    setEditing(null)
+    if (wasEdit) { buzz(10); return }   // fixing a set doesn't restart rest
+    buzz(pr ? [18, 60, 18, 60, 40] : 16)
+    const willFinishAll = liveExercises.every((e, k) => k === safeIdx ? (doneHere + (logged[setIdx] ? 0 : 1)) >= targetSets : exDone(k))
+    if (willFinishAll) { setRest(null); return }
+    const total = restFor(ex)
+    setNow(Date.now())
+    setRest({ total, endsAt: Date.now() + total * 1000, logged: { ...data, setNum: setIdx + 1, name: ex.name }, pr })
+  }
+
+  // What comes after this rest
+  const upNext = (() => {
+    if (!rest) return null
+    if (!exDone(safeIdx) || (doneHere < targetSets)) return { name: ex.name, label: `Set ${(openSet ?? 0) + 1} of ${targetSets}` }
+    const k = liveExercises.findIndex((e, j) => j > safeIdx && !exDone(j))
+    const j = k >= 0 ? k : liveExercises.findIndex((e, i) => !exDone(i))
+    return j >= 0 ? { name: liveExercises[j].name, label: 'Next exercise' } : null
+  })()
+
+  const go = (d) => { setEditing(null); setRest(null); setExIdx(i => Math.min(liveExercises.length - 1, Math.max(0, i + d))) }
+  const topBtn = { width:44, height:44, borderRadius:22, border:'none', background:'var(--c-muted)', color:'var(--c-text)', display:'grid', placeItems:'center' }
+
+  if (typeof document === 'undefined') return null
+  return createPortal(
+    <div className="theme-gym" role="dialog" aria-modal="true" aria-label={`${workout.name}, gym mode`}
+      style={{ position:'fixed', inset:0, zIndex:500, background:'var(--c-bg)', color:'var(--c-text)', overflowY:'auto', overscrollBehavior:'contain' }}>
+      <div style={{ maxWidth:'var(--app-max)', margin:'0 auto', minHeight:'100%', display:'flex', flexDirection:'column',
+        padding:'calc(env(safe-area-inset-top) + 12px) var(--edge) calc(env(safe-area-inset-bottom) + 20px)' }}>
+
+        {/* Top bar */}
+        <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+          <button className="pressable" aria-label="Leave session" onClick={onExit} style={topBtn}><Icon name="close" size={20} /></button>
+          <button onClick={() => setListOpen(true)} aria-haspopup="dialog"
+            style={{ flex:1, minWidth:0, border:'none', background:'none', color:'var(--c-text)', display:'flex', flexDirection:'column', alignItems:'center', gap:2, padding:'4px 0' }}>
+            <span className="t-num t-callout" style={{ fontWeight:600 }}>{formatted}</span>
+            <span className="t-footnote" style={{ color:'var(--c-text-2)', display:'inline-flex', alignItems:'center', gap:4 }}>
+              Exercise {safeIdx + 1} of {liveExercises.length}<Icon name="chevronDown" size={14} strokeWidth={2} />
+            </span>
+          </button>
+          <button className="pressable" aria-label="Switch to list view" onClick={onList} style={topBtn}><Icon name="list" size={20} /></button>
+        </div>
+
+        {/* Progress across exercises */}
+        <div style={{ display:'flex', gap:4, marginTop:16 }} aria-hidden="true">
+          {liveExercises.map((e, k) => {
+            const n = loggedSets[k]?.sets.filter(Boolean).length || 0
+            const f = Math.min(1, n / (e.sets || 3))
+            return (
+              <span key={e.id || k} style={{ flex:1, height:4, borderRadius:2, background:'var(--c-muted-2)', overflow:'hidden' }}>
+                <span style={{ display:'block', height:4, width:`${f * 100}%`, background: k === safeIdx ? 'var(--c-accent)' : f >= 1 ? 'var(--c-done)' : 'var(--c-text-3)', transition:'width var(--t-base) var(--ease-out)' }} />
+              </span>
+            )
+          })}
+        </div>
+
+        {allDone && !rest ? (
+          <div className="screen-enter" style={{ flex:1, display:'flex', flexDirection:'column', justifyContent:'center', gap:16, padding:'32px 0' }}>
+            <span className="pop" style={{ width:64, height:64, borderRadius:32, background:'var(--c-done)', color:'#111113', display:'grid', placeItems:'center' }}>
+              <Icon name="check" size={32} strokeWidth={2.4} />
+            </span>
+            <h2 className="t-display" style={{ fontSize:40 }}>Every set is in.</h2>
+            <p className="t-body" style={{ color:'var(--c-text-2)' }}>Finish to save it, or add one more exercise if you have it in you.</p>
+            <div style={{ ...stack(10), marginTop:16 }}>
+              <Button full onClick={onFinish}>Finish session</Button>
+              <Button full variant="quiet" icon="plus" onClick={onAdd}>Add exercise</Button>
+            </div>
+          </div>
+        ) : rest ? (
+          /* Rest, right after a set is logged */
+          <div className="screen-enter" style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', gap:24, padding:'28px 0 0' }}>
+            <div style={{ ...stack(6), alignItems:'center', textAlign:'center' }}>
+              <span key={rest.endsAt} className="pop" style={{ width:44, height:44, borderRadius:22, background: rest.pr ? 'var(--c-accent)' : 'var(--c-done)', color:'#111113', display:'grid', placeItems:'center' }}>
+                <Icon name={rest.pr ? 'trendUp' : 'check'} size={22} strokeWidth={2.4} />
+              </span>
+              <span className="t-headline">{rest.pr ? 'New best on this lift' : `Set ${rest.logged.setNum} logged`}</span>
+              <span className="t-subhead t-num" style={{ color:'var(--c-text-2)' }}>{rest.logged.name} · {fmtNum(rest.logged.weight)} lb × {rest.logged.reps}</span>
+            </div>
+            <RestRing total={rest.total} left={restLeft} />
+            <div style={{ display:'flex', gap:10 }}>
+              <Button variant="secondary" size="md" onClick={() => setRest(r => ({ ...r, total: r.total + 30, endsAt: Math.max(r.endsAt, Date.now()) + 30000 }))}>+30 sec</Button>
+            </div>
+            {upNext && (
+              <div style={{ ...stack(2), alignItems:'center', textAlign:'center', marginTop:'auto' }}>
+                <span className="t-footnote" style={{ color:'var(--c-text-2)' }}>Up next · {upNext.label}</span>
+                <span className="t-title2">{upNext.name}</span>
+              </div>
+            )}
+            <Button full variant={restLeft <= 0 ? 'primary' : 'secondary'} onClick={advanceAfterRest} style={{ marginTop: upNext ? 0 : 'auto' }}>
+              {restLeft <= 0 ? 'Start next set' : 'Skip rest'}
+            </Button>
+          </div>
+        ) : ex ? (
+          /* The set */
+          <div key={`${safeIdx}-${setIdx}`} className="screen-enter" style={{ flex:1, display:'flex', flexDirection:'column', gap:24, paddingTop:28 }}>
+            <div style={stack(8)}>
+              <div style={{ display:'flex', alignItems:'flex-start', gap:8 }}>
+                <h2 className="t-display" style={{ flex:1, minWidth:0, fontSize:36, lineHeight:1.1 }}>{ex.name}</h2>
+              </div>
+              <span className="t-subhead t-num" style={{ color:'var(--c-text-2)' }}>
+                {setIdx === null ? 'All sets logged' : `Set ${setIdx + 1} of ${targetSets}`} · target {ex.targetReps || 8} reps{ex.targetRpe ? ` at RPE ${ex.targetRpe}` : ''}
+              </span>
+              {lastSess?.sets?.length > 0 && (
+                <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
+                  <span className="t-footnote" style={{ color:'var(--c-text-3)' }}>Last time</span>
+                  <SetChips sets={lastSess.sets} />
+                </div>
+              )}
+              {ex.notes && <p className="t-footnote" style={{ color:'var(--c-text-2)', fontWeight:400 }}>{ex.notes}</p>}
+            </div>
+
+            {setIdx !== null ? (
+              <>
+                <div style={{ display:'flex', gap:8 }}>
+                  <BigStepper label="Weight" unit="lb" value={weight} onChange={setWeight} step={5} />
+                </div>
+                <div style={{ display:'flex', gap:8, justifyContent:'center', marginTop:-12 }}>
+                  {[2.5, 10].map(d => (
+                    <Chip key={d} small onClick={() => { setWeight(fmtNum(Math.max(0, (parseFloat(weight) || 0) + d))); buzz(6) }}>+{d}</Chip>
+                  ))}
+                </div>
+                <BigStepper label="Reps" unit="reps" value={reps} onChange={setReps} step={1} inputMode="numeric" />
+                {rpeOn && (
+                  <div style={{ ...stack(8), alignItems:'center' }}>
+                    <span className="t-footnote" style={{ color:'var(--c-text-2)' }}>How hard (RPE)</span>
+                    <ChipRow>
+                      {[6, 7, 8, 9, 10].map(v => <Chip key={v} small selected={rpe === v} onClick={() => setRpe(rpe === v ? null : v)}>{v}</Chip>)}
+                    </ChipRow>
+                  </div>
+                )}
+              </>
+            ) : (
+              <Card style={{ ...stack(10), background:'var(--c-card)' }}>
+                <span className="t-headline">{ex.name} is done.</span>
+                <Button size="md" iconAfter="arrowRight" onClick={() => go(1)} disabled={safeIdx >= liveExercises.length - 1}>Next exercise</Button>
+              </Card>
+            )}
+
+            {/* Sets so far: tap one to fix it */}
+            <div style={{ display:'flex', gap:8, justifyContent:'center', flexWrap:'wrap' }}>
+              {Array.from({ length: targetSets }).map((_, i) => {
+                const s = logged[i]
+                const cur = i === setIdx
+                return (
+                  <button key={i} onClick={() => { if (s) { setEditing(i); buzz(6) } }} disabled={!s} aria-label={s ? `Set ${i + 1}: ${fmtNum(s.weight)} by ${s.reps}. Tap to fix` : `Set ${i + 1}, not logged`}
+                    style={{ minWidth:64, height:40, padding:'0 10px', borderRadius:20, border: cur ? '1.5px solid var(--c-accent)' : '1px solid var(--c-line-strong)',
+                      background: s ? 'var(--c-muted)' : 'transparent', color: s ? 'var(--c-text)' : 'var(--c-text-3)', fontSize:14, fontWeight:600, fontVariantNumeric:'tabular-nums' }}>
+                    {s ? `${fmtNum(s.weight)} × ${s.reps}` : i + 1}
+                  </button>
+                )
+              })}
+            </div>
+
+            <div style={{ marginTop:'auto', ...stack(10) }}>
+              {setIdx !== null && (
+                <Button full onClick={log} disabled={!canLog} icon="check" style={{ height:64, fontSize:18 }}>
+                  {editing !== null ? `Update set ${setIdx + 1}` : `Log set ${setIdx + 1}`}
+                </Button>
+              )}
+              {editing !== null && logged[editing] && (
+                <Button full variant="quiet" onClick={() => { onUndo(safeIdx, editing); setEditing(null) }}>Clear this set</Button>
+              )}
+              <div style={{ display:'flex', justifyContent:'space-between' }}>
+                <Button variant="quiet" size="sm" icon="chevronLeft" onClick={() => go(-1)} disabled={safeIdx === 0}>Previous</Button>
+                <Button variant="quiet" size="sm" iconAfter="chevronRight" onClick={() => go(1)} disabled={safeIdx >= liveExercises.length - 1}>Next exercise</Button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+      </div>
+
+      {/* All exercises: jump, swap, add, remove */}
+      <Sheet open={listOpen} onClose={() => setListOpen(false)} title={workout.name}>
+        <div style={{ ...stack(4), paddingBottom:8 }}>
+          {liveExercises.map((e, k) => {
+            const n = loggedSets[k]?.sets.filter(Boolean).length || 0
+            const t = e.sets || 3
+            return (
+              <div key={e.id || k} style={{ display:'flex', alignItems:'center', gap:8, borderTop: k ? '1px solid var(--c-line)' : 'none' }}>
+                <button onClick={() => { setRest(null); setEditing(null); setExIdx(k); setListOpen(false) }}
+                  style={{ flex:1, minWidth:0, minHeight:56, border:'none', background:'none', textAlign:'left', color:'var(--c-text)', padding:'8px 0', ...stack(2) }}>
+                  <span className="t-callout" style={{ fontWeight: k === safeIdx ? 700 : 600 }}>{e.name}</span>
+                  <span className="t-footnote t-num" style={{ fontWeight:400, color: n >= t ? 'var(--c-done)' : 'var(--c-text-2)' }}>{n >= t ? 'Done' : `${n} of ${t} sets`}</span>
+                </button>
+                <IconButton icon="swap" label={`Swap ${e.name}`} onClick={() => { setListOpen(false); onSwap(k) }} />
+                <IconButton icon="trash" label={`Remove ${e.name}`} onClick={() => { setListOpen(false); onRemove(k) }} />
+              </div>
+            )
+          })}
+          <Button variant="secondary" full icon="plus" onClick={() => { setListOpen(false); onAdd() }} style={{ marginTop:8 }}>Add exercise</Button>
+          <Button variant="quiet" full onClick={() => { setListOpen(false); onFinish() }}>Finish session</Button>
+        </div>
+      </Sheet>
+    </div>,
+    document.body
+  )
+}
+
 // ─── Session logger (list view) ───────────────────────────────────────────────
 function SessionLogger({ workout, programId, phaseId, userId, profile, onGoEat, onFinish, onBack, program }) {
   const [sessions, setSessions] = useState([])
@@ -668,6 +1006,8 @@ function SessionLogger({ workout, programId, phaseId, userId, profile, onGoEat, 
   const [confirmExit, setConfirmExit] = useState(false)
   const [confirmRemove, setConfirmRemove] = useState(null)
   const [confirmFinish, setConfirmFinish] = useState(false)
+  const [view, setView] = useState(readSessionView)   // 'gym' (default) or 'list'
+  const switchView = (v) => { setView(v); writeSessionView(v); setRestActive(false); window.scrollTo(0, 0) }
   const { elapsed, formatted } = useStopwatch()
 
   const addExerciseLive = (ex) => {
@@ -708,6 +1048,9 @@ function SessionLogger({ workout, programId, phaseId, userId, profile, onGoEat, 
     return prev.exercises.find(e => e.exerciseId === exerciseId || e.name === exerciseName)
   }
 
+  const undoSet = (exIdx, setIdx) => {
+    setLoggedSets(prev => { const next = [...prev]; const sets = [...next[exIdx].sets]; sets[setIdx] = undefined; next[exIdx] = { ...next[exIdx], sets }; return next })
+  }
   const logSet = (exIdx, setIdx, data) => {
     setLoggedSets(prev => {
       const next = [...prev]
@@ -776,7 +1119,10 @@ function SessionLogger({ workout, programId, phaseId, userId, profile, onGoEat, 
 
   return (
     <>
-      <ScreenHeader title={workout.name} subtitle={`${formatted} · ${doneCount} of ${liveExercises.length} done`} onBack={exit} backLabel="Leave session" />
+      {/* The list stays out of the page (and the accessibility tree) while gym mode is up */}
+      {view === 'list' && (<>
+      <ScreenHeader title={workout.name} subtitle={`${formatted} · ${doneCount} of ${liveExercises.length} done`} onBack={exit} backLabel="Leave session"
+        right={<IconButton icon="lift" label="Switch to gym mode" onClick={() => switchView('gym')} />} />
       <div style={{ ...pad, marginTop:-8, marginBottom:20 }}>
         <div role="progressbar" aria-label="Exercises done" aria-valuemin={0} aria-valuemax={liveExercises.length} aria-valuenow={doneCount}
           style={{ height:4, borderRadius:2, background:'var(--c-line)', overflow:'hidden' }}>
@@ -856,8 +1202,16 @@ function SessionLogger({ workout, programId, phaseId, userId, profile, onGoEat, 
         <Button variant="secondary" full icon="plus" onClick={() => setAddingExercise(true)}>Add exercise</Button>
         <Button full onClick={tryFinish} style={{ marginTop:12 }}>Finish session</Button>
       </div>
+      </>)}
 
-      {restActive && <RestTimer key={restKey} onDismiss={() => setRestActive(false)} />}
+      {restActive && view === 'list' && <RestTimer key={restKey} onDismiss={() => setRestActive(false)} />}
+
+      {view === 'gym' && !sessionComplete && (
+        <GymView workout={workout} liveExercises={liveExercises} loggedSets={loggedSets} getLastSession={getLastSession}
+          onLog={logSet} onUndo={undoSet} rpeFor={anyRpe} formatted={formatted}
+          onExit={exit} onList={() => switchView('list')} onFinish={tryFinish}
+          onSwap={setSwappingIdx} onAdd={() => setAddingExercise(true)} onRemove={askRemove} />
+      )}
 
       <ExercisePicker open={addingExercise || swappingIdx !== null} title={swappingIdx !== null ? `Swap ${liveExercises[swappingIdx]?.name || 'exercise'}` : 'Add exercise'}
         onSelect={ex => swappingIdx !== null ? swapExerciseLive(swappingIdx, ex) : addExerciseLive(ex)}
@@ -877,7 +1231,7 @@ function SessionLogger({ workout, programId, phaseId, userId, profile, onGoEat, 
         onConfirm={finishSession} onCancel={() => setConfirmFinish(false)} />
 
       {sessionComplete && sessionStats && (
-        <SessionComplete stats={sessionStats} profile={profile} onGoEat={onGoEat} onDone={() => onFinish(sessionStats)} saveState={saveState} onRetrySave={persist} />
+        <SessionComplete stats={sessionStats} profile={profile} onGoEat={onGoEat} onDone={() => onFinish(sessionStats)} saveState={saveState} onRetrySave={persist} dark={view === 'gym'} />
       )}
     </>
   )
